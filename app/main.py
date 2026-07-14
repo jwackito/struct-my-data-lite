@@ -48,10 +48,10 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
 
 @app.post("/extract")
 async def create_extraction(
+    background_tasks: BackgroundTasks,
     document_id: uuid.UUID = Body(...),
     pydantic_schema: str = Body(...),
     db: AsyncSession = Depends(get_db),
-    background_tasks: BackgroundTasks,
 ):
     doc = await db.get(Document, document_id)
     if not doc:
