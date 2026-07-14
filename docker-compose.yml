@@ -5,6 +5,7 @@ services:
       - "8080:8080"
     volumes:
       - .:/app
+      - pip-cache:/root/.cache/pip
     environment:
       PORT: 8080
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/structmydata
@@ -24,3 +25,4 @@ services:
 
 volumes:
   pgdata:
+  pip-cache:
