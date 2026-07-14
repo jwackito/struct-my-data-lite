@@ -31,7 +31,7 @@ async def process_job(job_id: uuid.UUID):
             client = provider.get_client()
 
             service = ExtractionService(client)
-            result = service.extract(text, job.pydantic_schema)
+            result = service.extract(text, job.pydantic_schema, provider.model)
 
             job.output_data = result
             job.status = JobStatus.completed
