@@ -40,7 +40,7 @@ class Person(BaseModel):
     name: str
     age: int
 """
-    result = service.extract("Harry is 11 years old", schema)
+    result = service.extract("Harry is 11 years old", schema, "test-model")
     assert result == {"name": "Harry", "age": 11}
     mock_client.chat.completions.create.assert_called_once()
 
@@ -49,7 +49,7 @@ class Person(BaseModel):
 def test_extract_invalid_schema(mock_instructor_class):
     service = ExtractionService(MagicMock())
     with pytest.raises(ValueError, match="Invalid schema"):
-        service.extract("hello", "import not_a_module")
+        service.extract("hello", "import not_a_module", "test-model")
 
 
 @patch("app.extraction.Instructor")
@@ -65,4 +65,4 @@ class X(BaseModel):
     y: str
 """
     with pytest.raises(RuntimeError, match="Extraction failed"):
-        service.extract("hello", schema)
+        service.extract("hello", schema, "test-model")
