@@ -1,13 +1,22 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
-
 from app.database import async_session
 from app.extraction import ExtractionService
 from app.models import Document, ExtractionJob, JobStatus
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
+from app.ws import manager
+
+
+def _job_payload(job: ExtractionJob) -> dict:
+    return {
+        "event": "status",
+        "job_id": str(job.id),
+        "status": job.status.value if isinstance(job.status, JobStatus) else job.status,
+        "output_data": job.output_data,
+        "error_message": job.error_message,
+    }
 
 
 async def process_job(job_id: uuid.UUID):
@@ -18,6 +27,7 @@ async def process_job(job_id: uuid.UUID):
 
         job.status = JobStatus.running
         await db.commit()
+        await manager.notify(job_id, _job_payload(job))
 
         try:
             doc = await db.get(Document, job.document_id)
@@ -41,3 +51,4 @@ async def process_job(job_id: uuid.UUID):
         finally:
             job.completed_at = datetime.now(timezone.utc)
             await db.commit()
+            await manager.notify(job_id, _job_payload(job))
