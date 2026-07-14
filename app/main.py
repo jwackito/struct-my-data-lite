@@ -1,13 +1,14 @@
 import uuid
 
-from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import get_db
-from app.models import Document, ExtractionJob
+from app.database import get_db, async_session
+from app.models import Document, ExtractionJob, JobStatus
 from app.processing import process_job
 from app.storage import save_file
+from app.ws import manager
 
 app = FastAPI(title="Struct My Data")
 
@@ -86,3 +87,23 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         "created_at": job.created_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+
+@app.websocket("/ws/jobs/{job_id}")
+async def websocket_endpoint(ws: WebSocket, job_id: uuid.UUID):
+    await manager.connect(job_id, ws)
+    try:
+        async with async_session() as db:
+            job = await db.get(ExtractionJob, job_id)
+            if job:
+                await ws.send_json({
+                    "event": "status",
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "output_data": job.output_data,
+                    "error_message": job.error_message,
+                })
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(job_id, ws)
