@@ -34,7 +34,7 @@ class ExtractionJob(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"))
-    status: Mapped[JobStatus] = mapped_column(default=JobStatus.pending)
+    status: Mapped[JobStatus] = mapped_column(String(20), default=JobStatus.pending)
     pydantic_schema: Mapped[str] = mapped_column(Text)
     output_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
