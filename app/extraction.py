@@ -13,7 +13,7 @@ class ExtractionService:
     def __init__(self, client: Instructor):
         self.client = client
 
-    def extract(self, text: str, schema_code: str) -> dict:
+    def extract(self, text: str, schema_code: str, model: str) -> dict:
         namespace = {}
         try:
             exec(schema_code, namespace)
@@ -23,6 +23,7 @@ class ExtractionService:
         model_class = _find_model(namespace)
         try:
             result = self.client.chat.completions.create(
+                model=model,
                 response_model=model_class,
                 messages=[{"role": "user", "content": text}],
             )
