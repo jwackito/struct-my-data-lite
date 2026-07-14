@@ -67,7 +67,7 @@ async def create_extraction(
 
     return {
         "id": str(job.id),
-        "status": job.status.value,
+        "status": job.status,
     }
 
 
@@ -80,7 +80,7 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     return {
         "id": str(job.id),
         "document_id": str(job.document_id),
-        "status": job.status.value,
+        "status": job.status,
         "output_data": job.output_data,
         "error_message": job.error_message,
         "created_at": job.created_at.isoformat(),
