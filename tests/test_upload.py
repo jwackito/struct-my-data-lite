@@ -10,6 +10,13 @@ def test_save_file(tmp_path, monkeypatch):
     assert "hello.txt" in path
 
 
+def test_save_file_sanitizes_filename(tmp_path, monkeypatch):
+    monkeypatch.setattr("app.storage.STORAGE_DIR", tmp_path)
+    path = save_file("../../malicious.txt", b"data")
+    assert "/" not in path
+    assert ".." not in path
+
+
 @pytest.mark.asyncio
 async def test_upload_too_large(client):
     max_size = settings.max_upload_size
