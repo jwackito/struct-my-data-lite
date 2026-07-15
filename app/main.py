@@ -1,16 +1,46 @@
+import hashlib
 import uuid
+from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import JSONResponse
 
 from app.config import settings
-from app.database import get_db, async_session
+from app.database import get_db, async_session, wait_for_db
 from app.models import Document, ExtractionJob, JobStatus
 from app.processing import process_job
 from app.storage import save_file
 from app.ws import manager
 
-app = FastAPI(title="Struct My Data")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not settings.skip_db_wait:
+        await wait_for_db()
+    yield
+
+
+app = FastAPI(title="Struct My Data", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    request_id = getattr(request.state, "request_id", "unknown")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "request_id": request_id},
+    )
 
 
 @app.get("/health")
@@ -24,6 +54,22 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
     if len(content) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail="File exceeds maximum upload size")
 
+    content_hash = hashlib.sha256(content).hexdigest()
+
+    stmt = select(Document).where(Document.content_hash == content_hash)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+    if existing:
+        return {
+            "id": str(existing.id),
+            "filename": existing.filename,
+            "content_type": existing.content_type,
+            "file_size": existing.file_size,
+            "storage_path": existing.storage_path,
+            "created_at": existing.created_at.isoformat(),
+            "updated_at": existing.updated_at.isoformat(),
+        }
+
     storage_path = save_file(file.filename or "unnamed", content)
 
     doc = Document(
@@ -31,6 +77,7 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
         content_type=file.content_type or "application/octet-stream",
         file_size=len(content),
         storage_path=storage_path,
+        content_hash=content_hash,
     )
     db.add(doc)
     await db.commit()
@@ -51,12 +98,17 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
 async def create_extraction(
     background_tasks: BackgroundTasks,
     document_id: uuid.UUID = Body(...),
-    pydantic_schema: str = Body(...),
+    pydantic_schema: str = Body(..., max_length=10000),
     db: AsyncSession = Depends(get_db),
 ):
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        compile(pydantic_schema, "<schema>", "exec")
+    except SyntaxError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
 
     job = ExtractionJob(document_id=document_id, pydantic_schema=pydantic_schema)
     db.add(job)
