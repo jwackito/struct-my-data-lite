@@ -13,8 +13,9 @@ def test_save_file(tmp_path, monkeypatch):
 def test_save_file_sanitizes_filename(tmp_path, monkeypatch):
     monkeypatch.setattr("app.storage.STORAGE_DIR", tmp_path)
     path = save_file("../../malicious.txt", b"data")
-    assert "/" not in path
-    assert ".." not in path
+    stored = tmp_path / path
+    assert stored.parent == tmp_path
+    assert stored.read_bytes() == b"data"
 
 
 @pytest.mark.asyncio
