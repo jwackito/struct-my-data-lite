@@ -1,11 +1,12 @@
 import hashlib
+import json
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import JSONResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse
 
 from app.config import settings
 from app.database import get_db, async_session, wait_for_db
@@ -139,6 +140,71 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         "created_at": job.created_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
+
+
+@app.get("/")
+async def index():
+    return FileResponse("app/templates/index.html")
+
+
+@app.post("/ui/extract")
+async def ui_extract(
+    background_tasks: BackgroundTasks,
+    file: UploadFile,
+    pydantic_schema: str = Form(..., max_length=10000),
+    db: AsyncSession = Depends(get_db),
+):
+    content = await file.read()
+    if len(content) > settings.max_upload_size:
+        return HTMLResponse('<div style="color:red">File exceeds maximum upload size</div>')
+
+    content_hash = hashlib.sha256(content).hexdigest()
+
+    stmt = select(Document).where(Document.content_hash == content_hash)
+    result = await db.execute(stmt)
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        storage_path = save_file(file.filename or "unnamed", content)
+        doc = Document(
+            filename=file.filename or "unnamed",
+            content_type=file.content_type or "application/octet-stream",
+            file_size=len(content),
+            storage_path=storage_path,
+            content_hash=content_hash,
+        )
+        db.add(doc)
+        await db.commit()
+        await db.refresh(doc)
+
+    try:
+        compile(pydantic_schema, "<schema>", "exec")
+    except SyntaxError as e:
+        return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
+
+    job = ExtractionJob(document_id=doc.id, pydantic_schema=pydantic_schema)
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    if background_tasks:
+        background_tasks.add_task(process_job, job.id)
+
+    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>')
+
+
+@app.get("/ui/jobs/{job_id}")
+async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        return HTMLResponse("<div>Job not found</div>")
+
+    if job.status in (JobStatus.pending, JobStatus.running):
+        return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>')
+    elif job.status == JobStatus.completed:
+        return HTMLResponse(f"<pre>{json.dumps(job.output_data, indent=2)}</pre>")
+    else:
+        return HTMLResponse(f'<div style="color:red">Error: {job.error_message}</div>')
 
 
 @app.websocket("/ws/jobs/{job_id}")
