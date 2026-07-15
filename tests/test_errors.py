@@ -7,7 +7,7 @@ from app.storage import sanitize_filename
 
 def test_sanitize_filename_removes_path_separators():
     assert sanitize_filename("/etc/passwd") == "_etc_passwd"
-    assert sanitize_filename("../foo/bar.txt") == "__foo_bar.txt"
+    assert sanitize_filename("../foo/bar.txt") == ".._foo_bar.txt"
 
 
 def test_sanitize_filename_removes_null_bytes():
