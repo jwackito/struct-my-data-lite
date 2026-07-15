@@ -7,10 +7,17 @@ services:
       PORT: 8080
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/structmydata
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
+    healthcheck:
+      test: curl -f http://localhost:8080/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   db:
     image: postgres:16-alpine
@@ -23,6 +30,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
