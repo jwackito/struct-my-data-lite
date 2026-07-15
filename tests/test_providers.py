@@ -35,7 +35,7 @@ def test_openai_stub_not_implemented():
 def test_ollama_get_client(mock_from_openai, mock_openai):
     provider = OllamaProvider("http://test:11434", "test-model")
     client = provider.get_client()
-    mock_openai.assert_called_once_with(base_url="http://test:11434/v1", api_key="ollama")
+    mock_openai.assert_called_once_with(base_url="http://test:11434/v1", api_key="ollama", timeout=120)
     mock_from_openai.assert_called_once()
     assert client == mock_from_openai.return_value
 
