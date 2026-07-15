@@ -5,6 +5,99 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Struct My Data</title>
   <script src="https://unpkg.com/htmx.org@2"></script>
+  <style>
+    body {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1a1a1a;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    input[type="file"],
+    textarea {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    textarea {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+      font-size: 0.8rem;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    .htmx-request button {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    .htmx-indicator {
+      display: none;
+    }
+    .htmx-request .htmx-indicator {
+      display: inline;
+    }
+    .htmx-request .button-label {
+      display: none;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f5f5f5;
+      font-weight: 600;
+    }
+    td pre {
+      margin: 0;
+      font-size: 0.8rem;
+    }
+    #result {
+      margin-top: 1rem;
+    }
+    .error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 0.75rem;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
   <h1>Struct My Data</h1>
@@ -14,9 +107,17 @@
     </div>
     <div>
       <label>Pydantic Schema</label>
-      <textarea name="pydantic_schema" rows="10" cols="60" placeholder="from pydantic import BaseModel&#10;&#10;class MyModel(BaseModel):&#10;    name: str"></textarea>
+      <textarea name="pydantic_schema" rows="10" cols="60">from pydantic import BaseModel, Field
+from typing import List
+
+class OfficialsList(BaseModel):
+    names: List[str] = Field(description="Full names of all people")
+    positions: List[str] = Field(description="Positions in same order")</textarea>
     </div>
-    <button type="submit">Extract</button>
+    <button type="submit">
+      <span class="button-label">Extract</span>
+      <span class="htmx-indicator">⏳ Extracting...</span>
+    </button>
   </form>
   <div id="result"></div>
 </body>
