@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Struct My Data</title>
+  <script src="https://unpkg.com/htmx.org@2"></script>
+</head>
+<body>
+  <h1>Struct My Data</h1>
+  <form hx-post="/ui/extract" hx-target="#result" enctype="multipart/form-data">
+    <div>
+      <label>Document <input type="file" name="file" required></label>
+    </div>
+    <div>
+      <label>Pydantic Schema</label>
+      <textarea name="pydantic_schema" rows="10" cols="60" placeholder="from pydantic import BaseModel&#10;&#10;class MyModel(BaseModel):&#10;    name: str"></textarea>
+    </div>
+    <button type="submit">Extract</button>
+  </form>
+  <div id="result"></div>
+</body>
+</html>
