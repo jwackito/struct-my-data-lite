@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -35,13 +36,13 @@ async def process_job(job_id: uuid.UUID):
                 raise ValueError("Document not found")
 
             parser = get_doc_parser(doc.content_type)
-            text = parser.parse(doc.storage_path)
+            text = await asyncio.to_thread(parser.parse, doc.storage_path)
 
             provider = get_provider("ollama")
             client = provider.get_client()
 
             service = ExtractionService(client)
-            result = service.extract(text, job.pydantic_schema, provider.model)
+            result = await asyncio.to_thread(service.extract, text, job.pydantic_schema, provider.model)
 
             job.output_data = result
             job.status = JobStatus.completed
