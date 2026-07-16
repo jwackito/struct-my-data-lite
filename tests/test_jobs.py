@@ -126,3 +126,10 @@ async def test_retry_completed_job_rejected(async_client, db_session, patch_asyn
 
     await db_session.refresh(job)
     assert job.status == JobStatus.completed
+
+
+@pytest.mark.asyncio
+async def test_retry_missing_job(async_client, db_session, patch_async_session):
+    resp = await async_client.post(f"/ui/jobs/{uuid.uuid4()}/retry")
+    assert resp.status_code == 200
+    assert "not found" in resp.text.lower()
