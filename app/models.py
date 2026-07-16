@@ -12,7 +12,6 @@ class Base(DeclarativeBase):
 
 class JobStatus(str, enum.Enum):
     pending = "pending"
-    pending = "pending"
     running = "running"
     completed = "completed"
     failed = "failed"
