@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.models import ExtractionJob, JobStatus
+from app.models import Document, ExtractionJob, JobStatus
 
 
 class TestExtractionJobModel:
@@ -33,3 +33,21 @@ async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session)
     assert resp.status_code == 200
     assert "<table>" in resp.text
     assert "<tbody></tbody>" in resp.text or "<tbody>" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_ui_jobs_list_returns_rows(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    for i in range(2):
+        j = ExtractionJob(document_id=doc.id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
+        db_session.add(j)
+    await db_session.commit()
+
+    resp = await async_client.get("/ui/jobs")
+    assert resp.status_code == 200
+    assert resp.text.count("<tr>") == 3  # header + 2 data rows
+    assert "✅" in resp.text or "⏳" in resp.text
+    assert "View" in resp.text
