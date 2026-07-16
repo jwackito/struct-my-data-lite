@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3.6:35b"
     ollama_vision_model: str = "gemma4:31b"
     max_upload_size: int = 10 * 1024 * 1024
-    ollama_timeout: int = 120
+    ollama_timeout: int = 3600
     skip_db_wait: bool = False
 
     class Config:
