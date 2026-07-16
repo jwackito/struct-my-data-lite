@@ -228,6 +228,31 @@ async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         return HTMLResponse(f'<div style="color:red">Error: {job.error_message}</div>')
 
 
+@app.post("/ui/jobs/{job_id}/retry")
+async def ui_job_retry(
+    job_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        return HTMLResponse("<div>Job not found</div>")
+
+    st = job.status
+    if hasattr(st, "value"):
+        st = st.value
+    if st not in ("pending", "failed"):
+        return HTMLResponse("<div>Can only retry failed or pending jobs</div>")
+
+    job.status = JobStatus.pending
+    job.error_message = None
+    job.completed_at = None
+    await db.commit()
+
+    background_tasks.add_task(process_job, job.id)
+    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Retrying...</div>')
+
+
 @app.get("/ui/jobs")
 async def ui_jobs(
     offset: int = 0,
