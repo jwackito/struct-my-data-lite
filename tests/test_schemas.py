@@ -1,0 +1,151 @@
+import re
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_list_schemas_empty(async_client):
+    r = await async_client.get("/schemas")
+    assert r.status_code == 200
+    assert r.json() == []
+
+
+@pytest.mark.asyncio
+async def test_create_schema(async_client):
+    r = await async_client.post(
+        "/schemas",
+        json={"name": "Test Schema", "pydantic_schema": "class Test(BaseModel):\n    x: int"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert "id" in data
+    assert data["name"] == "Test Schema"
+
+
+@pytest.mark.asyncio
+async def test_create_schema_missing_name(async_client):
+    r = await async_client.post("/schemas", json={"pydantic_schema": "class X(BaseModel): pass"})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_schema_missing_code(async_client):
+    r = await async_client.post("/schemas", json={"name": "X"})
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_schema(async_client):
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "GetTest", "pydantic_schema": "class A(BaseModel):\n    y: str"},
+    )
+    sid = created.json()["id"]
+    r = await async_client.get(f"/schemas/{sid}")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["name"] == "GetTest"
+    assert "pydantic_schema" in data
+
+
+@pytest.mark.asyncio
+async def test_get_schema_not_found(async_client):
+    r = await async_client.get("/schemas/00000000-0000-0000-0000-000000000000")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_schema(async_client):
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "Old", "pydantic_schema": "class O(BaseModel):\n    z: float"},
+    )
+    sid = created.json()["id"]
+    r = await async_client.put(f"/schemas/{sid}", json={"name": "New"})
+    assert r.status_code == 200
+    r2 = await async_client.get(f"/schemas/{sid}")
+    assert r2.json()["name"] == "New"
+
+
+@pytest.mark.asyncio
+async def test_delete_schema(async_client):
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "DelMe", "pydantic_schema": "class D(BaseModel):\n    v: int"},
+    )
+    sid = created.json()["id"]
+    r = await async_client.delete(f"/schemas/{sid}")
+    assert r.status_code == 200
+    r2 = await async_client.get(f"/schemas/{sid}")
+    assert r2.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_not_found(async_client):
+    r = await async_client.delete("/schemas/00000000-0000-0000-0000-000000000000")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_export_schema(async_client):
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "ExportTest", "pydantic_schema": "class E(BaseModel):\n    data: str"},
+    )
+    sid = created.json()["id"]
+    r = await async_client.get(f"/schemas/{sid}/export")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "text/plain"
+    assert "structmydata-schema" in r.text
+    assert "class E(BaseModel)" in r.text
+    assert "ExportTest" in r.text
+
+
+@pytest.mark.asyncio
+async def test_import_schema_py(async_client):
+    content = b"# name: Imported\nclass I(BaseModel):\n    val: int"
+    r = await async_client.post(
+        "/schemas/import",
+        files={"file": ("myschema.py", content, "text/plain")},
+    )
+    assert r.status_code == 200
+    sid = r.json()["id"]
+    r2 = await async_client.get(f"/schemas/{sid}")
+    assert "val: int" in r2.json()["pydantic_schema"]
+
+
+@pytest.mark.asyncio
+async def test_import_schema_json(async_client):
+    content = b'{"name":"JSON Import","pydantic_schema":"class J(BaseModel):\\n    val: int"}'
+    r = await async_client.post(
+        "/schemas/import",
+        files={"file": ("schema.json", content, "application/json")},
+    )
+    assert r.status_code == 200
+    assert r.json()["name"] == "JSON Import"
+
+
+@pytest.mark.asyncio
+async def test_import_schema_too_large(async_client):
+    content = b"x" * 10001
+    r = await async_client.post(
+        "/schemas/import",
+        files={"file": ("big.py", content, "text/plain")},
+    )
+    assert r.status_code == 422
+
+
+def test_schema_ui_elements():
+    with open("app/templates/index.html") as f:
+        html = f.read()
+    assert 'id="template-select"' in html
+    assert 'id="template-save"' in html
+    assert 'id="template-load"' in html
+    assert 'id="template-delete"' in html
+    assert 'id="template-export"' in html
+    assert 'id="template-import"' in html
+    assert 'id="template-import-input"' in html
+    script_match = re.search(r"<script>(.*?)</script>", html, re.DOTALL)
+    assert script_match
+    assert "loadTemplateList" in script_match.group(1)
+    assert "/schemas/import" in script_match.group(1)
