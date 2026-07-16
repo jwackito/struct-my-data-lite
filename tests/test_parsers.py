@@ -43,6 +43,12 @@ def test_factory_unsupported():
         get_parser("application/zip")
 
 
+def test_factory_routes_image():
+    for ct in ("image/png", "image/jpeg", "image/webp"):
+        parser = get_parser(ct)
+        assert isinstance(parser, ImageParser)
+
+
 def test_parser_abc():
     class BadParser(Parser):
         pass
