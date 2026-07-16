@@ -108,3 +108,21 @@ async def test_retry_failed_job(async_client, db_session, patch_async_session):
     assert job.status == JobStatus.pending
     assert job.error_message is None
     assert job.completed_at is None
+
+
+@pytest.mark.asyncio
+async def test_retry_completed_job_rejected(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(document_id=doc.id, status=JobStatus.completed, pydantic_schema="x", output_data={})
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
+    assert resp.status_code == 200
+    assert "Can only retry" in resp.text
+
+    await db_session.refresh(job)
+    assert job.status == JobStatus.completed
