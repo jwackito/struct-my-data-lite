@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 
 class JobStatus(str, enum.Enum):
     pending = "pending"
+    pending = "pending"
     running = "running"
     completed = "completed"
     failed = "failed"
@@ -41,3 +42,13 @@ class ExtractionJob(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SavedSchema(Base):
+    __tablename__ = "saved_schemas"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255))
+    pydantic_schema: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
