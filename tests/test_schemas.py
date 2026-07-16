@@ -95,7 +95,7 @@ async def test_export_schema(async_client):
     sid = created.json()["id"]
     r = await async_client.get(f"/schemas/{sid}/export")
     assert r.status_code == 200
-    assert r.headers["content-type"] == "text/plain"
+    assert r.headers["content-type"].startswith("text/plain")
     assert "structmydata-schema" in r.text
     assert "class E(BaseModel)" in r.text
     assert "ExportTest" in r.text
