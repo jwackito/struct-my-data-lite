@@ -1,6 +1,18 @@
-# Struct My Data
+# Struct My Data — Lite Edition
 
-Extract structured data (JSON/YAML) from documents using LLMs. Upload a file (PDF, DOCX, TXT, CSV), define a Pydantic schema, and get structured output powered by [Instructor](https://github.com/jxnl/instructor).
+**Single-user, self-deployed document-to-structured-data extraction.**
+
+Upload a document (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a visual builder or raw code, and get structured JSON/YAML output powered by [Instructor](https://github.com/jxnl/instructor) and Ollama.
+
+> **Lite Edition** — no authentication, no multi-tenancy. One user, one instance, zero config.
+> Future versions will add user accounts, sharing, and additional LLM providers.
+
+## Prerequisites
+
+- **Docker** and **Docker Compose**
+- **Ollama** running on the host with:
+  - A [vision-capable model](https://ollama.com/search?c=vision) for image OCR (e.g., `gemma3:12b`, `llava`, `qwen3.6:35b`)
+  - Ollama listening on all interfaces: `OLLAMA_HOST=0.0.0.0:11434 ollama serve`
 
 ## Quick Start
 
@@ -10,8 +22,8 @@ docker compose exec app python -m alembic upgrade head
 ```
 
 Open **http://localhost:8080** in your browser:
-1. Upload a document (PDF, DOCX, TXT, or CSV)
-2. Paste or write a Pydantic schema
+1. Upload a document (PDF, DOCX, TXT, CSV, or image)
+2. Build a Pydantic schema using the visual field builder (or write raw code)
 3. Click **Extract** — result renders as a table via HTMX polling
 
 Or use the API directly:
@@ -38,20 +50,33 @@ curl http://localhost:8080/jobs/<job-id>
 ws ws://localhost:8080/ws/jobs/<job-id>
 ```
 
+## Features
+
+| Feature | Description |
+|---|---|
+| **Document parsing** | PDF (text + scanned via OCR), DOCX, TXT, CSV, images (JPEG/PNG/WebP) |
+| **Visual field builder** | Drag-and-drop schema builder with nested model support — no Python required |
+| **Raw code mode** | Write Pydantic v2 schemas directly in the Code tab |
+| **LLM extraction** | Powered by Ollama + Instructor — structured output from unstructured docs |
+| **Schema templates** | Save and reuse schemas; load from a dropdown |
+| **Real-time updates** | WebSocket and HTMX polling for job status |
+| **API-first** | Full REST API + WebSocket for programmatic access |
+
 ## Architecture
 
 ```
 ── API ──────────────────────────────────────────
 POST /upload        →  Document stored (local fs + DB)
 POST /extract       →  ExtractionJob created → BackgroundTask:
-                           1. Parse document (PDF/DOCX/TXT/CSV)
-                           2. Send text + schema to LLM (thread pool)
+                           1. Parse document (PDF/DOCX/TXT/CSV/image)
+                           2. Send content + schema to LLM (thread pool)
                            3. Store structured result
 GET  /jobs/{id}     →  Poll job status
+GET  /templates     →  List saved schema templates
 WS   /ws/jobs/{id}  →  Real-time status push
 
 ── Web UI (HTMX) ─────────────────────────────────
-GET  /              →  Static HTML page with upload form
+GET  /              →  Static HTML page with upload form, field builder, template dropdown
 POST /ui/extract    →  Upload + job creation in one call
 GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 ```
@@ -63,7 +88,7 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 | Backend | Python 3.12, FastAPI |
 | Database | PostgreSQL 16 + SQLAlchemy 2.0 (async) |
 | Migrations | Alembic |
-| LLM | Ollama (`qwen3.6:35b`), OpenAI scaffolded |
+| LLM | Ollama (any model, vision-capable recommended for OCR) |
 | Extraction | Instructor |
 | Realtime | WebSocket |
 | Frontend | Static HTML + HTMX (no build step) |
@@ -74,11 +99,14 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Web UI — upload form and schema editor |
+| GET | `/` | Web UI — upload form, field builder, and schema editor |
 | GET | `/health` | Health check |
 | POST | `/upload` | Upload a document (10 MB max) |
 | POST | `/extract` | Create an extraction job (JSON body) |
 | GET | `/jobs/{id}` | Poll job status and result (JSON) |
+| GET | `/templates` | List saved schema templates |
+| POST | `/templates` | Create a new schema template |
+| DELETE | `/templates/{id}` | Delete a schema template |
 | POST | `/ui/extract` | Upload + job creation (multipart form, returns HTML) |
 | GET | `/ui/jobs/{id}` | Job status as HTML fragment (for HTMX polling) |
 | WS | `/ws/jobs/{id}` | Real-time job status updates |
@@ -118,6 +146,12 @@ docker compose up -d --build
 
 Requires an Ollama instance running on the host at `host.docker.internal:11434`.
 
+To make Ollama reachable from Docker containers, start it on all interfaces:
+
+```bash
+OLLAMA_HOST=0.0.0.0:11434 ollama serve
+```
+
 ## Production
 
 ```bash
@@ -132,3 +166,15 @@ Differences from development:
 - Healthchecks on both app and database services
 
 See `docker-compose.prod.yml` and `.dockerignore`.
+
+## Roadmap
+
+| Phase | Feature | Status |
+|---|---|---|
+| P12 | Visual field builder | ✅ |
+| P13 | Schema templates | 🔲 |
+| P14 | Image OCR (Ollama multimodal) | 🔲 |
+| — | OpenAI / other LLM providers | 🔲 (full version) |
+| — | Multi-user with auth | 🔲 (full version) |
+
+Lite Edition tracks issues with the **Lite** milestone. Full-version features are planned after Lite reaches stability.
