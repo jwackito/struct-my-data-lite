@@ -133,3 +133,18 @@ async def test_retry_missing_job(async_client, db_session, patch_async_session):
     resp = await async_client.post(f"/ui/jobs/{uuid.uuid4()}/retry")
     assert resp.status_code == 200
     assert "not found" in resp.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_retry_triggers_processing(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(document_id=doc.id, status=JobStatus.failed, pydantic_schema="x", error_message="oops")
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
+    assert resp.status_code == 200
+    assert "Retrying" in resp.text
