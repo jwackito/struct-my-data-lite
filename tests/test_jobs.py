@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import uuid
 
 import pytest
@@ -101,7 +103,8 @@ async def test_retry_failed_job(async_client, db_session, patch_async_session):
     db_session.add(job)
     await db_session.commit()
 
-    resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
+    with patch("app.main.process_job"):
+        resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
     assert resp.status_code == 200
 
     await db_session.refresh(job)
