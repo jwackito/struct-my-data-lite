@@ -1,5 +1,7 @@
 import uuid
 
+import pytest
+
 from app.models import ExtractionJob, JobStatus
 
 
@@ -23,3 +25,11 @@ class TestExtractionJobModel:
             pydantic_schema="class X: pass",
         )
         assert isinstance(job.id, uuid.UUID)
+
+
+@pytest.mark.asyncio
+async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session):
+    resp = await async_client.get("/ui/jobs")
+    assert resp.status_code == 200
+    assert "<table>" in resp.text
+    assert "<tbody></tbody>" in resp.text or "<tbody>" in resp.text
