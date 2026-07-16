@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 import pytest
@@ -5,9 +6,18 @@ import pytest
 from app.parsers.base import Parser
 from app.parsers.csv_ import CSVParser
 from app.parsers.factory import get_parser
+from app.parsers.image import ImageParser
 from app.parsers.txt import TXTParser
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_image_parser_returns_base64(tmp_path):
+    img = tmp_path / "test.png"
+    raw = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
+    img.write_bytes(raw)
+    result = ImageParser().parse(str(img))
+    assert base64.b64decode(result) == raw
 
 
 def test_txt_parser():
