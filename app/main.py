@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from app.config import settings
 from app.database import get_db, async_session, wait_for_db
-from app.models import Document, ExtractionJob, JobStatus
+from app.models import Document, ExtractionJob, JobStatus, SavedSchema
 from app.processing import process_job
 from app.storage import save_file
 from app.ws import manager
@@ -226,6 +226,138 @@ async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         return HTMLResponse(_render_output(job.output_data))
     else:
         return HTMLResponse(f'<div style="color:red">Error: {job.error_message}</div>')
+
+
+@app.get("/schemas")
+async def list_schemas(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SavedSchema).order_by(SavedSchema.created_at.desc()))
+    schemas = result.scalars().all()
+    return [
+        {
+            "id": str(s.id),
+            "name": s.name,
+            "pydantic_schema": s.pydantic_schema,
+            "created_at": s.created_at.isoformat(),
+        }
+        for s in schemas
+    ]
+
+
+@app.post("/schemas")
+async def create_schema(body: dict = Body(...), db: AsyncSession = Depends(get_db)):
+    name = body.get("name", "").strip()
+    pydantic_schema = body.get("pydantic_schema", "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name is required")
+    if not pydantic_schema:
+        raise HTTPException(status_code=422, detail="Schema code is required")
+    if len(pydantic_schema) > 10000:
+        raise HTTPException(status_code=422, detail="Schema code too long")
+
+    schema = SavedSchema(name=name, pydantic_schema=pydantic_schema)
+    db.add(schema)
+    await db.commit()
+    await db.refresh(schema)
+    return {"id": str(schema.id), "name": schema.name}
+
+
+@app.get("/schemas/{schema_id}")
+async def get_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    schema = await db.get(SavedSchema, schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    return {
+        "id": str(schema.id),
+        "name": schema.name,
+        "pydantic_schema": schema.pydantic_schema,
+        "created_at": schema.created_at.isoformat(),
+        "updated_at": schema.updated_at.isoformat(),
+    }
+
+
+@app.put("/schemas/{schema_id}")
+async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), db: AsyncSession = Depends(get_db)):
+    schema = await db.get(SavedSchema, schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    if "name" in body:
+        name = body["name"].strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Name is required")
+        schema.name = name
+    if "pydantic_schema" in body:
+        pydantic_schema = body["pydantic_schema"].strip()
+        if not pydantic_schema:
+            raise HTTPException(status_code=422, detail="Schema code is required")
+        if len(pydantic_schema) > 10000:
+            raise HTTPException(status_code=422, detail="Schema code too long")
+        schema.pydantic_schema = pydantic_schema
+    await db.commit()
+    await db.refresh(schema)
+    return {"id": str(schema.id), "name": schema.name}
+
+
+@app.delete("/schemas/{schema_id}")
+async def delete_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    schema = await db.get(SavedSchema, schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    await db.delete(schema)
+    await db.commit()
+    return {"ok": True}
+
+
+@app.get("/schemas/{schema_id}/export")
+async def export_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    schema = await db.get(SavedSchema, schema_id)
+    if not schema:
+        raise HTTPException(status_code=404, detail="Schema not found")
+    content = (
+        f"# name: {schema.name}\n"
+        f"# exported: {schema.created_at.isoformat()}\n"
+        f"# structmydata-schema v1\n"
+        f"\n"
+        f"{schema.pydantic_schema}"
+    )
+    return Response(
+        content=content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f'attachment; filename="{schema.name}.py"'},
+    )
+
+
+@app.post("/schemas/import")
+async def import_schema(file: UploadFile, db: AsyncSession = Depends(get_db)):
+    content = await file.read()
+    if len(content) > 10000:
+        raise HTTPException(status_code=422, detail="File too large")
+
+    try:
+        decoded = content.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=422, detail="Invalid UTF-8 file")
+
+    if decoded.lstrip().startswith("{"):
+        try:
+            data = json.loads(decoded)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=422, detail="Invalid JSON file")
+        name = data.get("name", "").strip()
+        pydantic_schema = data.get("pydantic_schema", "").strip()
+    else:
+        name = file.filename.replace(".py", "").replace(".txt", "").strip() if file.filename else "Untitled"
+        pydantic_schema = decoded
+
+    if not name:
+        name = "Imported Schema"
+    if not pydantic_schema:
+        raise HTTPException(status_code=422, detail="No schema code found in file")
+
+    schema = SavedSchema(name=name, pydantic_schema=pydantic_schema)
+    db.add(schema)
+    await db.commit()
+    await db.refresh(schema)
+    return {"id": str(schema.id), "name": schema.name}
 
 
 @app.websocket("/ws/jobs/{job_id}")
