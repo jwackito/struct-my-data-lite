@@ -4,7 +4,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
@@ -226,6 +226,79 @@ async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         return HTMLResponse(_render_output(job.output_data))
     else:
         return HTMLResponse(f'<div style="color:red">Error: {job.error_message}</div>')
+
+
+@app.get("/ui/jobs")
+async def ui_jobs(
+    offset: int = 0,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    total_q = select(func.count()).select_from(ExtractionJob)
+    total = (await db.execute(total_q)).scalar()
+
+    q = (
+        select(ExtractionJob, Document.filename)
+        .join(Document, ExtractionJob.document_id == Document.id)
+        .order_by(ExtractionJob.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = (await db.execute(q)).all()
+
+    def _status_badge(status) -> str:
+        if status in (JobStatus.pending, JobStatus.running):
+            return "⏳"
+        if status == JobStatus.completed:
+            return "✅"
+        return "❌"
+
+    table_rows = ""
+    for job, filename in rows:
+        st = job.status
+        if hasattr(st, "value"):
+            st = st.value
+        badge = _status_badge(st)
+        fn = (filename[:35] + "…") if len(filename) > 36 else filename
+        ts = job.created_at.strftime("%b %d %H:%M")
+        view_btn = f'<button hx-get="/ui/jobs/{job.id}" hx-target="#result">View</button>'
+
+        if st in ("pending", "failed"):
+            retry = f'<button hx-post="/ui/jobs/{job.id}/retry" hx-target="#result">Retry</button>'
+        else:
+            retry = ""
+
+        table_rows += (
+            f"<tr>"
+            f"<td>{badge}</td>"
+            f"<td>{fn}</td>"
+            f"<td>{ts}</td>"
+            f"<td>{view_btn} {retry}</td>"
+            f"</tr>"
+        )
+
+    prev_disabled = "disabled" if offset == 0 else ""
+    next_disabled = "disabled" if offset + limit >= total else ""
+    prev_offset = max(0, offset - limit)
+    next_offset = offset + limit
+    page = (offset // limit) + 1
+    pages = max(1, (total + limit - 1) // limit)
+
+    pagination = f"""
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;font-size:0.875rem">
+      <button hx-get="/ui/jobs?offset={prev_offset}&limit={limit}" hx-target="#tab-history" {prev_disabled}>← Prev</button>
+      <span>Page {page} of {pages}</span>
+      <button hx-get="/ui/jobs?offset={next_offset}&limit={limit}" hx-target="#tab-history" {next_disabled}>Next →</button>
+    </div>"""
+
+    html = f"""
+    <table>
+      <thead><tr><th></th><th>File</th><th>Date</th><th></th></tr></thead>
+      <tbody>{table_rows}</tbody>
+    </table>
+    {pagination}"""
+
+    return HTMLResponse(html)
 
 
 @app.get("/schemas")
