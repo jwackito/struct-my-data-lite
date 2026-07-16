@@ -124,6 +124,12 @@
       font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
     }
 
+    .field-separator {
+      height: 1px;
+      background: #e5e7eb;
+      margin: 0.5rem 0;
+    }
+
     .field-list {
       display: flex;
       flex-direction: column;
@@ -142,9 +148,25 @@
       border-radius: 4px;
       font-size: 0.8rem;
     }
+    .field-row .drag-handle {
+      flex: 0 0 16px;
+      padding: 0.2rem 0;
+      cursor: grab;
+      color: #9ca3af;
+      font-size: 0.85rem;
+      text-align: center;
+      user-select: none;
+      align-self: center;
+      line-height: 1;
+    }
+    .field-row .drag-handle:active { cursor: grabbing; }
     .field-row .field-name {
       flex: 0 0 150px;
       font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+    }
+    .field-row .field-name-invalid {
+      border-color: #ef4444;
+      background: #fef2f2;
     }
     .field-row .field-type {
       flex: 0 0 140px;
@@ -177,6 +199,13 @@
     }
     .field-row .toggle-nested:hover {
       background: #f3f4f6;
+    }
+
+    .field-row.dragging {
+      opacity: 0.4;
+    }
+    .field-row.drag-over-target {
+      border-bottom: 2px solid #2563eb;
     }
 
     .field-row-nested {
@@ -230,6 +259,12 @@
       font-style: italic;
       padding: 0.5rem 0;
     }
+
+    .validation-error {
+      color: #dc2626;
+      font-size: 0.8rem;
+      margin-top: 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -250,11 +285,13 @@
             <label for="model-name">Model Name</label>
             <input type="text" id="model-name" value="ExtractedData">
           </div>
+          <div class="field-separator"></div>
           <div class="field-list" id="field-list"></div>
           <div class="builder-actions">
             <button type="button" id="add-field">+ Add Field</button>
             <button type="button" id="generate-code" class="btn-secondary">Generate Code</button>
           </div>
+          <div id="builder-error" class="validation-error" style="display:none"></div>
         </div>
       </div>
       <div class="tab-panel" id="tab-code">
@@ -305,6 +342,11 @@ class OfficialsList(BaseModel):
       var fieldList = document.getElementById("field-list");
       var modelNameInput = document.getElementById("model-name");
       var textarea = document.querySelector("textarea[name='pydantic_schema']");
+      var builderError = document.getElementById("builder-error");
+
+      var FIELD_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+      var dragState = null;
 
       function createTypeOptions(selected, level) {
         var types = SIMPLE_TYPES.slice();
@@ -318,17 +360,153 @@ class OfficialsList(BaseModel):
         });
       }
 
+      function toggleGenerateButton() {
+        var rows = fieldList.querySelectorAll(":scope > .field-row");
+        document.getElementById("generate-code").disabled = rows.length === 0;
+      }
+
+      function validateFieldName(input) {
+        var val = input.value.trim();
+        if (val && !FIELD_NAME_RE.test(val)) {
+          input.classList.add("field-name-invalid");
+        } else {
+          input.classList.remove("field-name-invalid");
+        }
+      }
+
+      function getDuplicateNames(container) {
+        var names = {};
+        var dupes = {};
+        var rows = container.querySelectorAll(":scope > .field-row");
+        rows.forEach(function (row) {
+          var name = row.querySelector(".field-name").value.trim();
+          if (!name) return;
+          if (names[name]) {
+            dupes[name] = true;
+          } else {
+            names[name] = true;
+          }
+        });
+        return dupes;
+      }
+
+      function highlightDupes(container) {
+        var dupes = getDuplicateNames(container);
+        var rows = container.querySelectorAll(":scope > .field-row");
+        rows.forEach(function (row) {
+          var inp = row.querySelector(".field-name");
+          var name = inp.value.trim();
+          if (name && dupes[name]) {
+            inp.classList.add("field-name-invalid");
+          }
+        });
+      }
+
+      function makeFieldDraggable(row) {
+        row.addEventListener("dragstart", function (e) {
+          if (!e.target.classList.contains("drag-handle")) {
+            e.preventDefault();
+            return;
+          }
+          dragState = { element: row, container: row.parentElement };
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", "");
+          row.classList.add("dragging");
+        });
+
+        row.addEventListener("dragend", function () {
+          row.classList.remove("dragging");
+          document.querySelectorAll(".field-row").forEach(function (r) {
+            r.classList.remove("drag-over-target");
+          });
+          dragState = null;
+        });
+
+        row.addEventListener("dragover", function (e) {
+          if (!dragState || dragState.element === row) return;
+          if (row.parentElement !== dragState.container) return;
+          e.preventDefault();
+          var rect = row.getBoundingClientRect();
+          var mid = rect.top + rect.height / 2;
+          if (e.clientY < mid) {
+            dragState.container.insertBefore(dragState.element, row);
+          } else {
+            dragState.container.insertBefore(dragState.element, row.nextSibling);
+          }
+        });
+
+        row.addEventListener("dragenter", function (e) {
+          if (!dragState || dragState.element === row) return;
+          if (row.parentElement !== dragState.container) return;
+          e.preventDefault();
+          row.classList.add("drag-over-target");
+        });
+
+        row.addEventListener("dragleave", function () {
+          row.classList.remove("drag-over-target");
+        });
+
+        row.addEventListener("drop", function (e) {
+          e.preventDefault();
+          row.classList.remove("drag-over-target");
+        });
+
+        var handle = row.querySelector(".drag-handle");
+        if (handle) {
+          handle.addEventListener("touchstart", function (e) {
+            var r = this.closest(".field-row");
+            dragState = { element: r, container: r.parentElement };
+            r.style.opacity = "0.5";
+          }, { passive: true });
+
+          handle.addEventListener("touchmove", function (e) {
+            if (!dragState) return;
+            e.preventDefault();
+            var touch = e.touches[0];
+            dragState.element.style.display = "none";
+            var target = document.elementFromPoint(touch.clientX, touch.clientY);
+            dragState.element.style.display = "";
+            if (target) {
+              var targetRow = target.closest(".field-row");
+              if (targetRow && targetRow !== dragState.element && targetRow.parentElement === dragState.container) {
+                var rect = targetRow.getBoundingClientRect();
+                var mid = rect.top + rect.height / 2;
+                if (touch.clientY < mid) {
+                  dragState.container.insertBefore(dragState.element, targetRow);
+                } else {
+                  dragState.container.insertBefore(dragState.element, targetRow.nextSibling);
+                }
+              }
+            }
+          }, { passive: false });
+
+          handle.addEventListener("touchend", function () {
+            if (!dragState) return;
+            dragState.element.style.opacity = "";
+            dragState = null;
+          }, { passive: true });
+        }
+      }
+
       function createFieldRow(name, type, desc, level) {
         level = level || 0;
         var row = document.createElement("div");
         row.className = "field-row" + (level > 0 ? " field-row-nested" : "");
         row.dataset.level = level;
+        row.draggable = true;
+
+        var handle = document.createElement("span");
+        handle.className = "drag-handle";
+        handle.textContent = "\u22ee";
 
         var nameInput = document.createElement("input");
         nameInput.type = "text";
         nameInput.className = "field-name";
         nameInput.placeholder = "field_name";
         nameInput.value = name || "";
+        nameInput.addEventListener("input", function () {
+          validateFieldName(this);
+        });
 
         var typeSelect = document.createElement("select");
         typeSelect.className = "field-type";
@@ -339,6 +517,21 @@ class OfficialsList(BaseModel):
         descInput.className = "field-desc";
         descInput.placeholder = "Description";
         descInput.value = desc || "";
+        descInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            var container = row.parentElement;
+            var addBtn = container.querySelector(".nested-add-field");
+            var newRow = createFieldRow("", "str", "", level);
+            if (addBtn) {
+              container.insertBefore(newRow, addBtn);
+            } else {
+              row.parentElement.insertBefore(newRow, row.nextSibling);
+            }
+            toggleEmptyState(container);
+            newRow.querySelector(".field-name").focus();
+          }
+        });
 
         var toggleBtn = document.createElement("button");
         toggleBtn.type = "button";
@@ -351,12 +544,12 @@ class OfficialsList(BaseModel):
         removeBtn.className = "remove-field";
         removeBtn.textContent = "\u00d7";
 
-        var container = row;
-        container.appendChild(nameInput);
-        container.appendChild(typeSelect);
-        container.appendChild(descInput);
-        container.appendChild(toggleBtn);
-        container.appendChild(removeBtn);
+        row.appendChild(handle);
+        row.appendChild(nameInput);
+        row.appendChild(typeSelect);
+        row.appendChild(descInput);
+        row.appendChild(toggleBtn);
+        row.appendChild(removeBtn);
 
         var nestedContainer = document.createElement("div");
         nestedContainer.className = "nested-fields";
@@ -372,7 +565,7 @@ class OfficialsList(BaseModel):
           toggleBtn.textContent = "\u25bc";
         });
         nestedContainer.appendChild(nestedAddBtn);
-        container.appendChild(nestedContainer);
+        row.appendChild(nestedContainer);
 
         typeSelect.addEventListener("change", function () {
           var val = this.value;
@@ -397,10 +590,12 @@ class OfficialsList(BaseModel):
         });
 
         removeBtn.addEventListener("click", function () {
-          var parent = container.parentElement;
-          container.remove();
+          var parent = row.parentElement;
+          row.remove();
           toggleEmptyState(parent);
         });
+
+        makeFieldDraggable(row);
 
         return row;
       }
@@ -436,6 +631,7 @@ class OfficialsList(BaseModel):
         } else {
           if (existing) existing.remove();
         }
+        if (container === fieldList) toggleGenerateButton();
       }
 
       function collectFields(container) {
@@ -463,6 +659,20 @@ class OfficialsList(BaseModel):
           if (f.children.length > 0 && fieldsHaveList(f.children)) return true;
         }
         return false;
+      }
+
+      function collectAllNames(fields) {
+        var names = {};
+        fields.forEach(function (f) {
+          names[f.name] = (names[f.name] || 0) + 1;
+          if (f.children.length > 0) {
+            var childNames = collectAllNames(f.children);
+            for (var k in childNames) {
+              names[k] = (names[k] || 0) + childNames[k];
+            }
+          }
+        });
+        return names;
       }
 
       var nestedCounter = 0;
@@ -500,6 +710,26 @@ class OfficialsList(BaseModel):
       function generateCode() {
         var fields = collectFields(document.getElementById("field-list"));
         var modelName = modelNameInput.value.trim() || "ExtractedData";
+
+        var allNames = collectAllNames(fields);
+        var dupes = [];
+        for (var k in allNames) {
+          if (allNames[k] > 1) dupes.push(k);
+        }
+        if (dupes.length > 0) {
+          builderError.textContent = "Duplicate field names: " + dupes.join(", ") + " — each name must be unique.";
+          builderError.style.display = "block";
+          highlightDupes(fieldList);
+          return;
+        }
+        builderError.style.display = "none";
+        document.querySelectorAll(".field-name-invalid").forEach(function (el) {
+          var val = el.value.trim();
+          if (val && FIELD_NAME_RE.test(val)) {
+            el.classList.remove("field-name-invalid");
+          }
+        });
+
         nestedCounter = 0;
         nestedDefs = [];
 
@@ -536,9 +766,11 @@ class OfficialsList(BaseModel):
 
       document.getElementById("generate-code").addEventListener("click", generateCode);
 
+      toggleGenerateButton();
       addField("names", "List[str]", "Full names of all people");
       addField("positions", "List[str]", "Positions in same order");
       modelNameInput.value = "OfficialsList";
+      toggleGenerateButton();
     })();
   </script>
 </body>
