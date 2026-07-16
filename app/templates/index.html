@@ -164,6 +164,56 @@
       color: #b91c1c;
       background: transparent;
     }
+    .field-row .toggle-nested {
+      padding: 0.15rem 0.35rem;
+      background: transparent;
+      color: #6b7280;
+      font-size: 0.65rem;
+      cursor: pointer;
+      border: 1px solid #d1d5db;
+      border-radius: 3px;
+      align-self: center;
+      line-height: 1;
+    }
+    .field-row .toggle-nested:hover {
+      background: #f3f4f6;
+    }
+
+    .field-row-nested {
+      margin-left: 0.5rem;
+    }
+    .field-row-nested input, .field-row-nested select {
+      font-size: 0.75rem;
+    }
+    .field-row-nested .field-name { flex: 0 0 130px; }
+    .field-row-nested .field-type { flex: 0 0 120px; }
+    .field-row-nested .field-desc { flex: 1 1 140px; }
+
+    .nested-fields {
+      flex: 0 0 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin: 0.4rem 0 0.2rem 1.2rem;
+      padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+      border-left: 2px solid #e5e7eb;
+      background: #fafafa;
+      border-radius: 0 4px 4px 0;
+    }
+    .nested-add-field {
+      padding: 0.25rem 0.6rem;
+      background: transparent;
+      color: #6b7280;
+      font-size: 0.75rem;
+      border: 1px dashed #d1d5db;
+      border-radius: 3px;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .nested-add-field:hover {
+      background: #f3f4f6;
+      color: #1a1a1a;
+    }
 
     .builder-actions {
       display: flex;
@@ -236,13 +286,43 @@ class OfficialsList(BaseModel):
         "List[int]": "List[int]",
       };
 
+      var SIMPLE_TYPES = [
+        ["str", "string"],
+        ["int", "integer"],
+        ["float", "number"],
+        ["bool", "boolean"],
+        ["date", "date"],
+        ["List[str]", "list of string"],
+        ["List[float]", "list of number"],
+        ["List[int]", "list of integer"],
+      ];
+
+      var OBJECT_TYPES = [
+        ["Object", "Object"],
+        ["List[Object]", "List of Object"],
+      ];
+
       var fieldList = document.getElementById("field-list");
       var modelNameInput = document.getElementById("model-name");
       var textarea = document.querySelector("textarea[name='pydantic_schema']");
 
-      function createFieldRow(name, type, desc) {
+      function createTypeOptions(selected, level) {
+        var types = SIMPLE_TYPES.slice();
+        if (level < 2) types = types.concat(OBJECT_TYPES);
+        return types.map(function (t) {
+          var opt = document.createElement("option");
+          opt.value = t[0];
+          opt.textContent = t[1];
+          if (t[0] === (selected || "str")) opt.selected = true;
+          return opt;
+        });
+      }
+
+      function createFieldRow(name, type, desc, level) {
+        level = level || 0;
         var row = document.createElement("div");
-        row.className = "field-row";
+        row.className = "field-row" + (level > 0 ? " field-row-nested" : "");
+        row.dataset.level = level;
 
         var nameInput = document.createElement("input");
         nameInput.type = "text";
@@ -252,23 +332,7 @@ class OfficialsList(BaseModel):
 
         var typeSelect = document.createElement("select");
         typeSelect.className = "field-type";
-        var types = [
-          ["str", "string"],
-          ["int", "integer"],
-          ["float", "number"],
-          ["bool", "boolean"],
-          ["date", "date"],
-          ["List[str]", "list of string"],
-          ["List[float]", "list of number"],
-          ["List[int]", "list of integer"],
-        ];
-        types.forEach(function (t) {
-          var opt = document.createElement("option");
-          opt.value = t[0];
-          opt.textContent = t[1];
-          if (t[0] === (type || "str")) opt.selected = true;
-          typeSelect.appendChild(opt);
-        });
+        createTypeOptions(type, level).forEach(function (opt) { typeSelect.appendChild(opt); });
 
         var descInput = document.createElement("input");
         descInput.type = "text";
@@ -276,83 +340,176 @@ class OfficialsList(BaseModel):
         descInput.placeholder = "Description";
         descInput.value = desc || "";
 
+        var toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "toggle-nested";
+        toggleBtn.textContent = "\u25bc";
+        toggleBtn.style.display = "none";
+
         var removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "remove-field";
         removeBtn.textContent = "\u00d7";
-        removeBtn.addEventListener("click", function () {
-          row.remove();
-          toggleEmptyState();
+
+        var container = row;
+        container.appendChild(nameInput);
+        container.appendChild(typeSelect);
+        container.appendChild(descInput);
+        container.appendChild(toggleBtn);
+        container.appendChild(removeBtn);
+
+        var nestedContainer = document.createElement("div");
+        nestedContainer.className = "nested-fields";
+        nestedContainer.style.display = "none";
+
+        var nestedAddBtn = document.createElement("button");
+        nestedAddBtn.type = "button";
+        nestedAddBtn.className = "nested-add-field";
+        nestedAddBtn.textContent = "+ Add sub-field";
+        nestedAddBtn.addEventListener("click", function () {
+          addField("", "str", "", level + 1, nestedContainer);
+          nestedContainer.style.display = "block";
+          toggleBtn.textContent = "\u25bc";
+        });
+        nestedContainer.appendChild(nestedAddBtn);
+        container.appendChild(nestedContainer);
+
+        typeSelect.addEventListener("change", function () {
+          var val = this.value;
+          var isNested = val === "Object" || val === "List[Object]";
+          if (isNested) {
+            nestedContainer.style.display = "block";
+            toggleBtn.style.display = "";
+            var rows = nestedContainer.querySelectorAll(":scope > .field-row");
+            if (rows.length === 0) {
+              addField("", "str", "", level + 1, nestedContainer);
+            }
+          } else {
+            nestedContainer.style.display = "none";
+            toggleBtn.style.display = "none";
+          }
         });
 
-        row.appendChild(nameInput);
-        row.appendChild(typeSelect);
-        row.appendChild(descInput);
-        row.appendChild(removeBtn);
+        toggleBtn.addEventListener("click", function () {
+          var hidden = nestedContainer.style.display === "none";
+          nestedContainer.style.display = hidden ? "block" : "none";
+          this.textContent = hidden ? "\u25bc" : "\u25b6";
+        });
+
+        removeBtn.addEventListener("click", function () {
+          var parent = container.parentElement;
+          container.remove();
+          toggleEmptyState(parent);
+        });
+
         return row;
       }
 
-      function addField(name, type, desc) {
-        var row = createFieldRow(name, type, desc);
-        fieldList.appendChild(row);
-        toggleEmptyState();
+      function addField(name, type, desc, level, container) {
+        container = container || fieldList;
+        level = level || 0;
+        var row = createFieldRow(name, type || "str", desc || "", level);
+        var addBtn = container.querySelector(".nested-add-field");
+        if (addBtn) {
+          container.insertBefore(row, addBtn);
+        } else {
+          container.appendChild(row);
+        }
+        toggleEmptyState(container);
       }
 
-      function toggleEmptyState() {
-        var existing = fieldList.querySelector(".empty-state");
-        if (fieldList.children.length === 0) {
+      function toggleEmptyState(container) {
+        var rows = container.querySelectorAll(":scope > .field-row");
+        var existing = container.querySelector(".empty-state");
+        if (rows.length === 0) {
           if (!existing) {
             var el = document.createElement("div");
             el.className = "empty-state";
-            el.textContent = "No fields yet. Click \"+ Add Field\" to start.";
-            fieldList.appendChild(el);
+            el.textContent = 'No fields yet. Click "+ Add Field" to start.';
+            var addBtn = container.querySelector(".nested-add-field");
+            if (addBtn) {
+              container.insertBefore(el, addBtn);
+            } else {
+              container.appendChild(el);
+            }
           }
         } else {
           if (existing) existing.remove();
         }
       }
 
-      function getNeedsListImport() {
-        var rows = fieldList.querySelectorAll(".field-row");
-        for (var i = 0; i < rows.length; i++) {
-          var sel = rows[i].querySelector(".field-type");
-          if (sel && sel.value.indexOf("List") === 0) return true;
+      function collectFields(container) {
+        var fields = [];
+        var rows = container.querySelectorAll(":scope > .field-row");
+        rows.forEach(function (row) {
+          var name = row.querySelector(".field-name").value.trim();
+          if (!name) return;
+          var type = row.querySelector(".field-type").value;
+          var desc = row.querySelector(".field-desc").value.trim();
+          var f = { name: name, type: type, desc: desc, children: [] };
+          if (type === "Object" || type === "List[Object]") {
+            var nc = row.querySelector(".nested-fields");
+            if (nc) f.children = collectFields(nc);
+          }
+          fields.push(f);
+        });
+        return fields;
+      }
+
+      function fieldsHaveList(fields) {
+        for (var i = 0; i < fields.length; i++) {
+          var f = fields[i];
+          if (f.type.indexOf("List") === 0) return true;
+          if (f.children.length > 0 && fieldsHaveList(f.children)) return true;
         }
         return false;
       }
 
-      function generateCode() {
-        var rows = fieldList.querySelectorAll(".field-row");
-        var modelName = modelNameInput.value.trim() || "ExtractedData";
-        var needsList = getNeedsListImport();
+      var nestedCounter = 0;
+      var nestedDefs = [];
+
+      function buildModel(modelName, fields) {
         var lines = [];
-
-        var imports = ["from pydantic import BaseModel, Field"];
-        if (needsList) imports.push("from typing import List");
-        lines.push(imports.join("\n"));
-        lines.push("");
-        lines.push("");
         lines.push("class " + modelName + "(BaseModel):");
-
-        if (rows.length === 0) {
+        if (fields.length === 0) {
           lines.push("    pass");
         } else {
-          rows.forEach(function (row) {
-            var name = row.querySelector(".field-name").value.trim();
-            if (!name) return;
-            var typeVal = row.querySelector(".field-type").value;
-            var desc = row.querySelector(".field-desc").value.trim();
-            var pyType = TYPE_MAP[typeVal] || "str";
-            var line = "    " + name + ": " + pyType;
-            if (desc) {
-              line += " = Field(description=\"" + desc.replace(/"/g, '\\"') + "\")";
+          fields.forEach(function (f) {
+            var isNested = f.type === "Object" || f.type === "List[Object]";
+            if (isNested) {
+              nestedCounter++;
+              var nestedName = "NestedModel" + nestedCounter;
+              var prefix = f.type === "List[Object]" ? "List[" : "";
+              var suffix = f.type === "List[Object]" ? "]" : "";
+              lines.push("    " + f.name + ": " + prefix + nestedName + suffix + formatDesc(f.desc));
+              buildModel(nestedName, f.children);
+            } else {
+              var pyType = TYPE_MAP[f.type] || "str";
+              lines.push("    " + f.name + ": " + pyType + formatDesc(f.desc));
             }
-            lines.push(line);
           });
         }
+        nestedDefs.push(lines.join("\n"));
+      }
 
-        lines.push("");
-        textarea.value = lines.join("\n");
+      function formatDesc(desc) {
+        if (!desc) return "";
+        return ' = Field(description="' + desc.replace(/"/g, '\\"') + '")';
+      }
+
+      function generateCode() {
+        var fields = collectFields(document.getElementById("field-list"));
+        var modelName = modelNameInput.value.trim() || "ExtractedData";
+        nestedCounter = 0;
+        nestedDefs = [];
+
+        buildModel(modelName, fields);
+
+        var needsList = fieldsHaveList(fields);
+        var imports = ["from pydantic import BaseModel, Field"];
+        if (needsList) imports.push("from typing import List");
+
+        textarea.value = imports.join("\n") + "\n\n" + nestedDefs.join("\n\n");
         switchTab("code");
       }
 
