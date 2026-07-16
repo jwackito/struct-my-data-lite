@@ -71,3 +71,21 @@ async def test_ui_jobs_pagination(async_client, db_session, patch_async_session)
     page2 = await async_client.get("/ui/jobs?offset=20&limit=20")
     assert page2.status_code == 200
     assert page2.text.count("<tr>") == 6
+
+
+@pytest.mark.asyncio
+async def test_ui_jobs_shows_retry_for_failed(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    failed_job = ExtractionJob(document_id=doc.id, status=JobStatus.failed, pydantic_schema="x", error_message="oops")
+    db_session.add(failed_job)
+
+    ok_job = ExtractionJob(document_id=doc.id, status=JobStatus.completed, pydantic_schema="y", output_data={})
+    db_session.add(ok_job)
+    await db_session.commit()
+
+    resp = await async_client.get("/ui/jobs")
+    assert resp.status_code == 200
+    assert resp.text.count("Retry") == 1
