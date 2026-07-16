@@ -72,7 +72,7 @@ POST /extract       →  ExtractionJob created → BackgroundTask:
                            2. Send content + schema to LLM (thread pool)
                            3. Store structured result
 GET  /jobs/{id}     →  Poll job status
-GET  /templates     →  List saved schema templates
+GET  /schemas       →  List saved schema templates
 WS   /ws/jobs/{id}  →  Real-time status push
 
 ── Web UI (HTMX) ─────────────────────────────────
@@ -104,9 +104,13 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 | POST | `/upload` | Upload a document (10 MB max) |
 | POST | `/extract` | Create an extraction job (JSON body) |
 | GET | `/jobs/{id}` | Poll job status and result (JSON) |
-| GET | `/templates` | List saved schema templates |
-| POST | `/templates` | Create a new schema template |
-| DELETE | `/templates/{id}` | Delete a schema template |
+| GET | `/schemas` | List saved schemas |
+| POST | `/schemas` | Create a saved schema |
+| GET | `/schemas/{id}` | Get a single schema |
+| PUT | `/schemas/{id}` | Update schema name or code |
+| DELETE | `/schemas/{id}` | Delete a schema |
+| GET | `/schemas/{id}/export` | Download schema as `.py` file |
+| POST | `/schemas/import` | Upload `.py` or `.json` file to create schema |
 | POST | `/ui/extract` | Upload + job creation (multipart form, returns HTML) |
 | GET | `/ui/jobs/{id}` | Job status as HTML fragment (for HTMX polling) |
 | WS | `/ws/jobs/{id}` | Real-time job status updates |

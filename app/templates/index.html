@@ -265,6 +265,37 @@
       font-size: 0.8rem;
       margin-top: 0.25rem;
     }
+
+    .schema-templates {
+      margin-top: 1rem;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 0.75rem;
+    }
+    .templates-row {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .templates-row select {
+      flex: 1;
+      min-width: 180px;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .templates-row button, .templates-import-row button {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.7rem;
+    }
+    .templates-import-row {
+      margin-top: 0.4rem;
+    }
+    .btn-danger {
+      background: #dc2626;
+    }
+    .btn-danger:hover { background: #b91c1c; }
   </style>
 </head>
 <body>
@@ -301,6 +332,22 @@ from typing import List
 class OfficialsList(BaseModel):
     names: List[str] = Field(description="Full names of all people")
     positions: List[str] = Field(description="Positions in same order")</textarea>
+      </div>
+      <div class="schema-templates">
+        <label>Saved Schemas</label>
+        <div class="templates-row">
+          <select id="template-select">
+            <option value="">Select a saved schema...</option>
+          </select>
+          <button type="button" id="template-load">Load</button>
+          <button type="button" id="template-save" class="btn-secondary">Save</button>
+          <button type="button" id="template-delete" class="btn-danger">&times;</button>
+          <button type="button" id="template-export" class="btn-secondary">Export</button>
+        </div>
+        <div class="templates-import-row">
+          <button type="button" id="template-import" class="btn-secondary">Import .py file...</button>
+          <input type="file" id="template-import-input" accept=".py,.json,.txt" style="display:none">
+        </div>
       </div>
     </div>
     <button type="submit">
@@ -776,11 +823,97 @@ class OfficialsList(BaseModel):
 
       document.getElementById("generate-code").addEventListener("click", generateCode);
 
+      function loadTemplateList() {
+        fetch("/schemas")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var sel = document.getElementById("template-select");
+            sel.innerHTML = '<option value="">Select a saved schema...</option>';
+            data.forEach(function (s) {
+              var opt = document.createElement("option");
+              opt.value = s.id;
+              opt.textContent = s.name;
+              sel.appendChild(opt);
+            });
+          });
+      }
+
+      function getSelectedTemplateId() {
+        var sel = document.getElementById("template-select");
+        return sel.value || null;
+      }
+
+      function getSchemaById(id, data) {
+        for (var i = 0; i < data.length; i++) {
+          if (data[i].id === id) return data[i];
+        }
+        return null;
+      }
+
+      document.getElementById("template-save").addEventListener("click", function () {
+        var code = textarea.value.trim();
+        if (!code) { alert("No schema code to save. Build a schema first."); return; }
+        var name = prompt("Name for this schema:");
+        if (!name || !name.trim()) return;
+        fetch("/schemas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), pydantic_schema: code }),
+        }).then(function (r) {
+          if (!r.ok) { r.json().then(function (e) { alert(e.detail); }); return; }
+          loadTemplateList();
+        });
+      });
+
+      document.getElementById("template-load").addEventListener("click", function () {
+        var id = getSelectedTemplateId();
+        if (!id) { alert("Select a schema first."); return; }
+        fetch("/schemas/" + id)
+          .then(function (r) { return r.json(); })
+          .then(function (s) {
+            textarea.value = s.pydantic_schema;
+            switchTab("code");
+          });
+      });
+
+      document.getElementById("template-delete").addEventListener("click", function () {
+        var id = getSelectedTemplateId();
+        if (!id) { alert("Select a schema first."); return; }
+        if (!confirm("Delete this schema?")) return;
+        fetch("/schemas/" + id, { method: "DELETE" }).then(function () {
+          loadTemplateList();
+        });
+      });
+
+      document.getElementById("template-export").addEventListener("click", function () {
+        var id = getSelectedTemplateId();
+        if (!id) { alert("Select a schema first."); return; }
+        window.open("/schemas/" + id + "/export", "_blank");
+      });
+
+      document.getElementById("template-import").addEventListener("click", function () {
+        document.getElementById("template-import-input").click();
+      });
+
+      document.getElementById("template-import-input").addEventListener("change", function () {
+        var file = this.files[0];
+        if (!file) return;
+        var formData = new FormData();
+        formData.append("file", file);
+        fetch("/schemas/import", { method: "POST", body: formData })
+          .then(function (r) {
+            if (!r.ok) { r.json().then(function (e) { alert(e.detail); }); return; }
+            loadTemplateList();
+          });
+        this.value = "";
+      });
+
       toggleGenerateButton();
       addField("names", "List[str]", "Full names of all people");
       addField("positions", "List[str]", "Positions in same order");
       modelNameInput.value = "OfficialsList";
       toggleGenerateButton();
+      loadTemplateList();
     })();
   </script>
 </body>
