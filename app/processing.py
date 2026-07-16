@@ -41,8 +41,15 @@ async def process_job(job_id: uuid.UUID):
             provider = get_provider("ollama")
             client = provider.get_client()
 
+            if doc.content_type.startswith("image/"):
+                content = {"type": "image", "data": text, "format": doc.content_type.split("/")[1]}
+                model = provider.vision_model
+            else:
+                content = text
+                model = provider.model
+
             service = ExtractionService(client)
-            result = await asyncio.to_thread(service.extract, text, job.pydantic_schema, provider.model)
+            result = await asyncio.to_thread(service.extract, content, job.pydantic_schema, model)
 
             job.output_data = result
             job.status = JobStatus.completed
