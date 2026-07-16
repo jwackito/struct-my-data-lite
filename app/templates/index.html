@@ -348,6 +348,16 @@ class OfficialsList(BaseModel):
 
       var dragState = null;
 
+      function findAddButton(container) {
+        var children = container.children;
+        for (var i = 0; i < children.length; i++) {
+          if (children[i].classList.contains("nested-add-field")) {
+            return children[i];
+          }
+        }
+        return null;
+      }
+
       function createTypeOptions(selected, level) {
         var types = SIMPLE_TYPES.slice();
         if (level < 2) types = types.concat(OBJECT_TYPES);
@@ -521,12 +531,12 @@ class OfficialsList(BaseModel):
           if (e.key === "Enter") {
             e.preventDefault();
             var container = row.parentElement;
-            var addBtn = container.querySelector(".nested-add-field");
+            var addBtn = findAddButton(container);
             var newRow = createFieldRow("", "str", "", level);
             if (addBtn) {
               container.insertBefore(newRow, addBtn);
             } else {
-              row.parentElement.insertBefore(newRow, row.nextSibling);
+              container.insertBefore(newRow, row.nextSibling);
             }
             toggleEmptyState(container);
             newRow.querySelector(".field-name").focus();
@@ -604,7 +614,7 @@ class OfficialsList(BaseModel):
         container = container || fieldList;
         level = level || 0;
         var row = createFieldRow(name, type || "str", desc || "", level);
-        var addBtn = container.querySelector(".nested-add-field");
+        var addBtn = findAddButton(container);
         if (addBtn) {
           container.insertBefore(row, addBtn);
         } else {
@@ -621,7 +631,7 @@ class OfficialsList(BaseModel):
             var el = document.createElement("div");
             el.className = "empty-state";
             el.textContent = 'No fields yet. Click "+ Add Field" to start.';
-            var addBtn = container.querySelector(".nested-add-field");
+            var addBtn = findAddButton(container);
             if (addBtn) {
               container.insertBefore(el, addBtn);
             } else {
