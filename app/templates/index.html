@@ -309,7 +309,7 @@
       <div class="tab-bar">
         <button type="button" class="tab active" data-tab="builder">Builder</button>
         <button type="button" class="tab" data-tab="code">Code</button>
-        <button type="button" class="tab" data-tab="history">History</button>
+        <button type="button" class="tab" data-tab="history" hx-get="/ui/jobs" hx-target="#tab-history" hx-trigger="click once">History</button>
       </div>
       <div class="tab-panel active" id="tab-builder">
         <div class="builder">
@@ -357,6 +357,7 @@ class OfficialsList(BaseModel):
     </button>
   </form>
   <div id="result"></div>
+  <div class="tab-panel" id="tab-history"></div>
 
   <script>
     (function () {
