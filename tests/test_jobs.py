@@ -51,3 +51,23 @@ async def test_ui_jobs_list_returns_rows(async_client, db_session, patch_async_s
     assert resp.text.count("<tr>") == 3  # header + 2 data rows
     assert "✅" in resp.text or "⏳" in resp.text
     assert "View" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_ui_jobs_pagination(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    for i in range(25):
+        j = ExtractionJob(document_id=doc.id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
+        db_session.add(j)
+    await db_session.commit()
+
+    page1 = await async_client.get("/ui/jobs?offset=0&limit=20")
+    assert page1.status_code == 200
+    assert page1.text.count("<tr>") == 21
+
+    page2 = await async_client.get("/ui/jobs?offset=20&limit=20")
+    assert page2.status_code == 200
+    assert page2.text.count("<tr>") == 6
