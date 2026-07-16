@@ -40,7 +40,7 @@ def test_factory_txt():
 
 def test_factory_unsupported():
     with pytest.raises(ValueError, match="Unsupported"):
-        get_parser("image/png")
+        get_parser("application/zip")
 
 
 def test_parser_abc():
