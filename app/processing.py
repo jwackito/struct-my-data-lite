@@ -46,15 +46,14 @@ async def process_job(job_id: uuid.UUID):
             text = await asyncio.to_thread(parser.parse, doc.storage_path)
             job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
-            provider = get_provider("ollama")
-            client = provider.get_client()
+            provider = get_provider(job.provider_name or "ollama")
+            model = job.model_name or getattr(provider, "model", "")
+            client = provider.get_client(model_name=model)
 
             if doc.content_type.startswith("image/"):
                 content = {"type": "image", "data": text, "format": doc.content_type.split("/")[1]}
-                model = provider.vision_model
             else:
                 content = text
-                model = provider.model
 
             def _on_response(result):
                 raw = getattr(result, "_raw_response", None)
