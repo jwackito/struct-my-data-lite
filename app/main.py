@@ -223,18 +223,47 @@ def _cell(value):
     return str(value)
 
 
+def _job_stats_html(job) -> str:
+    parts = []
+
+    if job.input_tokens is not None:
+        parts.append(f"Tokens: {job.input_tokens} in / {job.output_tokens} out")
+
+    timing_parts = []
+    if job.upload_duration_ms is not None:
+        timing_parts.append(f"upload {_fmt_ms(job.upload_duration_ms)}")
+    if job.parsing_duration_ms is not None:
+        timing_parts.append(f"parse {_fmt_ms(job.parsing_duration_ms)}")
+    if job.llm_duration_ms is not None:
+        timing_parts.append(f"llm {_fmt_ms(job.llm_duration_ms)}")
+    if timing_parts:
+        parts.append(" | ".join(timing_parts))
+
+    if not parts:
+        return ""
+
+    return f'<div style="font-size:0.85rem;color:#666;margin-bottom:0.5rem">{" | ".join(parts)}</div>'
+
+
+def _fmt_ms(ms: int) -> str:
+    if ms < 1000:
+        return f"{ms}ms"
+    return f"{ms / 1000:.1f}s"
+
+
 @app.get("/ui/jobs/{job_id}")
 async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         return HTMLResponse("<div>Job not found</div>")
 
+    stats = _job_stats_html(job)
     if job.status in (JobStatus.pending, JobStatus.running):
         return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>')
     elif job.status == JobStatus.completed:
-        return HTMLResponse(_render_output(job.output_data))
+        return HTMLResponse(stats + _render_output(job.output_data))
     else:
-        return HTMLResponse(f'<div style="color:red">Error: {job.error_message}</div>')
+        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>')
 
 
 @app.post("/ui/jobs/{job_id}/retry")
