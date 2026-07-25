@@ -1,5 +1,6 @@
 import hashlib
 import json
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -111,7 +112,7 @@ async def create_extraction(
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
 
-    job = ExtractionJob(document_id=document_id, pydantic_schema=pydantic_schema)
+    job = ExtractionJob(document_id=document_id, pydantic_schema=pydantic_schema, upload_duration_ms=0)
     db.add(job)
     await db.commit()
     await db.refresh(job)
@@ -154,6 +155,7 @@ async def ui_extract(
     pydantic_schema: str = Form(..., max_length=10000),
     db: AsyncSession = Depends(get_db),
 ):
+    t0 = time.monotonic_ns()
     content = await file.read()
     if len(content) > settings.max_upload_size:
         return HTMLResponse('<div style="color:red">File exceeds maximum upload size</div>')
@@ -177,12 +179,14 @@ async def ui_extract(
         await db.commit()
         await db.refresh(doc)
 
+    upload_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
+
     try:
         compile(pydantic_schema, "<schema>", "exec")
     except SyntaxError as e:
         return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
 
-    job = ExtractionJob(document_id=doc.id, pydantic_schema=pydantic_schema)
+    job = ExtractionJob(document_id=doc.id, pydantic_schema=pydantic_schema, upload_duration_ms=upload_duration_ms)
     db.add(job)
     await db.commit()
     await db.refresh(job)
