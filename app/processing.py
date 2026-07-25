@@ -23,7 +23,8 @@ def _job_payload(job: ExtractionJob) -> dict:
         "upload_duration_ms": job.upload_duration_ms,
         "parsing_duration_ms": job.parsing_duration_ms,
         "llm_duration_ms": job.llm_duration_ms,
-        "provider_name": job.provider_name,
+        "connection_name": job.connection_name,
+        "provider_type": job.provider_type,
         "model_name": job.model_name,
     }
 
@@ -48,8 +49,8 @@ async def process_job(job_id: uuid.UUID):
             text = await asyncio.to_thread(parser.parse, doc.storage_path)
             job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
-            provider = get_provider(job.provider_name or "ollama")
-            model = job.model_name or getattr(provider, "model", "")
+            provider = await get_provider(job.connection_name or "ollama", db)
+            model = job.model_name or ""
             client = provider.get_client(model_name=model)
 
             if doc.content_type.startswith("image/"):
