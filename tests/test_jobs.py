@@ -194,6 +194,38 @@ async def test_retry_triggers_processing(async_client, db_session, patch_async_s
 
 
 @pytest.mark.asyncio
+async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(
+        document_id=doc.id,
+        status=JobStatus.failed,
+        pydantic_schema="x",
+        error_message="oops",
+        input_tokens=100,
+        output_tokens=20,
+        parsing_duration_ms=50,
+        llm_duration_ms=200,
+        upload_duration_ms=10,
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
+    assert resp.status_code == 200
+
+    await db_session.refresh(job)
+    assert job.input_tokens is None
+    assert job.output_tokens is None
+    assert job.parsing_duration_ms is None
+    assert job.llm_duration_ms is None
+    assert job.upload_duration_ms == 10
+
+
+@pytest.mark.asyncio
 async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_session):
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
