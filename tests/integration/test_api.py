@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import uuid
 
 import pytest
@@ -80,6 +82,26 @@ async def test_get_job_not_found(async_client):
     response = await async_client.get(f"/jobs/{uuid.uuid4()}")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+@patch("app.main.test_connection")
+async def test_connection_merges_secrets_in_test_endpoint(mock_test_conn, async_client):
+    mock_test_conn.return_value = {"ok": True, "models": []}
+
+    resp = await async_client.post(
+        "/providers/connections/my-openai/test",
+        json={
+            "provider": "openai",
+            "config": {"base_url": "https://custom.api.com"},
+            "secrets": {"api_key": "sk-real-key"},
+        },
+    )
+    assert resp.status_code == 200
+    _, config, provider, _ = mock_test_conn.call_args[0]
+    assert config["api_key"] == "sk-real-key"
+    assert config["base_url"] == "https://custom.api.com"
+    assert provider == "openai"
 
 
 @pytest.mark.asyncio

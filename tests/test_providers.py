@@ -9,20 +9,31 @@ from app.providers.openai import OpenAIProvider
 from app.providers.gemini import GeminiProvider
 
 
-def test_factory_ollama():
-    provider = get_provider("ollama")
+@pytest.mark.asyncio
+async def test_factory_ollama():
+    provider = await get_provider("ollama", AsyncMock())
     assert isinstance(provider, OllamaProvider)
     assert "host.docker.internal" in provider.host
 
 
-def test_factory_openai():
-    provider = get_provider("openai")
+@pytest.mark.asyncio
+@patch("app.providers.factory.get_connection")
+async def test_factory_openai(mock_get_conn):
+    mock_get_conn.return_value = {
+        "name": "my-openai",
+        "provider": "openai",
+        "config": {"api_key": "sk-test", "base_url": ""},
+    }
+    provider = await get_provider("my-openai", AsyncMock())
     assert isinstance(provider, OpenAIProvider)
 
 
-def test_factory_unknown():
-    with pytest.raises(ValueError, match="Unknown"):
-        get_provider("unknown")
+@pytest.mark.asyncio
+@patch("app.providers.factory.get_connection")
+async def test_factory_unknown(mock_get_conn):
+    mock_get_conn.return_value = None
+    with pytest.raises(ValueError, match="not found"):
+        await get_provider("nonexistent", AsyncMock())
 
 
 @patch("app.providers.openai.OpenAI")
