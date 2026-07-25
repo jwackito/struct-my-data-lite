@@ -44,6 +44,8 @@ class ExtractionJob(Base):
     upload_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     parsing_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     llm_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_name: Mapped[str] = mapped_column(String(50), default="ollama")
+    model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
