@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Struct My Data</title>
+  <style>
+    body {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .connection-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: #fafafa;
+    }
+    .connection-card h2 {
+      margin: 0 0 0.75rem 0;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .connection-card h2 .badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .connection-card h2 .badge.online { background: #d1fae5; color: #065f46; }
+    .connection-card h2 .badge.offline { background: #fee2e2; color: #991b1b; }
+    .connection-card h2 .badge.default { background: #dbeafe; color: #1e40af; }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+    .field-group label { font-size: 0.8rem; font-weight: 600; color: #374151; }
+    .field-group input, .field-group select {
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .field-group input:disabled { background: #f3f4f6; color: #6b7280; }
+    .actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+    .actions button {
+      padding: 0.4rem 0.8rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: #6b7280; color: #fff; }
+    .btn-secondary:hover { background: #4b5563; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn-success:hover { background: #047857; }
+    .btn:disabled { opacity: 0.6; cursor: default; }
+    .msg { font-size: 0.8rem; margin-top: 0.4rem; padding: 0.3rem 0.5rem; border-radius: 4px; }
+    .msg.ok { background: #d1fae5; color: #065f46; }
+    .msg.err { background: #fee2e2; color: #991b1b; }
+    .msg.hidden { display: none; }
+    .inline-loader { display: inline-block; width: 12px; height: 12px; border: 2px solid #ccc; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #add-card {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      cursor: pointer;
+      color: #6b7280;
+    }
+    #add-card:hover { border-color: #2563eb; color: #2563eb; }
+    #add-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      align-items: center;
+      justify-content: center;
+    }
+    #add-modal.open { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 420px;
+      width: 90%;
+    }
+    .modal-box h3 { margin: 0 0 0.75rem 0; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="nav"><a href="/">&larr; Back to extraction</a></div>
+  <h1>Provider Connections</h1>
+  <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
+    Configure LLM provider connections. API keys are encrypted at rest.
+  </p>
+  <div id="connections"></div>
+  <div id="add-card" onclick="openAddModal()">+ Add Connection</div>
+
+  <div id="add-modal">
+    <div class="modal-box">
+      <h3>Add Connection</h3>
+      <div class="field-group">
+        <label>Connection Name</label>
+        <input type="text" id="new-name" placeholder="e.g. my-openai-work">
+      </div>
+      <div class="field-group">
+        <label>Provider</label>
+        <select id="new-provider">
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Gemini</option>
+          <option value="ollama">Ollama</option>
+        </select>
+      </div>
+      <div id="new-fields"></div>
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="saveNewConnection()">Save & Test</button>
+        <button class="btn-secondary" onclick="closeAddModal()">Cancel</button>
+      </div>
+      <div id="new-msg" class="msg hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    var PROVIDER_FIELDS = {
+      ollama: [
+        { key: "host", label: "Host URL", default: "http://host.docker.internal:11434" },
+        { key: "model", label: "Default Model", default: "" },
+        { key: "vision_model", label: "Vision Model", default: "" },
+      ],
+      openai: [
+        { key: "api_key", label: "API Key", secret: true, default: "" },
+        { key: "base_url", label: "Base URL (optional)", default: "" },
+      ],
+      gemini: [
+        { key: "api_key", label: "API Key", secret: true, default: "" },
+      ],
+    };
+
+    var SECRET_KEYS = { api_key: true };
+
+    function loadConnections() {
+      var el = document.getElementById("connections");
+      el.innerHTML = '<div style="padding:1rem;text-align:center;color:#9ca3af">Loading...</div>';
+      fetch("/providers/connections")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          el.innerHTML = "";
+          data.connections.forEach(function (c) { el.appendChild(renderCard(c)); });
+        });
+    }
+
+    function renderCard(c) {
+      var card = document.createElement("div");
+      card.className = "connection-card";
+
+      var isDefault = c.name === "ollama";
+
+      var h2 = document.createElement("h2");
+      h2.innerHTML = (c.name || "?") + ' <span class="badge' + (isDefault ? " default" : "") + '">' + (isDefault ? "default" : c.provider) + "</span>";
+      if (c.available !== undefined) {
+        h2.innerHTML += ' <span class="badge ' + (c.available ? "online" : "offline") + '">' + (c.available ? "online" : "offline") + "</span>";
+      }
+      card.appendChild(h2);
+
+      var fields = PROVIDER_FIELDS[c.provider] || [];
+      var config = c.config || {};
+
+      fields.forEach(function (f) {
+        var grp = document.createElement("div");
+        grp.className = "field-group";
+        var label = document.createElement("label");
+        label.textContent = f.label + " (" + f.key + ")";
+        grp.appendChild(label);
+
+        var inp = document.createElement("input");
+        inp.type = f.secret ? "password" : "text";
+        inp.dataset.key = f.key;
+        inp.disabled = isDefault;
+        var val = config[f.key] || "";
+        if (f.secret && val && val.startsWith("****")) {
+          inp.placeholder = val;
+        } else {
+          inp.value = val;
+        }
+        grp.appendChild(inp);
+        card.appendChild(grp);
+      });
+
+      var actions = document.createElement("div");
+      actions.className = "actions";
+
+      if (!isDefault) {
+        var saveBtn = document.createElement("button");
+        saveBtn.className = "btn-primary";
+        saveBtn.textContent = "Save & Test";
+        saveBtn.onclick = function () { saveConnection(c.name, c.provider, card); };
+        actions.appendChild(saveBtn);
+
+        var testBtn = document.createElement("button");
+        testBtn.className = "btn-secondary";
+        testBtn.textContent = "Test";
+        testBtn.onclick = function () { testConnection(c.name, c.provider, card); };
+        actions.appendChild(testBtn);
+
+        var delBtn = document.createElement("button");
+        delBtn.className = "btn-danger";
+        delBtn.textContent = "Delete";
+        delBtn.onclick = function () { deleteConnection(c.name, card); };
+        actions.appendChild(delBtn);
+      }
+
+      card.querySelectorAll("input").forEach(function (inp) {
+        if (!inp.disabled) {
+          inp.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              saveConnection(c.name, c.provider, card);
+            }
+          });
+        }
+      });
+
+      card.appendChild(actions);
+
+      var msg = document.createElement("div");
+      msg.className = "msg hidden";
+      card.appendChild(msg);
+
+      return card;
+    }
+
+    function getCardConfig(card) {
+      var config = {};
+      var secrets = {};
+      card.querySelectorAll("input[data-key]").forEach(function (inp) {
+        var key = inp.dataset.key;
+        if (SECRET_KEYS[key]) {
+          var val = inp.value;
+          if (inp.placeholder && !val) {
+            // Keep existing secret — don't send placeholder
+          } else if (val) {
+            secrets[key] = val;
+          }
+        } else {
+          config[key] = inp.value;
+        }
+      });
+      return { config: config, secrets: secrets };
+    }
+
+    function showMsg(card, text, isError) {
+      var msg = card.querySelector(".msg");
+      msg.textContent = text;
+      msg.className = "msg " + (isError ? "err" : "ok") + " show";
+      setTimeout(function () {
+        if (msg.classList.contains("show")) {
+          msg.className = "msg hidden";
+        }
+      }, 5000);
+    }
+
+    function saveConnection(name, provider, card) {
+      var data = getCardConfig(card);
+      data.provider = provider;
+
+      var saveBtn = card.querySelector(".btn-primary");
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<span class="inline-loader"></span>';
+
+      fetch("/providers/connections/" + encodeURIComponent(name), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(function (r) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save & Test";
+        if (r.ok) {
+          showMsg(card, "Saved and tested successfully", false);
+          loadConnections();
+        } else {
+          r.json().then(function (e) {
+            showMsg(card, e.detail || "Save failed", true);
+          });
+        }
+      }).catch(function () {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save & Test";
+        showMsg(card, "Network error", true);
+      });
+    }
+
+    function testConnection(name, provider, card) {
+      var data = getCardConfig(card);
+      data.provider = provider;
+
+      var testBtn = card.querySelector(".btn-secondary");
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<span class="inline-loader"></span>';
+
+      fetch("/providers/connections/" + encodeURIComponent(name) + "/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        testBtn.disabled = false;
+        testBtn.textContent = "Test";
+        if (res.ok) {
+          showMsg(card, "Connected! Models: " + (res.models || []).join(", "), false);
+        } else {
+          showMsg(card, "Connection failed: " + (res.error || "unknown"), true);
+        }
+      }).catch(function () {
+        testBtn.disabled = false;
+        testBtn.textContent = "Test";
+        showMsg(card, "Network error", true);
+      });
+    }
+
+    function deleteConnection(name, card) {
+      if (!confirm("Delete connection \"" + name + "\"?")) return;
+
+      var delBtn = card.querySelector(".btn-danger");
+      delBtn.disabled = true;
+      delBtn.textContent = "...";
+
+      fetch("/providers/connections/" + encodeURIComponent(name), { method: "DELETE" })
+        .then(function (r) {
+          if (r.ok) {
+            card.remove();
+          } else {
+            r.json().then(function (e) { showMsg(card, e.detail || "Delete failed", true); });
+            delBtn.disabled = false;
+            delBtn.textContent = "Delete";
+          }
+        });
+    }
+
+    function openAddModal() {
+      document.getElementById("add-modal").classList.add("open");
+      document.getElementById("new-name").value = "";
+      document.getElementById("new-provider").value = "openai";
+      renderNewFields();
+      document.getElementById("new-msg").className = "msg hidden";
+    }
+
+    function closeAddModal() {
+      document.getElementById("add-modal").classList.remove("open");
+    }
+
+    function renderNewFields() {
+      var provider = document.getElementById("new-provider").value;
+      var container = document.getElementById("new-fields");
+      container.innerHTML = "";
+      var fields = PROVIDER_FIELDS[provider] || [];
+      fields.forEach(function (f) {
+        var grp = document.createElement("div");
+        grp.className = "field-group";
+        var label = document.createElement("label");
+        label.textContent = f.label;
+        grp.appendChild(label);
+        var inp = document.createElement("input");
+        inp.type = f.secret ? "password" : "text";
+        inp.id = "new-" + f.key;
+        inp.value = f.default || "";
+        grp.appendChild(inp);
+        container.appendChild(grp);
+      });
+    }
+
+    document.getElementById("new-provider").addEventListener("change", renderNewFields);
+
+    function saveNewConnection() {
+      var name = document.getElementById("new-name").value.trim();
+      var provider = document.getElementById("new-provider").value;
+      if (!name) { showNewMsg("Connection name is required", true); return; }
+      if (name === "ollama") { showNewMsg("Cannot use 'ollama' as a connection name", true); return; }
+
+      var config = {};
+      var secrets = {};
+      var fields = PROVIDER_FIELDS[provider] || [];
+      fields.forEach(function (f) {
+        var val = document.getElementById("new-" + f.key).value;
+        if (SECRET_KEYS[f.key]) {
+          if (val) secrets[f.key] = val;
+        } else {
+          config[f.key] = val;
+        }
+      });
+
+      var btn = document.querySelector("#add-modal .btn-primary");
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+
+      fetch("/providers/connections/" + encodeURIComponent(name), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: provider, config: config, secrets: secrets }),
+      }).then(function (r) {
+        btn.disabled = false;
+        btn.textContent = "Save & Test";
+        if (r.ok) {
+          closeAddModal();
+          loadConnections();
+        } else {
+          r.json().then(function (e) { showNewMsg(e.detail || "Save failed", true); });
+        }
+      }).catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Save & Test";
+        showNewMsg("Network error", true);
+      });
+    }
+
+    function showNewMsg(text, isError) {
+      var msg = document.getElementById("new-msg");
+      msg.textContent = text;
+      msg.className = "msg " + (isError ? "err" : "ok");
+    }
+
+    loadConnections();
+  </script>
+</body>
+</html>
