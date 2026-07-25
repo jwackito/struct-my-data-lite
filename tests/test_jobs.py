@@ -191,3 +191,29 @@ async def test_retry_triggers_processing(async_client, db_session, patch_async_s
     resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
     assert resp.status_code == 200
     assert "Retrying" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(
+        document_id=doc.id,
+        status=JobStatus.completed,
+        pydantic_schema="x",
+        output_data={"name": "test"},
+        input_tokens=100,
+        output_tokens=20,
+        parsing_duration_ms=50,
+        llm_duration_ms=200,
+        upload_duration_ms=10,
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get(f"/ui/jobs/{job.id}")
+    assert resp.status_code == 200
+    assert "100" in resp.text
+    assert "20" in resp.text
