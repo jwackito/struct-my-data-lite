@@ -308,7 +308,10 @@
   </style>
 </head>
 <body>
-  <h1>Struct My Data</h1>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+    <h1 style="margin:0">Struct My Data</h1>
+    <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings">&#9881;</a>
+  </div>
   <form hx-post="/ui/extract" hx-target="#result" enctype="multipart/form-data">
     <div>
       <label>Document <input type="file" name="file" required></label>
