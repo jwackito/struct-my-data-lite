@@ -104,6 +104,15 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    select#model-select {
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+      max-width: 100%;
+    }
+
     .model-name-row {
       display: flex;
       align-items: center;
@@ -303,6 +312,13 @@
   <form hx-post="/ui/extract" hx-target="#result" enctype="multipart/form-data">
     <div>
       <label>Document <input type="file" name="file" required></label>
+    </div>
+    <div>
+      <label>Model
+        <select name="model_id" id="model-select">
+          <option value="">Loading models...</option>
+        </select>
+      </label>
     </div>
     <div class="schema-section">
       <label>Pydantic Schema</label>
@@ -910,12 +926,32 @@ class OfficialsList(BaseModel):
         this.value = "";
       });
 
+      function loadModels() {
+        fetch("/models")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var sel = document.getElementById("model-select");
+            sel.innerHTML = '<option value="">Select a model...</option>';
+            data.models.forEach(function (m) {
+              var opt = document.createElement("option");
+              opt.value = m.id;
+              var caps = (m.capabilities || []).join("/");
+              opt.textContent = m.id + " (" + caps + ")";
+              sel.appendChild(opt);
+            });
+            if (data.models.length > 0) {
+              sel.value = data.models[0].id;
+            }
+          });
+      }
+
       toggleGenerateButton();
       addField("names", "List[str]", "Full names of all people");
       addField("positions", "List[str]", "Positions in same order");
       modelNameInput.value = "OfficialsList";
       toggleGenerateButton();
       loadTemplateList();
+      loadModels();
     })();
   </script>
 </body>
