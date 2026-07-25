@@ -1,4 +1,5 @@
 import asyncio
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -35,8 +36,10 @@ async def process_job(job_id: uuid.UUID):
             if not doc:
                 raise ValueError("Document not found")
 
+            t0 = time.monotonic_ns()
             parser = get_doc_parser(doc.content_type)
             text = await asyncio.to_thread(parser.parse, doc.storage_path)
+            job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
             provider = get_provider("ollama")
             client = provider.get_client()
@@ -48,8 +51,16 @@ async def process_job(job_id: uuid.UUID):
                 content = text
                 model = provider.model
 
+            def _on_response(result):
+                raw = getattr(result, "_raw_response", None)
+                if raw and raw.usage:
+                    job.input_tokens = raw.usage.prompt_tokens
+                    job.output_tokens = raw.usage.completion_tokens
+
             service = ExtractionService(client)
-            result = await asyncio.to_thread(service.extract, content, job.pydantic_schema, model)
+            t1 = time.monotonic_ns()
+            result = await asyncio.to_thread(service.extract, content, job.pydantic_schema, model, on_response=_on_response)
+            job.llm_duration_ms = (time.monotonic_ns() - t1) // 1_000_000
 
             job.output_data = result
             job.status = JobStatus.completed
