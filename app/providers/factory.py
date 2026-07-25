@@ -43,8 +43,11 @@ async def list_all_models(db: AsyncSession) -> list[dict]:
     for conn in connections:
         if not conn["enabled"]:
             continue
+        full = await get_connection(conn["name"], db)
+        if not full:
+            continue
         try:
-            provider = _build_provider(conn["provider"], conn["config"])
+            provider = _build_provider(full["provider"], full["config"])
         except Exception:
             continue
 
