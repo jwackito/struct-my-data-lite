@@ -935,12 +935,28 @@ class OfficialsList(BaseModel):
           .then(function (data) {
             var sel = document.getElementById("model-select");
             sel.innerHTML = '<option value="">Select a model...</option>';
+            var grouped = {};
             data.models.forEach(function (m) {
-              var opt = document.createElement("option");
-              opt.value = m.id;
-              var caps = (m.capabilities || []).join("/");
-              opt.textContent = m.id + " (" + caps + ")";
-              sel.appendChild(opt);
+              var conn = m.connection || "";
+              if (!grouped[conn]) grouped[conn] = [];
+              grouped[conn].push(m);
+            });
+            var connOrder = Object.keys(grouped).sort(function (a, b) {
+              if (a === "ollama") return -1;
+              if (b === "ollama") return 1;
+              return a.localeCompare(b);
+            });
+            connOrder.forEach(function (conn) {
+              var grp = document.createElement("optgroup");
+              grp.label = conn;
+              grouped[conn].forEach(function (m) {
+                var opt = document.createElement("option");
+                opt.value = m.id;
+                var caps = (m.capabilities || []).join("/");
+                opt.textContent = m.model + " (" + caps + ")";
+                grp.appendChild(opt);
+              });
+              sel.appendChild(grp);
             });
             if (data.models.length > 0) {
               sel.value = data.models[0].id;
