@@ -23,6 +23,8 @@ def _job_payload(job: ExtractionJob) -> dict:
         "upload_duration_ms": job.upload_duration_ms,
         "parsing_duration_ms": job.parsing_duration_ms,
         "llm_duration_ms": job.llm_duration_ms,
+        "provider_name": job.provider_name,
+        "model_name": job.model_name,
     }
 
 

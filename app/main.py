@@ -166,6 +166,8 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         "upload_duration_ms": job.upload_duration_ms,
         "parsing_duration_ms": job.parsing_duration_ms,
         "llm_duration_ms": job.llm_duration_ms,
+        "provider_name": job.provider_name,
+        "model_name": job.model_name,
         "created_at": job.created_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
@@ -549,6 +551,8 @@ async def websocket_endpoint(ws: WebSocket, job_id: uuid.UUID):
                     "upload_duration_ms": job.upload_duration_ms,
                     "parsing_duration_ms": job.parsing_duration_ms,
                     "llm_duration_ms": job.llm_duration_ms,
+                    "provider_name": job.provider_name,
+                    "model_name": job.model_name,
                 })
         while True:
             await ws.receive_text()
