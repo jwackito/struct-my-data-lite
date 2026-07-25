@@ -115,12 +115,14 @@ async def test_ui_extract_records_upload_duration(async_client, db_session, patc
         resp = await async_client.post(
             "/ui/extract",
             data={
-                "file": ("test.txt", b"some content", "text/plain"),
                 "pydantic_schema": (
                     "from pydantic import BaseModel\n"
                     "class X(BaseModel):\n"
                     "    y: str\n"
                 ),
+            },
+            files={
+                "file": ("test.txt", b"some content", "text/plain"),
             },
         )
     assert resp.status_code == 200
