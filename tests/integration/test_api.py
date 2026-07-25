@@ -83,6 +83,61 @@ async def test_get_job_not_found(async_client):
 
 
 @pytest.mark.asyncio
+async def test_models_endpoint_returns_list(async_client):
+    resp = await async_client.get("/models")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "models" in data
+    assert isinstance(data["models"], list)
+
+
+@pytest.mark.asyncio
+async def test_extract_accepts_model_id(async_client, db_session):
+    upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
+    doc_id = upload_resp.json()["id"]
+
+    response = await async_client.post(
+        "/extract",
+        json={
+            "document_id": doc_id,
+            "pydantic_schema": "from pydantic import BaseModel\nclass X(BaseModel):\n    y: str",
+            "model_id": "ollama/qwen3.6:35b",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    from sqlalchemy import select
+    from app.models import ExtractionJob
+    result = await db_session.execute(select(ExtractionJob).where(ExtractionJob.id == data["id"]))
+    job = result.scalar_one()
+    assert job.provider_name == "ollama"
+    assert job.model_name == "qwen3.6:35b"
+
+
+@pytest.mark.asyncio
+async def test_get_job_has_provider_fields(async_client, db_session):
+    upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
+    doc_id = upload_resp.json()["id"]
+
+    extract_resp = await async_client.post(
+        "/extract",
+        json={
+            "document_id": doc_id,
+            "pydantic_schema": "from pydantic import BaseModel\nclass X(BaseModel):\n    y: str",
+        },
+    )
+    job_id = extract_resp.json()["id"]
+
+    response = await async_client.get(f"/jobs/{job_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert "provider_name" in data
+    assert "model_name" in data
+    assert data["provider_name"] == "ollama"
+    assert data["model_name"] is None
+
+
+@pytest.mark.asyncio
 async def test_extract_missing_document(async_client):
     response = await async_client.post(
         "/extract",

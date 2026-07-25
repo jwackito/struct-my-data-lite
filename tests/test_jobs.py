@@ -68,6 +68,22 @@ class TestExtractionJobModel:
         assert hasattr(job, "llm_duration_ms")
         assert job.llm_duration_ms is None
 
+    def test_job_has_provider_name_default(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "provider_name")
+        assert job.provider_name == "ollama"
+
+    def test_job_has_model_name_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "model_name")
+        assert job.model_name is None
+
 
 @pytest.mark.asyncio
 async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session):
