@@ -10,6 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from app.config import settings
+from app.connections import (
+    delete_connection,
+    get_connection,
+    list_connections,
+    set_connection,
+    test_connection,
+)
 from app.database import get_db, async_session, wait_for_db
 from app.models import Document, ExtractionJob, JobStatus, SavedSchema
 from app.processing import process_job
@@ -52,8 +59,65 @@ async def health():
 
 
 @app.get("/models")
-async def models():
-    return {"models": list_all_models()}
+async def models(db: AsyncSession = Depends(get_db)):
+    return {"models": await list_all_models(db)}
+
+
+@app.get("/providers/connections")
+async def get_connections(db: AsyncSession = Depends(get_db)):
+    return {"connections": await list_connections(db)}
+
+
+@app.get("/providers/connections/{name}")
+async def get_connection_endpoint(name: str, db: AsyncSession = Depends(get_db)):
+    conn = await get_connection(name, db)
+    if not conn:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return conn
+
+
+@app.put("/providers/connections/{name}")
+async def put_connection(name: str, body: dict, db: AsyncSession = Depends(get_db)):
+    provider = body.get("provider", "")
+    config = body.get("config", {})
+    secrets = body.get("secrets", {})
+
+    if not provider:
+        raise HTTPException(status_code=422, detail="provider is required")
+    if provider not in ("ollama", "openai", "gemini"):
+        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+
+    test_result = await test_connection(name, {**config, **secrets}, provider, db)
+    if not test_result.get("ok"):
+        raise HTTPException(status_code=422, detail=f"Connection test failed: {test_result.get('error', 'unknown error')}")
+
+    try:
+        conn = await set_connection(name, provider, config, secrets, db)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return conn
+
+
+@app.delete("/providers/connections/{name}")
+async def delete_connection_endpoint(name: str, db: AsyncSession = Depends(get_db)):
+    try:
+        deleted = await delete_connection(name, db)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Connection not found")
+    return {"ok": True}
+
+
+@app.post("/providers/connections/{name}/test")
+async def test_connection_endpoint(name: str, body: dict, db: AsyncSession = Depends(get_db)):
+    config = body.get("config", {})
+    provider = body.get("provider", "")
+    if not provider:
+        raise HTTPException(status_code=422, detail="provider is required")
+    result = await test_connection(name, config, provider, db)
+    return result
 
 
 @app.post("/upload")
@@ -102,13 +166,17 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
     }
 
 
-def _parse_model_id(model_id: str) -> tuple[str, str | None]:
+def _parse_model_id(model_id: str) -> tuple[str, str, str | None]:
     if not model_id:
-        return "ollama", None
-    if "/" in model_id:
-        provider, model_name = model_id.split("/", 1)
-        return provider, model_name
-    return model_id, None
+        return "ollama", "ollama", None
+    parts = model_id.split("/", 2)
+    if len(parts) == 3:
+        provider_type, connection_name, model_name = parts
+        return provider_type, connection_name, model_name
+    if len(parts) == 2:
+        provider_type, model_name = parts
+        return provider_type, provider_type, model_name
+    return model_id, model_id, None
 
 
 @app.post("/extract")
@@ -128,12 +196,13 @@ async def create_extraction(
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
 
-    provider_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = _parse_model_id(model_id)
     job = ExtractionJob(
         document_id=document_id,
         pydantic_schema=pydantic_schema,
         upload_duration_ms=0,
-        provider_name=provider_name,
+        connection_name=connection_name,
+        provider_type=provider_type,
         model_name=model_name,
     )
     db.add(job)
@@ -166,7 +235,8 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         "upload_duration_ms": job.upload_duration_ms,
         "parsing_duration_ms": job.parsing_duration_ms,
         "llm_duration_ms": job.llm_duration_ms,
-        "provider_name": job.provider_name,
+        "connection_name": job.connection_name,
+        "provider_type": job.provider_type,
         "model_name": job.model_name,
         "created_at": job.created_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
@@ -217,12 +287,13 @@ async def ui_extract(
     except SyntaxError as e:
         return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
 
-    provider_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = _parse_model_id(model_id)
     job = ExtractionJob(
         document_id=doc.id,
         pydantic_schema=pydantic_schema,
         upload_duration_ms=upload_duration_ms,
-        provider_name=provider_name,
+        connection_name=connection_name,
+        provider_type=provider_type,
         model_name=model_name,
     )
     db.add(job)
@@ -551,7 +622,8 @@ async def websocket_endpoint(ws: WebSocket, job_id: uuid.UUID):
                     "upload_duration_ms": job.upload_duration_ms,
                     "parsing_duration_ms": job.parsing_duration_ms,
                     "llm_duration_ms": job.llm_duration_ms,
-                    "provider_name": job.provider_name,
+                    "connection_name": job.connection_name,
+                    "provider_type": job.provider_type,
                     "model_name": job.model_name,
                 })
         while True:
