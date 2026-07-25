@@ -21,6 +21,7 @@ from app.database import get_db, async_session, wait_for_db
 from app.models import Document, ExtractionJob, JobStatus, SavedSchema
 from app.processing import process_job
 from app.providers import list_all_models
+from app.schema_parser import parse_schema
 from app.storage import save_file
 from app.ws import manager
 
@@ -574,6 +575,20 @@ async def export_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)
         media_type="text/plain",
         headers={"Content-Disposition": f'attachment; filename="{schema.name}.py"'},
     )
+
+
+@app.post("/schemas/parse")
+async def parse_schema_endpoint(body: dict = Body(...)):
+    code = body.get("pydantic_schema", "")
+    if not code:
+        raise HTTPException(status_code=422, detail="Empty schema")
+    try:
+        result = parse_schema(code)
+    except SyntaxError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid Python syntax: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
 
 
 @app.post("/schemas/import")
