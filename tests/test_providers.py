@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -94,24 +94,43 @@ def test_gemini_list_models(mock_urlopen):
     assert caps["gemini/gemini-embedding-exp"] == ["embeddings"]
 
 
-@patch("app.providers.ollama.OllamaProvider.list_models")
-@patch("app.providers.openai.OpenAIProvider.list_models")
-@patch("app.providers.gemini.GeminiProvider.list_models")
-def test_list_all_models_filters_embeddings(mock_gemini, mock_openai, mock_ollama):
+@pytest.mark.asyncio
+@patch("app.providers.factory._build_provider")
+@patch("app.providers.factory.get_connection")
+@patch("app.providers.factory.list_connections")
+async def test_list_all_models_filters_embeddings(mock_list_conn, mock_get_conn, mock_build_provider):
     from app.providers.base import ModelInfo
 
-    mock_ollama.return_value = [ModelInfo(id="ollama/qwen3.6:35b", provider="ollama", model_name="qwen3.6:35b", capabilities=["text"])]
-    mock_openai.return_value = [
+    mock_list_conn.return_value = [
+        {"name": "ollama", "provider": "ollama", "config": {"host": "http://test:11434"}, "enabled": True},
+        {"name": "my-openai", "provider": "openai", "config": {"api_key": "****sk-test"}, "enabled": True},
+    ]
+    mock_get_conn.side_effect = [
+        {"name": "ollama", "provider": "ollama", "config": {"host": "http://test:11434"}},
+        {"name": "my-openai", "provider": "openai", "config": {"api_key": "sk-test-secret", "base_url": ""}},
+    ]
+
+    ollama_provider = MagicMock()
+    ollama_provider.list_models.return_value = [ModelInfo(id="ollama/qwen3.6:35b", provider="ollama", model_name="qwen3.6:35b", capabilities=["text"])]
+    openai_provider = MagicMock()
+    openai_provider.list_models.return_value = [
         ModelInfo(id="openai/gpt-4o-mini", provider="openai", model_name="gpt-4o-mini", capabilities=["text", "vision"]),
         ModelInfo(id="openai/text-embedding-3-small", provider="openai", model_name="text-embedding-3-small", capabilities=["embeddings"]),
     ]
-    mock_gemini.return_value = []
 
-    result = list_all_models()
+    def build_side_effect(provider, config):
+        if provider == "ollama":
+            return ollama_provider
+        return openai_provider
+    mock_build_provider.side_effect = build_side_effect
+
+    result = await list_all_models(AsyncMock())
     ids = [m["id"] for m in result]
-    assert "ollama/qwen3.6:35b" in ids
-    assert "openai/gpt-4o-mini" in ids
-    assert "openai/text-embedding-3-small" not in ids
+    assert "ollama/ollama/qwen3.6:35b" in ids
+    assert "openai/my-openai/gpt-4o-mini" in ids
+    assert "openai/my-openai/text-embedding-3-small" not in ids
+    openai_build_call = [c for c in mock_build_provider.call_args_list if c[0][0] == "openai"][0]
+    assert openai_build_call[0][1]["api_key"] == "sk-test-secret"
 
 
 class TestABC:
