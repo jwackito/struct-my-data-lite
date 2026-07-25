@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     ollama_vision_model: str = "gemma4:31b"
     max_upload_size: int = 10 * 1024 * 1024
     ollama_timeout: int = 3600
+    openai_api_key: str = ""
+    openai_base_url: str = ""
+    gemini_api_key: str = ""
     skip_db_wait: bool = False
 
     class Config:
