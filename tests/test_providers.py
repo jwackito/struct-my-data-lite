@@ -44,9 +44,11 @@ def test_openai_list_models(mock_urlopen):
     provider = OpenAIProvider(api_key="test-key")
     models = provider.list_models()
     ids = [m.id for m in models]
+    caps = {m.id: m.capabilities for m in models}
     assert "openai/gpt-4o-mini" in ids
     assert "openai/gpt-4o" in ids
-    assert "openai/text-embedding-3-small" not in ids
+    assert "openai/text-embedding-3-small" in ids
+    assert caps["openai/text-embedding-3-small"] == ["embeddings"]
     assert "openai/babbage-002" not in ids
 
 
@@ -87,8 +89,9 @@ def test_gemini_list_models(mock_urlopen):
     ids = [m.id for m in models]
     caps = {m.id: m.capabilities for m in models}
     assert "gemini/gemini-2.0-flash" in ids
-    assert "gemini/gemini-embedding-exp" not in ids
+    assert "gemini/gemini-embedding-exp" in ids
     assert caps["gemini/gemini-2.0-flash"] == ["text", "vision"]
+    assert caps["gemini/gemini-embedding-exp"] == ["embeddings"]
 
 
 @patch("app.providers.ollama.OllamaProvider.list_models")
