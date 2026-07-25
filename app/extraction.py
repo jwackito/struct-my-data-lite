@@ -13,7 +13,7 @@ class ExtractionService:
     def __init__(self, client: Instructor):
         self.client = client
 
-    def extract(self, content: str | dict, schema_code: str, model: str) -> dict:
+    def extract(self, content: str | dict, schema_code: str, model: str, on_response=None) -> dict:
         namespace = {}
         try:
             exec(schema_code, namespace)
@@ -39,6 +39,8 @@ class ExtractionService:
                 response_model=model_class,
                 messages=messages,
             )
+            if on_response:
+                on_response(result)
         except Exception as e:
             raise RuntimeError(f"Extraction failed: {e}") from e
 
