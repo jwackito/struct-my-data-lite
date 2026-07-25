@@ -18,6 +18,11 @@ def _job_payload(job: ExtractionJob) -> dict:
         "status": job.status.value if isinstance(job.status, JobStatus) else job.status,
         "output_data": job.output_data,
         "error_message": job.error_message,
+        "input_tokens": job.input_tokens,
+        "output_tokens": job.output_tokens,
+        "upload_duration_ms": job.upload_duration_ms,
+        "parsing_duration_ms": job.parsing_duration_ms,
+        "llm_duration_ms": job.llm_duration_ms,
     }
 
 
