@@ -285,6 +285,10 @@ async def ui_job_retry(
     job.status = JobStatus.pending
     job.error_message = None
     job.completed_at = None
+    job.input_tokens = None
+    job.output_tokens = None
+    job.parsing_duration_ms = None
+    job.llm_duration_ms = None
     await db.commit()
 
     background_tasks.add_task(process_job, job.id)
@@ -509,6 +513,11 @@ async def websocket_endpoint(ws: WebSocket, job_id: uuid.UUID):
                     "status": job.status,
                     "output_data": job.output_data,
                     "error_message": job.error_message,
+                    "input_tokens": job.input_tokens,
+                    "output_tokens": job.output_tokens,
+                    "upload_duration_ms": job.upload_duration_ms,
+                    "parsing_duration_ms": job.parsing_duration_ms,
+                    "llm_duration_ms": job.llm_duration_ms,
                 })
         while True:
             await ws.receive_text()
