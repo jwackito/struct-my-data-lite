@@ -28,6 +28,46 @@ class TestExtractionJobModel:
         )
         assert isinstance(job.id, uuid.UUID)
 
+    def test_job_has_input_tokens_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "input_tokens")
+        assert job.input_tokens is None
+
+    def test_job_has_output_tokens_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "output_tokens")
+        assert job.output_tokens is None
+
+    def test_job_has_upload_duration_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "upload_duration_ms")
+        assert job.upload_duration_ms is None
+
+    def test_job_has_parsing_duration_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "parsing_duration_ms")
+        assert job.parsing_duration_ms is None
+
+    def test_job_has_llm_duration_field(self):
+        job = ExtractionJob(
+            document_id=uuid.uuid4(),
+            pydantic_schema="class X: pass",
+        )
+        assert hasattr(job, "llm_duration_ms")
+        assert job.llm_duration_ms is None
+
 
 @pytest.mark.asyncio
 async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session):
