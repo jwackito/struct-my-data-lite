@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     gemini_api_key: str = ""
+    app_secret_key: str = ""
     skip_db_wait: bool = False
 
     class Config:
