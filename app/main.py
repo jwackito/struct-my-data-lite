@@ -248,6 +248,11 @@ async def index():
     return FileResponse("app/templates/index.html")
 
 
+@app.get("/ui/settings")
+async def ui_settings():
+    return FileResponse("app/templates/settings.html")
+
+
 @app.post("/ui/extract")
 async def ui_extract(
     background_tasks: BackgroundTasks,
