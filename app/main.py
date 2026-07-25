@@ -113,10 +113,11 @@ async def delete_connection_endpoint(name: str, db: AsyncSession = Depends(get_d
 @app.post("/providers/connections/{name}/test")
 async def test_connection_endpoint(name: str, body: dict, db: AsyncSession = Depends(get_db)):
     config = body.get("config", {})
+    secrets = body.get("secrets", {})
     provider = body.get("provider", "")
     if not provider:
         raise HTTPException(status_code=422, detail="provider is required")
-    result = await test_connection(name, config, provider, db)
+    result = await test_connection(name, {**config, **secrets}, provider, db)
     return result
 
 
