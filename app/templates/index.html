@@ -341,6 +341,7 @@
           <div class="builder-actions">
             <button type="button" id="add-field">+ Add Field</button>
             <button type="button" id="generate-code" class="btn-secondary">Generate Code</button>
+            <button type="button" id="import-code" class="btn-secondary">&#8635; Import from Code</button>
           </div>
           <div id="builder-error" class="validation-error" style="display:none"></div>
         </div>
@@ -843,6 +844,52 @@ class OfficialsList(BaseModel):
       });
 
       document.getElementById("generate-code").addEventListener("click", generateCode);
+
+      function populateNested(row, children, level) {
+        var nc = row.querySelector(".nested-fields");
+        var toggle = row.querySelector(".toggle-nested");
+        if (!nc) return;
+        nc.style.display = "block";
+        if (toggle) toggle.style.display = "";
+        nc.querySelectorAll(".field-row").forEach(function (r) { r.remove(); });
+        children.forEach(function (child) {
+          addField(child.name, child.type, child.description, level, nc);
+          var rows = nc.querySelectorAll(":scope > .field-row");
+          var last = rows[rows.length - 1];
+          if (last && child.children) {
+            populateNested(last, child.children, level + 1);
+          }
+        });
+        toggleEmptyState(nc);
+      }
+
+      document.getElementById("import-code").addEventListener("click", function () {
+        var code = textarea.value.trim();
+        if (!code) return;
+        fetch("/schemas/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pydantic_schema: code }),
+        }).then(function (r) {
+          if (!r.ok) { r.json().then(function (e) { builderError.textContent = e.detail || "Parse failed"; builderError.style.display = "block"; }); return; }
+          return r.json();
+        }).then(function (data) {
+          if (!data) return;
+          builderError.style.display = "none";
+          document.getElementById("model-name").value = data.model_name || "ExtractedData";
+          var fl = document.getElementById("field-list");
+          fl.querySelectorAll(".field-row").forEach(function (r) { r.remove(); });
+          toggleEmptyState(fl);
+          data.fields.forEach(function (f) {
+            addField(f.name, f.type, f.description);
+            var row = fl.querySelector(":scope > .field-row:last-child");
+            if (row && f.children) {
+              populateNested(row, f.children, 1);
+            }
+          });
+          switchTab("builder");
+        });
+      });
 
       function loadTemplateList() {
         fetch("/schemas")
