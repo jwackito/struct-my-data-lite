@@ -13,6 +13,7 @@ from app.config import settings
 from app.database import get_db, async_session, wait_for_db
 from app.models import Document, ExtractionJob, JobStatus, SavedSchema
 from app.processing import process_job
+from app.providers import list_all_models
 from app.storage import save_file
 from app.ws import manager
 
@@ -48,6 +49,11 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/models")
+async def models():
+    return {"models": list_all_models()}
 
 
 @app.post("/upload")
@@ -96,11 +102,21 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
     }
 
 
+def _parse_model_id(model_id: str) -> tuple[str, str | None]:
+    if not model_id:
+        return "ollama", None
+    if "/" in model_id:
+        provider, model_name = model_id.split("/", 1)
+        return provider, model_name
+    return model_id, None
+
+
 @app.post("/extract")
 async def create_extraction(
     background_tasks: BackgroundTasks,
     document_id: uuid.UUID = Body(...),
     pydantic_schema: str = Body(..., max_length=10000),
+    model_id: str = Body(""),
     db: AsyncSession = Depends(get_db),
 ):
     doc = await db.get(Document, document_id)
@@ -112,7 +128,14 @@ async def create_extraction(
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
 
-    job = ExtractionJob(document_id=document_id, pydantic_schema=pydantic_schema, upload_duration_ms=0)
+    provider_name, model_name = _parse_model_id(model_id)
+    job = ExtractionJob(
+        document_id=document_id,
+        pydantic_schema=pydantic_schema,
+        upload_duration_ms=0,
+        provider_name=provider_name,
+        model_name=model_name,
+    )
     db.add(job)
     await db.commit()
     await db.refresh(job)
@@ -158,6 +181,7 @@ async def ui_extract(
     background_tasks: BackgroundTasks,
     file: UploadFile,
     pydantic_schema: str = Form(..., max_length=10000),
+    model_id: str = Form(""),
     db: AsyncSession = Depends(get_db),
 ):
     t0 = time.monotonic_ns()
@@ -191,7 +215,14 @@ async def ui_extract(
     except SyntaxError as e:
         return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
 
-    job = ExtractionJob(document_id=doc.id, pydantic_schema=pydantic_schema, upload_duration_ms=upload_duration_ms)
+    provider_name, model_name = _parse_model_id(model_id)
+    job = ExtractionJob(
+        document_id=doc.id,
+        pydantic_schema=pydantic_schema,
+        upload_duration_ms=upload_duration_ms,
+        provider_name=provider_name,
+        model_name=model_name,
+    )
     db.add(job)
     await db.commit()
     await db.refresh(job)
