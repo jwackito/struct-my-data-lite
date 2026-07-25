@@ -6,6 +6,41 @@ import pytest
 from app.extraction import ExtractionService, _find_model
 
 
+def test_extract_on_response_callback():
+    service = ExtractionService(MagicMock())
+    mock_result = MagicMock()
+    mock_result.model_dump.return_value = {"name": "Harry", "age": 11}
+    service.client.chat.completions.create.return_value = mock_result
+
+    callback = MagicMock()
+    schema = """
+from pydantic import BaseModel
+
+class Person(BaseModel):
+    name: str
+    age: int
+"""
+    result = service.extract("Harry is 11", schema, "test-model", on_response=callback)
+    assert result == {"name": "Harry", "age": 11}
+    callback.assert_called_once_with(mock_result)
+
+
+def test_extract_on_response_not_called_on_failure():
+    service = ExtractionService(MagicMock())
+    service.client.chat.completions.create.side_effect = Exception("LLM down")
+
+    callback = MagicMock()
+    schema = """
+from pydantic import BaseModel
+
+class X(BaseModel):
+    y: str
+"""
+    with pytest.raises(RuntimeError):
+        service.extract("hello", schema, "test-model", on_response=callback)
+    callback.assert_not_called()
+
+
 def test_find_model():
     ns = {"T": pydantic.BaseModel, "Person": type("Person", (pydantic.BaseModel,), {"name": (str, ...)})}
     model = _find_model(ns)
