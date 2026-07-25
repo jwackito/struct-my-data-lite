@@ -138,6 +138,11 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         "status": job.status,
         "output_data": job.output_data,
         "error_message": job.error_message,
+        "input_tokens": job.input_tokens,
+        "output_tokens": job.output_tokens,
+        "upload_duration_ms": job.upload_duration_ms,
+        "parsing_duration_ms": job.parsing_duration_ms,
+        "llm_duration_ms": job.llm_duration_ms,
         "created_at": job.created_at.isoformat(),
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
