@@ -366,15 +366,18 @@ def _fmt_ms(ms: int) -> str:
 async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        return HTMLResponse("<div>Job not found</div>")
+        return HTMLResponse("<div>Job not found</div>", headers={"Cache-Control": "no-cache"})
 
     stats = _job_stats_html(job)
     if job.status in (JobStatus.pending, JobStatus.running):
-        return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>')
+        return HTMLResponse(
+            f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>',
+            headers={"Cache-Control": "no-cache"},
+        )
     elif job.status == JobStatus.completed:
-        return HTMLResponse(stats + _render_output(job.output_data))
+        return HTMLResponse(stats + _render_output(job.output_data), headers={"Cache-Control": "no-cache"})
     else:
-        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>')
+        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>', headers={"Cache-Control": "no-cache"})
 
 
 @app.post("/ui/jobs/{job_id}/retry")
