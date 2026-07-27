@@ -1,6 +1,6 @@
 import time as time_module
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -181,3 +181,37 @@ async def test_process_job_records_timing(async_client, db_session, patch_async_
     assert job.llm_duration_ms is not None
     assert job.llm_duration_ms >= 0
     assert job.status == JobStatus.completed
+
+
+@pytest.mark.asyncio
+async def test_process_job_notify_failure_sets_failed(async_client, db_session, patch_async_session):
+    """First manager.notify failure must not leave job stuck in non-terminal state."""
+    upload_resp = await async_client.post("/upload", files={"file": ("input.txt", b"Alice is 30")})
+    doc_id = upload_resp.json()["id"]
+    extract_resp = await async_client.post(
+        "/extract",
+        json={
+            "document_id": doc_id,
+            "pydantic_schema": (
+                "from pydantic import BaseModel\n"
+                "class Person(BaseModel):\n"
+                "    name: str\n"
+                "    age: int\n"
+            ),
+        },
+    )
+    job_id = extract_resp.json()["id"]
+
+    mock_notify = AsyncMock(side_effect=[Exception("notify failure"), None])
+
+    with patch("app.processing.manager.notify", mock_notify):
+        with patch("app.processing.get_provider") as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.get_client.return_value = MagicMock()
+            mock_get_provider.return_value = mock_provider
+            await process_job(uuid.UUID(job_id))
+
+    result = await db_session.execute(select(ExtractionJob).where(ExtractionJob.id == uuid.UUID(job_id)))
+    job = result.scalar_one()
+    assert job.status == JobStatus.failed
+    assert "notify failure" in job.error_message
