@@ -310,7 +310,7 @@ async def ui_extract(
     if background_tasks:
         background_tasks.add_task(process_job, job.id)
 
-    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>')
+    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
 
 
 def _render_output(data):
@@ -366,18 +366,15 @@ def _fmt_ms(ms: int) -> str:
 async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        return HTMLResponse("<div>Job not found</div>", headers={"Cache-Control": "no-cache"})
+        return HTMLResponse("<div>Job not found</div>")
 
     stats = _job_stats_html(job)
     if job.status in (JobStatus.pending, JobStatus.running):
-        return HTMLResponse(
-            f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Processing...</div>',
-            headers={"Cache-Control": "no-cache"},
-        )
+        return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
     elif job.status == JobStatus.completed:
-        return HTMLResponse(stats + _render_output(job.output_data), headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(stats + _render_output(job.output_data))
     else:
-        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>', headers={"Cache-Control": "no-cache"})
+        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>')
 
 
 @app.post("/ui/jobs/{job_id}/retry")
@@ -406,7 +403,7 @@ async def ui_job_retry(
     await db.commit()
 
     background_tasks.add_task(process_job, job.id)
-    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s">⏳ Retrying...</div>')
+    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Retrying...</div>')
 
 
 @app.get("/ui/jobs")
