@@ -1,7 +1,10 @@
 import asyncio
+import logging
 import time
 import uuid
 from datetime import datetime, timezone
+
+from fastapi.encoders import jsonable_encoder
 
 from app.database import async_session
 from app.extraction import ExtractionService
@@ -9,6 +12,8 @@ from app.models import Document, ExtractionJob, JobStatus
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
 from app.ws import manager
+
+logger = logging.getLogger(__name__)
 
 
 def _job_payload(job: ExtractionJob) -> dict:
@@ -69,12 +74,15 @@ async def process_job(job_id: uuid.UUID):
             result = await asyncio.to_thread(service.extract, content, job.pydantic_schema, model, on_response=_on_response)
             job.llm_duration_ms = (time.monotonic_ns() - t1) // 1_000_000
 
-            job.output_data = result
+            job.output_data = jsonable_encoder(result)
             job.status = JobStatus.completed
         except Exception as e:
             job.error_message = str(e)
             job.status = JobStatus.failed
         finally:
             job.completed_at = datetime.now(timezone.utc)
-            await db.commit()
+            try:
+                await db.commit()
+            except Exception as e:
+                logger.error("commit failed for job %s: %s", job_id, e)
             await manager.notify(job_id, _job_payload(job))
