@@ -265,3 +265,43 @@ async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_
     assert resp.status_code == 200
     assert "100" in resp.text
     assert "20" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(
+        document_id=doc.id,
+        status=JobStatus.pending,
+        pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get(f"/ui/jobs/{job.id}")
+    assert resp.status_code == 200
+    assert 'hx-swap="outerHTML"' in resp.text
+
+
+@pytest.mark.asyncio
+async def test_ui_job_retry_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    job = ExtractionJob(
+        document_id=doc.id,
+        status=JobStatus.failed,
+        pydantic_schema="x",
+        error_message="oops",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
+    assert resp.status_code == 200
+    assert 'hx-swap="outerHTML"' in resp.text

@@ -215,3 +215,21 @@ async def test_process_job_notify_failure_sets_failed(async_client, db_session, 
     job = result.scalar_one()
     assert job.status == JobStatus.failed
     assert "notify failure" in job.error_message
+
+
+@pytest.mark.asyncio
+async def test_ui_extract_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
+    with patch("app.main.process_job"):
+        resp = await async_client.post(
+            "/ui/extract",
+            data={
+                "pydantic_schema": (
+                    "from pydantic import BaseModel\n"
+                    "class X(BaseModel):\n"
+                    "    y: str\n"
+                ),
+            },
+            files={"file": ("test.txt", b"content", "text/plain")},
+        )
+    assert resp.status_code == 200
+    assert 'hx-swap="outerHTML"' in resp.text
