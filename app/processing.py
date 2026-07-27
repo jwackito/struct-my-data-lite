@@ -40,11 +40,11 @@ async def process_job(job_id: uuid.UUID):
         if not job:
             return
 
-        job.status = JobStatus.running
-        await db.commit()
-        await manager.notify(job_id, _job_payload(job))
-
         try:
+            job.status = JobStatus.running
+            await db.commit()
+            await manager.notify(job_id, _job_payload(job))
+
             doc = await db.get(Document, job.document_id)
             if not doc:
                 raise ValueError("Document not found")
