@@ -3,10 +3,13 @@ from instructor import Instructor
 
 
 def _find_model(namespace: dict) -> type[pydantic.BaseModel]:
+    found = None
     for obj in namespace.values():
         if isinstance(obj, type) and issubclass(obj, pydantic.BaseModel) and obj is not pydantic.BaseModel:
-            return obj
-    raise ValueError("No Pydantic model found in schema code")
+            found = obj
+    if found is None:
+        raise ValueError("No Pydantic model found in schema code")
+    return found
 
 
 class ExtractionService:
