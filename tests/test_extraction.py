@@ -42,9 +42,16 @@ class X(BaseModel):
 
 
 def test_find_model():
-    Helper = type("Helper", (pydantic.BaseModel,), {"x": (int, ...)})
-    Root = type("Root", (pydantic.BaseModel,), {"name": (str, ...)})
-    ns = {"Helper": Helper, "Root": Root}
+    ns = {}
+    exec("""
+from pydantic import BaseModel
+
+class Helper(BaseModel):
+    x: int
+
+class Root(BaseModel):
+    name: str
+""", ns)
     model = _find_model(ns)
     assert model.__name__ == "Root"
 
@@ -61,10 +68,19 @@ def test_find_model_ignores_base():
 
 
 def test_find_model_picks_last_class():
-    TitularDominio = type("TitularDominio", (pydantic.BaseModel,), {"nombre": (str, ...)})
-    Interviniente = type("Interviniente", (pydantic.BaseModel,), {"cuit": (str, ...)})
-    Escritura = type("Escritura", (pydantic.BaseModel,), {"titulares_dominio": (list, ...)})
-    ns = {"TitularDominio": TitularDominio, "Interviniente": Interviniente, "Escritura": Escritura}
+    ns = {}
+    exec("""
+from pydantic import BaseModel
+
+class TitularDominio(BaseModel):
+    nombre: str
+
+class Interviniente(BaseModel):
+    cuit: str
+
+class Escritura(BaseModel):
+    titulares_dominio: list
+""", ns)
     model = _find_model(ns)
     assert model.__name__ == "Escritura"
 
