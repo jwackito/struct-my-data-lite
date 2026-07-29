@@ -146,16 +146,71 @@ async def health():
 
 @app.get("/models")
 async def models(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    return {"models": await list_all_models(db)}
+    return {"models": await list_all_models(db, user=user)}
+
+
+@app.get("/api/keys")
+async def api_list_keys(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    return {"keys": await list_connections(db, user=user)}
+
+
+@app.post("/api/keys")
+async def api_create_key(body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    name = body.get("name", "").strip()
+    provider = body.get("provider", "")
+    config = body.get("config", {})
+    secrets = body.get("secrets", {})
+
+    if not name:
+        raise HTTPException(status_code=422, detail="Name is required")
+    if provider not in ("openai", "gemini", "ollama"):
+        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+
+    test_result = await test_connection(name, {**config, **secrets}, provider, db)
+    if not test_result.get("ok"):
+        raise HTTPException(status_code=422, detail=f"Connection test failed: {test_result.get('error', 'unknown error')}")
+
+    try:
+        conn = await set_connection(name, provider, config, secrets, db, user=user)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return conn
+
+
+@app.put("/api/keys/{name}")
+async def api_update_key(name: str, body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    provider = body.get("provider", "")
+    config = body.get("config", {})
+    secrets = body.get("secrets", {})
+
+    if provider not in ("openai", "gemini", "ollama"):
+        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+
+    try:
+        conn = await set_connection(name, provider, config, secrets, db, user=user)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return conn
+
+
+@app.delete("/api/keys/{name}")
+async def api_delete_key(name: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    try:
+        deleted = await delete_connection(name, db, user=user)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Key not found")
+    return {"ok": True}
 
 
 @app.get("/providers/connections")
-async def get_connections(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_connections(admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     return {"connections": await list_connections(db)}
 
 
 @app.get("/providers/connections/{name}")
-async def get_connection_endpoint(name: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_connection_endpoint(name: str, admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     conn = await get_connection(name, db)
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
@@ -163,7 +218,7 @@ async def get_connection_endpoint(name: str, user: User = Depends(get_current_us
 
 
 @app.put("/providers/connections/{name}")
-async def put_connection(name: str, body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def put_connection(name: str, body: dict, admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     provider = body.get("provider", "")
     config = body.get("config", {})
     secrets = body.get("secrets", {})
@@ -186,7 +241,7 @@ async def put_connection(name: str, body: dict, user: User = Depends(get_current
 
 
 @app.delete("/providers/connections/{name}")
-async def delete_connection_endpoint(name: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def delete_connection_endpoint(name: str, admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     try:
         deleted = await delete_connection(name, db)
     except ValueError as e:
@@ -197,7 +252,7 @@ async def delete_connection_endpoint(name: str, user: User = Depends(get_current
 
 
 @app.post("/providers/connections/{name}/test")
-async def test_connection_endpoint(name: str, body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def test_connection_endpoint(name: str, body: dict, admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     config = body.get("config", {})
     secrets = body.get("secrets", {})
     provider = body.get("provider", "")
