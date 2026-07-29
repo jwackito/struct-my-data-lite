@@ -80,14 +80,14 @@ async def auth_register(body: dict, db: AsyncSession = Depends(get_db)):
         email=email,
         password_hash=hash_password(password),
         display_name=display_name or email.split("@")[0],
-        role=UserRole.user,
+        role="user",
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    token = create_jwt(str(user.id), user.role.value)
-    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role.value}})
+    token = create_jwt(str(user.id), user.role)
+    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role}})
     resp.set_cookie(key="token", value=token, httponly=True, max_age=settings.jwt_expiry_hours * 3600)
     return resp
 
@@ -104,8 +104,8 @@ async def auth_login(body: dict, db: AsyncSession = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
 
-    token = create_jwt(str(user.id), user.role.value)
-    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role.value}})
+    token = create_jwt(str(user.id), user.role)
+    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role}})
     resp.set_cookie(key="token", value=token, httponly=True, max_age=settings.jwt_expiry_hours * 3600)
     return resp
 
