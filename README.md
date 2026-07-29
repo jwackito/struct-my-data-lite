@@ -2,10 +2,9 @@
 
 **Single-user, self-deployed document-to-structured-data extraction.**
 
-Upload a document (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a visual builder or raw code, and get structured JSON/YAML output powered by [Instructor](https://github.com/jxnl/instructor) and Ollama.
+Upload a document (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a visual builder or raw code, and get structured JSON/YAML output powered by [Instructor](https://github.com/jxnl/instructor) and an LLM provider of your choice (Ollama, OpenAI, or Gemini).
 
 > **Lite Edition** — no authentication, no multi-tenancy. One user, one instance, zero config.
-> Future versions will add user accounts, sharing, and additional LLM providers.
 
 ## Prerequisites
 
@@ -57,7 +56,7 @@ ws ws://localhost:8080/ws/jobs/<job-id>
 | **Document parsing** | PDF (text + scanned via OCR), DOCX, TXT, CSV, images (JPEG/PNG/WebP) |
 | **Visual field builder** | Drag-and-drop schema builder with nested model support — no Python required |
 | **Raw code mode** | Write Pydantic v2 schemas directly in the Code tab |
-| **LLM extraction** | Powered by Ollama + Instructor — structured output from unstructured docs |
+| **LLM extraction** | Powered by Instructor + Ollama, OpenAI, or Gemini — structured output from unstructured docs |
 | **Schema templates** | Save and reuse schemas; load from a dropdown |
 | **Real-time updates** | WebSocket and HTMX polling for job status |
 | **API-first** | Full REST API + WebSocket for programmatic access |
@@ -66,19 +65,26 @@ ws ws://localhost:8080/ws/jobs/<job-id>
 
 ```
 ── API ──────────────────────────────────────────
-POST /upload        →  Document stored (local fs + DB)
-POST /extract       →  ExtractionJob created → BackgroundTask:
-                           1. Parse document (PDF/DOCX/TXT/CSV/image)
-                           2. Send content + schema to LLM (thread pool)
-                           3. Store structured result
-GET  /jobs/{id}     →  Poll job status
-GET  /schemas       →  List saved schema templates
-WS   /ws/jobs/{id}  →  Real-time status push
+POST /upload                    →  Document stored (local fs + DB)
+POST /extract                   →  ExtractionJob created → BackgroundTask:
+                                     1. Parse document (PDF/DOCX/TXT/CSV/image)
+                                     2. Send content + schema to LLM (thread pool)
+                                     3. Store structured result
+GET  /jobs/{id}                 →  Poll job status
+GET  /models                    →  List available LLM models
+GET  /schemas                   →  List saved schema templates
+POST /schemas/parse             →  Parse schema code into builder fields
+GET  /providers/connections     →  List provider connections
+PUT  /providers/connections/{n} →  Create/update connection
+WS   /ws/jobs/{id}              →  Real-time status push
 
 ── Web UI (HTMX) ─────────────────────────────────
-GET  /              →  Static HTML page with upload form, field builder, template dropdown
+GET  /              →  Upload form, field builder, schema editor, template dropdown
+GET  /ui/settings   →  Provider connection management
+GET  /ui/jobs       →  Job history with pagination
 POST /ui/extract    →  Upload + job creation in one call
 GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
+POST /ui/jobs/{id}/retry  →  Retry a failed job
 ```
 
 ## Stack
@@ -88,10 +94,11 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 | Backend | Python 3.12, FastAPI |
 | Database | PostgreSQL 16 + SQLAlchemy 2.0 (async) |
 | Migrations | Alembic |
-| LLM | Ollama (any model, vision-capable recommended for OCR) |
+| LLM | Ollama, OpenAI, Gemini (via connection registry) |
 | Extraction | Instructor |
 | Realtime | WebSocket |
 | Frontend | Static HTML + HTMX (no build step) |
+| OCR | Ollama multimodal (image parser) |
 | Testing | pytest, pytest-asyncio, httpx |
 | Containers | Docker Compose |
 
@@ -99,11 +106,17 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Web UI — upload form, field builder, and schema editor |
+| GET | `/` | Web UI — upload form, field builder, schema editor, template dropdown |
+| GET | `/ui/settings` | Settings page — manage provider connections |
+| GET | `/ui/jobs` | Job history with pagination |
+| GET | `/ui/jobs/{id}` | Job status as HTML fragment (for HTMX polling) |
+| POST | `/ui/jobs/{id}/retry` | Retry a failed job |
+| POST | `/ui/extract` | Upload + job creation (multipart form, returns HTML) |
 | GET | `/health` | Health check |
 | POST | `/upload` | Upload a document (10 MB max) |
 | POST | `/extract` | Create an extraction job (JSON body) |
 | GET | `/jobs/{id}` | Poll job status and result (JSON) |
+| GET | `/models` | List available LLM models across all connections |
 | GET | `/schemas` | List saved schemas |
 | POST | `/schemas` | Create a saved schema |
 | GET | `/schemas/{id}` | Get a single schema |
@@ -111,8 +124,11 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 | DELETE | `/schemas/{id}` | Delete a schema |
 | GET | `/schemas/{id}/export` | Download schema as `.py` file |
 | POST | `/schemas/import` | Upload `.py` or `.json` file to create schema |
-| POST | `/ui/extract` | Upload + job creation (multipart form, returns HTML) |
-| GET | `/ui/jobs/{id}` | Job status as HTML fragment (for HTMX polling) |
+| POST | `/schemas/parse` | Parse Pydantic code into builder fields |
+| GET | `/providers/connections` | List provider connections |
+| PUT | `/providers/connections/{name}` | Create or update a connection |
+| DELETE | `/providers/connections/{name}` | Delete a connection |
+| POST | `/providers/connections/{name}/test` | Test a connection |
 | WS | `/ws/jobs/{id}` | Real-time job status updates |
 
 ## Environment Variables
@@ -121,11 +137,16 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 |---|---|---|
 | `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/structmydata` | Async PostgreSQL connection string |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama server base URL |
-| `OLLAMA_MODEL` | `qwen3.6:35b` | Model name for extraction |
-| `OLLAMA_TIMEOUT` | `120` | HTTP timeout in seconds for Ollama calls |
+| `OLLAMA_MODEL` | `qwen3.6:35b` | Model name for text extraction |
+| `OLLAMA_VISION_MODEL` | `gemma4:31b` | Model name for image extraction |
+| `OLLAMA_TIMEOUT` | `3600` (1h) | HTTP timeout in seconds for Ollama calls |
 | `MAX_UPLOAD_SIZE` | `10485760` (10 MB) | Max file upload size in bytes |
 | `PORT` | `8000` | App HTTP server port |
 | `SKIP_DB_WAIT` | `false` | Skip DB readiness check on startup |
+| `OPENAI_API_KEY` | `""` | OpenAI API key (optional, use connections UI instead) |
+| `OPENAI_BASE_URL` | `""` | OpenAI-compatible base URL (optional) |
+| `GEMINI_API_KEY` | `""` | Gemini API key (optional, use connections UI instead) |
+| `APP_SECRET_KEY` | `""` | Fernet key for encrypting stored provider secrets |
 
 For production, at minimum set `DATABASE_URL`, `OLLAMA_HOST`, and `OLLAMA_MODEL`.
 
@@ -171,14 +192,6 @@ Differences from development:
 
 See `docker-compose.prod.yml` and `.dockerignore`.
 
-## Roadmap
+## Changelog
 
-| Phase | Feature | Status |
-|---|---|---|
-| P12 | Visual field builder | ✅ |
-| P13 | Schema templates | 🔲 |
-| P14 | Image OCR (Ollama multimodal) | 🔲 |
-| — | OpenAI / other LLM providers | 🔲 (full version) |
-| — | Multi-user with auth | 🔲 (full version) |
-
-Lite Edition tracks issues with the **Lite** milestone. Full-version features are planned after Lite reaches stability.
+See [CHANGELOG.md](CHANGELOG.md) for version history.
