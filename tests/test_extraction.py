@@ -1,9 +1,12 @@
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pydantic
 import pytest
 
+from app.config import settings
 from app.extraction import ExtractionService, _find_model
+from app.models import Document, ExtractionJob
 
 
 def test_extract_on_response_callback():
@@ -159,3 +162,20 @@ class Person(BaseModel):
     assert msgs[0]["content"][0]["type"] == "text"
     assert msgs[0]["content"][1]["type"] == "image_url"
     assert msgs[0]["content"][1]["image_url"]["url"] == "data:image/jpeg;base64,abc123"
+
+
+@pytest.mark.asyncio
+async def test_extract_without_model_id_uses_default(async_client, db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+
+    resp = await async_client.post("/extract", json={
+        "document_id": str(doc.id),
+        "pydantic_schema": "from pydantic import BaseModel\nclass X(BaseModel):\n  y: str",
+    })
+    assert resp.status_code == 200
+    job_id = resp.json()["id"]
+
+    job = await db_session.get(ExtractionJob, uuid.UUID(job_id))
+    assert job.model_name == settings.ollama_model
