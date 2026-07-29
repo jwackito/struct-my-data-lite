@@ -9,7 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from app.connections import get_connection
 from app.database import async_session
 from app.extraction import ExtractionService
-from app.models import Document, ExtractionJob, JobStatus
+from app.models import Document, ExtractionJob, JobStatus, User
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
 from app.ws import manager
@@ -55,10 +55,11 @@ async def process_job(job_id: uuid.UUID):
             text = await asyncio.to_thread(parser.parse, doc.storage_path)
             job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
-            provider = await get_provider(job.connection_name or "ollama", db)
+            user = await db.get(User, job.user_id) if job.user_id else None
+            provider = await get_provider(job.connection_name or "ollama", db, user=user)
             model = job.model_name
             if not model:
-                conn = await get_connection(job.connection_name or "ollama", db)
+                conn = await get_connection(job.connection_name or "ollama", db, user=user)
                 model = (conn or {}).get("config", {}).get("model", "")
             client = provider.get_client(model_name=model)
 
@@ -69,7 +70,7 @@ async def process_job(job_id: uuid.UUID):
                 if await asyncio.to_thread(is_image_pdf, doc.storage_path):
                     images = await asyncio.to_thread(extract_page_images, doc.storage_path)
                     if images:
-                        conn = await get_connection(job.connection_name or "ollama", db)
+                        conn = await get_connection(job.connection_name or "ollama", db, user=user)
                         vision_model = (conn or {}).get("config", {}).get("vision_model", "")
                         if vision_model and "vision" not in (model or "").lower():
                             model = vision_model
