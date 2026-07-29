@@ -37,6 +37,8 @@ def _classify(model_id: str) -> list[str]:
     for prefix, caps in _KNOWN_CAPABILITIES.items():
         if model_id.startswith(prefix):
             return list(caps)
+    if "embedding" not in model_id.lower():
+        return ["text"]
     return []
 
 
