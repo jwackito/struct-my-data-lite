@@ -18,6 +18,7 @@
     [data-theme="dark"] input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
     [data-theme="dark"] .error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
     [data-theme="dark"] .info { color: #9ca3af; }
+    [data-theme="dark"] button:hover { background: #3b82f6; }
   </style>
 </head>
 <body>
@@ -46,6 +47,12 @@
         err.style.display = 'block';
       });
     });
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
   </script>
 </body>
 </html>
