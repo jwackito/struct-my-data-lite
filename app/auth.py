@@ -50,7 +50,7 @@ def decode_jwt(token: str) -> dict | None:
 def generate_api_token() -> tuple[str, str, str]:
     raw_base = secrets.token_urlsafe(32)
     raw = "smd_" + raw_base
-    prefix = raw[:11]
+    prefix = raw[:8]
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
     return raw, token_hash, prefix
 
