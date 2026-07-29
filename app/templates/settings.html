@@ -138,7 +138,7 @@
       <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
     </div>
   </div>
-  <h1>Provider Connections</h1>
+  <h1 id="section-title">Loading...</h1>
   <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
     Configure LLM provider connections. API keys are encrypted at rest.
   </p>
@@ -186,15 +186,30 @@
     };
 
     var SECRET_KEYS = { api_key: true };
+    var KEYS_ENDPOINT = '/api/keys';
+    var IS_ADMIN = false;
+
+    fetch('/auth/me').then(function(r) { return r.json(); }).then(function(u) {
+      if (u.role === 'admin') {
+        IS_ADMIN = true;
+        KEYS_ENDPOINT = '/providers/connections';
+        document.getElementById('section-title').textContent = 'Global Connections';
+      } else {
+        document.getElementById('section-title').textContent = 'My API Keys';
+      }
+      loadConnections();
+    }).catch(function() {
+      document.getElementById('connections').innerHTML = '<div style="color:red;padding:1rem">Not authenticated</div>';
+    });
 
     function loadConnections() {
       var el = document.getElementById("connections");
       el.innerHTML = '<div style="padding:1rem;text-align:center;color:#9ca3af">Loading...</div>';
-      fetch("/providers/connections")
+      fetch(KEYS_ENDPOINT)
         .then(function (r) { return r.json(); })
         .then(function (data) {
           el.innerHTML = "";
-          data.connections.forEach(function (c) { el.appendChild(renderCard(c)); });
+          (data.keys || data.connections || []).forEach(function (c) { el.appendChild(renderCard(c)); });
         });
     }
 
@@ -315,7 +330,7 @@
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<span class="inline-loader"></span>';
 
-      fetch("/providers/connections/" + encodeURIComponent(name), {
+      fetch(KEYS_ENDPOINT + "/" + encodeURIComponent(name), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -345,7 +360,10 @@
       testBtn.disabled = true;
       testBtn.innerHTML = '<span class="inline-loader"></span>';
 
-      fetch("/providers/connections/" + encodeURIComponent(name) + "/test", {
+      var url = KEYS_ENDPOINT === '/providers/connections'
+        ? '/providers/connections/' + encodeURIComponent(name) + '/test'
+        : KEYS_ENDPOINT + "/" + encodeURIComponent(name) + "/test";
+      fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -439,7 +457,7 @@
       btn.disabled = true;
       btn.textContent = "Saving...";
 
-      fetch("/providers/connections/" + encodeURIComponent(name), {
+      fetch(KEYS_ENDPOINT + "/" + encodeURIComponent(name), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: provider, config: config, secrets: secrets }),
