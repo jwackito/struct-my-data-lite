@@ -170,7 +170,7 @@ async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
 
 def _parse_model_id(model_id: str) -> tuple[str, str, str | None]:
     if not model_id:
-        return "ollama", "ollama", None
+        return "ollama", "ollama", settings.ollama_model
     parts = model_id.split("/", 2)
     if len(parts) == 3:
         provider_type, connection_name, model_name = parts
