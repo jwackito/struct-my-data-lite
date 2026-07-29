@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models import User
+from app.models import ApiToken, User
 
 _jwt_secret_cache: str | None = None
 
@@ -46,11 +47,35 @@ def decode_jwt(token: str) -> dict | None:
         return None
 
 
+def generate_api_token() -> tuple[str, str, str]:
+    raw_base = secrets.token_urlsafe(32)
+    raw = "smd_" + raw_base
+    prefix = raw[:11]
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    return raw, token_hash, prefix
+
+
 def _extract_token(request: Request) -> str | None:
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
         return auth[7:]
     return request.cookies.get("token")
+
+
+async def _resolve_api_token(raw_token: str, db: AsyncSession) -> User | None:
+    """If raw_token looks like an API token, look it up by hash."""
+    if not raw_token.startswith("smd_"):
+        return None
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    result = await db.execute(select(ApiToken).where(ApiToken.token_hash == token_hash))
+    tok = result.scalar_one_or_none()
+    if not tok or not tok.is_active:
+        return None
+    if tok.expires_at and datetime.now(timezone.utc) > tok.expires_at:
+        return None
+    tok.last_used_at = datetime.now(timezone.utc)
+    user = await db.get(User, tok.user_id)
+    return user
 
 
 async def get_current_user(
@@ -61,15 +86,18 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     payload = decode_jwt(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    if payload:
+        user = await db.get(User, payload.get("sub"))
+        if user and user.is_active:
+            request.state.user = user
+            return user
 
-    user = await db.get(User, payload.get("sub"))
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="User not found or disabled")
+    api_user = await _resolve_api_token(token, db)
+    if api_user:
+        request.state.user = api_user
+        return api_user
 
-    request.state.user = user
-    return user
+    raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
