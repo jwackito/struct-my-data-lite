@@ -64,6 +64,21 @@ async def process_job(job_id: uuid.UUID):
 
             if doc.content_type.startswith("image/"):
                 content = {"type": "image", "data": text, "format": doc.content_type.split("/")[1]}
+            elif doc.content_type == "application/pdf" and not text.strip():
+                from app.parsers.pdf import is_image_pdf, extract_page_images
+                if await asyncio.to_thread(is_image_pdf, doc.storage_path):
+                    images = await asyncio.to_thread(extract_page_images, doc.storage_path)
+                    if images:
+                        conn = await get_connection(job.connection_name or "ollama", db)
+                        vision_model = (conn or {}).get("config", {}).get("vision_model", "")
+                        if vision_model and "vision" not in (model or "").lower():
+                            model = vision_model
+                            client = provider.get_client(model_name=model)
+                        content = {"type": "image-pdf", "images": images}
+                    else:
+                        content = text
+                else:
+                    content = text
             else:
                 content = text
 
