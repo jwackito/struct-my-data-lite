@@ -60,7 +60,8 @@ def test_openai_list_models(mock_urlopen):
     assert "openai/gpt-4o" in ids
     assert "openai/text-embedding-3-small" in ids
     assert caps["openai/text-embedding-3-small"] == ["embeddings"]
-    assert "openai/babbage-002" not in ids
+    assert "openai/babbage-002" in ids
+    assert caps["openai/babbage-002"] == ["text"]
 
 
 @patch("app.providers.ollama.OpenAI")
