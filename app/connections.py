@@ -111,11 +111,38 @@ async def test_connection(name: str, config: dict, provider: str, db: AsyncSessi
     from app.providers.factory import _build_provider
 
     try:
+        if provider == "openai":
+            _verify_openai_connectivity(config)
+        elif provider == "gemini":
+            _verify_gemini_connectivity(config)
+
         prov = _build_provider(provider, config)
         models = prov.list_models()
         return {"ok": True, "models": [m.id for m in models]}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def _verify_openai_connectivity(config: dict):
+    api_key = config.get("api_key", "")
+    if not api_key:
+        raise ValueError("API key is required for OpenAI connection test")
+    headers = {"Authorization": f"Bearer {api_key}"}
+    base_url = config.get("base_url", "").rstrip("/")
+    url = f"{base_url}/models" if base_url else "https://api.openai.com/v1/models"
+    req = urllib.request.Request(url, headers=headers)
+    urllib.request.urlopen(req, timeout=10)
+
+
+def _verify_gemini_connectivity(config: dict):
+    import urllib.parse
+
+    api_key = config.get("api_key", "")
+    if not api_key:
+        raise ValueError("API key is required for Gemini connection test")
+    params = urllib.parse.urlencode({"key": api_key})
+    url = f"https://generativelanguage.googleapis.com/v1/models?{params}"
+    urllib.request.urlopen(urllib.request.Request(url), timeout=10)
 
 
 def _probe_ollama(host: str) -> bool:
