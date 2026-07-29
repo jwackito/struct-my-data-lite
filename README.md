@@ -47,6 +47,10 @@ curl http://localhost:8080/jobs/<job-id>
 
 # Or connect via WebSocket for real-time updates
 ws ws://localhost:8080/ws/jobs/<job-id>
+
+# Using an API token (generate one in Settings > API Tokens)
+export SMD_TOKEN=smd_your_token_here
+curl -H "Authorization: Bearer $SMD_TOKEN" http://localhost:8080/upload -F "file=@document.pdf"
 ```
 
 ## Features
