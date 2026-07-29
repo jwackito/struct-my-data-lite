@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.crypto import decrypt_secrets, encrypt_secrets, mask_value
-from app.models import LLMConnection
+from app.models import LLMConnection, User
 
 
 def get_implicit_ollama() -> dict:
@@ -23,11 +23,17 @@ def get_implicit_ollama() -> dict:
     }
 
 
-async def list_connections(db: AsyncSession) -> list[dict]:
+async def list_connections(db: AsyncSession, user: User | None = None) -> list[dict]:
     implicit = get_implicit_ollama()
     implicit["available"] = _probe_ollama(implicit["config"]["host"])
 
-    result = await db.execute(select(LLMConnection).order_by(LLMConnection.created_at))
+    q = select(LLMConnection).order_by(LLMConnection.created_at)
+    if user:
+        q = q.where(LLMConnection.user_id == user.id)
+    else:
+        q = q.where(LLMConnection.user_id.is_(None))
+
+    result = await db.execute(q)
     rows = result.scalars().all()
 
     named = []
@@ -45,11 +51,17 @@ async def list_connections(db: AsyncSession) -> list[dict]:
     return [implicit] + named
 
 
-async def get_connection(name: str, db: AsyncSession) -> dict | None:
+async def get_connection(name: str, db: AsyncSession, user: User | None = None) -> dict | None:
     if name == "ollama":
         return get_implicit_ollama()
 
-    result = await db.execute(select(LLMConnection).where(LLMConnection.name == name))
+    q = select(LLMConnection).where(LLMConnection.name == name)
+    if user:
+        q = q.where(LLMConnection.user_id == user.id)
+    else:
+        q = q.where(LLMConnection.user_id.is_(None))
+
+    result = await db.execute(q)
     row = result.scalar_one_or_none()
     if not row:
         return None
@@ -60,16 +72,23 @@ async def get_connection(name: str, db: AsyncSession) -> dict | None:
         "provider": row.provider,
         "config": {**row.config, **secrets},
         "enabled": row.enabled,
+        "user_id": str(row.user_id) if row.user_id else None,
     }
 
 
-async def set_connection(name: str, provider: str, config: dict, secrets: dict, db: AsyncSession) -> dict:
+async def set_connection(name: str, provider: str, config: dict, secrets: dict, db: AsyncSession, user: User | None = None) -> dict:
     if name == "ollama":
         raise ValueError("Cannot modify the implicit ollama connection")
 
     encrypted = encrypt_secrets(secrets)
 
-    result = await db.execute(select(LLMConnection).where(LLMConnection.name == name))
+    q = select(LLMConnection).where(LLMConnection.name == name)
+    if user:
+        q = q.where(LLMConnection.user_id == user.id)
+    else:
+        q = q.where(LLMConnection.user_id.is_(None))
+
+    result = await db.execute(q)
     row = result.scalar_one_or_none()
 
     if row:
@@ -78,7 +97,7 @@ async def set_connection(name: str, provider: str, config: dict, secrets: dict, 
         row.provider = provider
         row.updated_at = datetime.now(timezone.utc)
     else:
-        row = LLMConnection(name=name, provider=provider, config=config, secrets=encrypted)
+        row = LLMConnection(name=name, provider=provider, config=config, secrets=encrypted, user_id=user.id if user else None)
         db.add(row)
 
     await db.commit()
@@ -93,11 +112,17 @@ async def set_connection(name: str, provider: str, config: dict, secrets: dict, 
     }
 
 
-async def delete_connection(name: str, db: AsyncSession) -> bool:
+async def delete_connection(name: str, db: AsyncSession, user: User | None = None) -> bool:
     if name == "ollama":
         raise ValueError("Cannot delete the implicit ollama connection")
 
-    result = await db.execute(select(LLMConnection).where(LLMConnection.name == name))
+    q = select(LLMConnection).where(LLMConnection.name == name)
+    if user:
+        q = q.where(LLMConnection.user_id == user.id)
+    else:
+        q = q.where(LLMConnection.user_id.is_(None))
+
+    result = await db.execute(q)
     row = result.scalar_one_or_none()
     if not row:
         return False
@@ -107,7 +132,7 @@ async def delete_connection(name: str, db: AsyncSession) -> bool:
     return True
 
 
-async def test_connection(name: str, config: dict, provider: str, db: AsyncSession) -> dict:
+async def test_connection(name: str, config: dict, provider: str, db: AsyncSession, user: User | None = None) -> dict:
     from app.providers.factory import _build_provider
 
     try:
