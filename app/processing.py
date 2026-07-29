@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from fastapi.encoders import jsonable_encoder
 
+from app.connections import get_connection
 from app.database import async_session
 from app.extraction import ExtractionService
 from app.models import Document, ExtractionJob, JobStatus
@@ -55,7 +56,10 @@ async def process_job(job_id: uuid.UUID):
             job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
             provider = await get_provider(job.connection_name or "ollama", db)
-            model = job.model_name or ""
+            model = job.model_name
+            if not model:
+                conn = await get_connection(job.connection_name or "ollama", db)
+                model = (conn or {}).get("config", {}).get("model", "")
             client = provider.get_client(model_name=model)
 
             if doc.content_type.startswith("image/"):
