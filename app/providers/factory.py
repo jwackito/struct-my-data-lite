@@ -1,7 +1,9 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connections import get_connection, list_connections
 from app.config import settings
+from app.models import User
 from app.providers.base import LLMProvider, ModelInfo
 from app.providers.gemini import GeminiProvider
 from app.providers.ollama import OllamaProvider
@@ -28,22 +30,32 @@ def _build_provider(provider: str, config: dict) -> LLMProvider:
     raise ValueError(f"Unknown provider: {provider}")
 
 
-async def get_provider(connection: str, db: AsyncSession) -> LLMProvider:
+async def get_provider(connection: str, db: AsyncSession, user: User | None = None) -> LLMProvider:
+    if user:
+        conn = await get_connection(connection, db, user=user)
+        if conn and conn.get("user_id"):
+            return _build_provider(conn["provider"], conn["config"])
+
     conn = await get_connection(connection, db)
     if not conn:
         raise ValueError(f"Provider connection '{connection}' not found")
     return _build_provider(conn["provider"], conn["config"])
 
 
-async def list_all_models(db: AsyncSession) -> list[dict]:
-    connections = await list_connections(db)
+async def list_all_models(db: AsyncSession, user: User | None = None) -> list[dict]:
     seen = set()
     results = []
 
-    for conn in connections:
+    all_conns = await list_connections(db)
+    if user:
+        personal = await list_connections(db, user=user)
+        all_conns.extend(pc for pc in personal if pc["name"] not in {c["name"] for c in all_conns})
+
+    for conn in all_conns:
         if not conn["enabled"]:
             continue
-        full = await get_connection(conn["name"], db)
+        conn_user = user if conn.get("user_id") else None
+        full = await get_connection(conn["name"], db, user=conn_user)
         if not full:
             continue
         try:

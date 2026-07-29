@@ -44,6 +44,7 @@ async def list_connections(db: AsyncSession, user: User | None = None) -> list[d
             "provider": row.provider,
             "config": _mask_config(row.provider, row.config, secrets),
             "enabled": row.enabled,
+            "user_id": str(row.user_id) if row.user_id else None,
             "created_at": row.created_at.isoformat() if row.created_at else None,
             "updated_at": row.updated_at.isoformat() if row.updated_at else None,
         })
