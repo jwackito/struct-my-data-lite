@@ -271,6 +271,123 @@ async def api_revoke_token(token_id: uuid.UUID, user: User = Depends(get_current
     return {"ok": True}
 
 
+@app.get("/api/usage")
+async def api_usage(
+    from_date: str = "",
+    to_date: str = "",
+    group: str = "none",
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import Date, cast
+
+    q = select(ExtractionJob).where(
+        ExtractionJob.user_id == user.id,
+        ExtractionJob.status == JobStatus.completed,
+        ExtractionJob.input_tokens.isnot(None),
+    )
+    if from_date:
+        q = q.where(ExtractionJob.created_at >= from_date)
+    if to_date:
+        q = q.where(ExtractionJob.created_at <= to_date + "T23:59:59")
+
+    rows = (await db.execute(q)).scalars().all()
+    total_jobs = len(rows)
+    total_input = sum(r.input_tokens or 0 for r in rows)
+    total_output = sum(r.output_tokens or 0 for r in rows)
+    total_cost = sum(calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0) for r in rows)
+
+    result = {
+        "total_jobs": total_jobs,
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "total_cost": round(total_cost, 6),
+    }
+
+    if group == "day":
+        from collections import defaultdict
+        days = defaultdict(lambda: {"jobs": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0})
+        for r in rows:
+            day = r.created_at.strftime("%Y-%m-%d") if r.created_at else "unknown"
+            days[day]["jobs"] += 1
+            days[day]["input_tokens"] += r.input_tokens or 0
+            days[day]["output_tokens"] += r.output_tokens or 0
+            days[day]["cost"] += calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0)
+        result["breakdown"] = [{"date": d, **v} for d, v in sorted(days.items())]
+    elif group == "model":
+        from collections import defaultdict
+        models = defaultdict(lambda: {"jobs": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0})
+        for r in rows:
+            m = r.model_name or "unknown"
+            models[m]["jobs"] += 1
+            models[m]["input_tokens"] += r.input_tokens or 0
+            models[m]["output_tokens"] += r.output_tokens or 0
+            models[m]["cost"] += calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0)
+        result["breakdown"] = [{"model": m, **v} for m, v in sorted(models.items())]
+
+    return result
+
+
+@app.get("/admin/usage")
+async def admin_usage(
+    from_date: str = "",
+    to_date: str = "",
+    user_filter: str = "",
+    group: str = "none",
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(ExtractionJob).where(
+        ExtractionJob.status == JobStatus.completed,
+        ExtractionJob.input_tokens.isnot(None),
+    )
+    if from_date:
+        q = q.where(ExtractionJob.created_at >= from_date)
+    if to_date:
+        q = q.where(ExtractionJob.created_at <= to_date + "T23:59:59")
+    if user_filter:
+        q = q.where(ExtractionJob.user_id == user_filter)
+
+    rows = (await db.execute(q)).scalars().all()
+    total_jobs = len(rows)
+    total_input = sum(r.input_tokens or 0 for r in rows)
+    total_output = sum(r.output_tokens or 0 for r in rows)
+    total_cost = sum(calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0) for r in rows)
+
+    from collections import defaultdict
+    per_user = defaultdict(lambda: {"jobs": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0})
+    for r in rows:
+        uid = str(r.user_id) if r.user_id else "unknown"
+        per_user[uid]["jobs"] += 1
+        per_user[uid]["input_tokens"] += r.input_tokens or 0
+        per_user[uid]["output_tokens"] += r.output_tokens or 0
+        per_user[uid]["cost"] += calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0)
+
+    total_users = len(per_user)
+    per_user_list = [{"user_id": uid, **v} for uid, v in sorted(per_user.items(), key=lambda x: -x[1]["jobs"])]
+
+    result = {
+        "total_users": total_users,
+        "total_jobs": total_jobs,
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "total_cost": round(total_cost, 6),
+        "per_user": per_user_list,
+    }
+
+    if group == "day":
+        days = defaultdict(lambda: {"jobs": 0, "input_tokens": 0, "output_tokens": 0, "cost": 0.0})
+        for r in rows:
+            day = r.created_at.strftime("%Y-%m-%d") if r.created_at else "unknown"
+            days[day]["jobs"] += 1
+            days[day]["input_tokens"] += r.input_tokens or 0
+            days[day]["output_tokens"] += r.output_tokens or 0
+            days[day]["cost"] += calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0)
+        result["breakdown"] = [{"date": d, **v} for d, v in sorted(days.items())]
+
+    return result
+
+
 @app.get("/providers/connections")
 async def get_connections(admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     return {"connections": await list_connections(db)}
@@ -533,10 +650,15 @@ def _render_output(data):
 
 
 def _job_stats_html(job) -> str:
+    from app.pricing import calculate_cost
+
     parts = []
 
     if job.input_tokens is not None:
         parts.append(f"Tokens: {job.input_tokens} in / {job.output_tokens} out")
+        cost = calculate_cost(job.provider_type or "", job.model_name or "", job.input_tokens, job.output_tokens)
+        if cost > 0:
+            parts.append(f"Cost: ${cost:.6f}")
 
     timing_parts = []
     if job.upload_duration_ms is not None:
