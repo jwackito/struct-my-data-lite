@@ -44,6 +44,15 @@
       border-radius: 4px;
     }
     .error pre { margin: 0.5rem 0 0; white-space: pre-wrap; }
+    .output pre {
+      background: #f5f5f5;
+      padding: 0.75rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
     .actions { margin-top: 1rem; }
     .btn {
       display: inline-block;
@@ -68,7 +77,7 @@
     <div class="actions">
       <a href="/ui/jobs/{{ job_id }}/download" class="btn">Download JSON</a>
     </div>
-    <div>{{ output_html | safe }}</div>
+    <div class="output">{{ output_html | safe }}</div>
   {% elif status == "failed" %}
     <div class="error">
       <p>Extraction failed:</p>

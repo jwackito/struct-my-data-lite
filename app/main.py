@@ -317,24 +317,7 @@ async def ui_extract(
 
 
 def _render_output(data):
-    if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-        keys = sorted({k for d in data for k in d})
-        rows = "".join(
-            "<tr>" + "".join(f"<td>{_cell(d.get(k))}</td>" for k in keys) + "</tr>"
-            for d in data
-        )
-        headers = "".join(f"<th>{k}</th>" for k in keys)
-        return f"<table><thead><tr>{headers}</tr></thead><tbody>{rows}</tbody></table>"
-    if isinstance(data, dict):
-        rows = "".join(f"<tr><td>{k}</td><td>{_cell(v)}</td></tr>" for k, v in data.items())
-        return f"<table><tbody>{rows}</tbody></table>"
-    return f"<pre>{json.dumps(data, indent=2)}</pre>"
-
-
-def _cell(value):
-    if isinstance(value, (dict, list)):
-        return f"<pre>{json.dumps(value, indent=2)}</pre>"
-    return str(value)
+    return f"<pre>{json.dumps(data, indent=2, ensure_ascii=False)}</pre>"
 
 
 def _job_stats_html(job) -> str:
