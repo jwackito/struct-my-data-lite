@@ -425,7 +425,7 @@ async def ui_job_download(job_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 
 
 @app.get("/ui/jobs/{job_id}/result")
-async def ui_job_result_page(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def ui_job_result_page(job_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -437,8 +437,7 @@ async def ui_job_result_page(job_id: uuid.UUID, db: AsyncSession = Depends(get_d
     output_html = _render_output(job.output_data) if job.output_data else ""
     stats_html = _job_stats_html(job) if job.completed_at else ""
 
-    return templates.TemplateResponse("result.html", {
-        "request": Request,
+    return templates.TemplateResponse(request, "result.html", {
         "job_id": job.id,
         "status": st,
         "output_html": output_html,
