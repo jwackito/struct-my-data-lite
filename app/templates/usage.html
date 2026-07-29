@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage — Struct My Data</title>
+  <style>
+    body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+    .controls select, .controls input { padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 0.75rem; background: #fafafa; }
+    .card h3 { margin: 0 0 0.25rem; font-size: 0.8rem; color: #6b7280; }
+    .card .value { font-size: 1.5rem; font-weight: 700; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] .controls select, [data-theme="dark"] .controls input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .card { background: #2d2d2d; border-color: #404040; }
+    [data-theme="dark"] .card h3 { color: #9ca3af; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:1rem;align-items:center">
+      <a href="/">&larr; Extraction</a>
+      <a href="/ui/settings">Settings</a>
+      <a href="/usage" style="font-weight:600">Usage</a>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+    </div>
+  </div>
+  <h1>Usage</h1>
+  <div class="controls">
+    <select id="range" onchange="loadUsage()">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="90">Last 90 days</option>
+      <option value="all">All time</option>
+    </select>
+    <select id="group" onchange="loadUsage()">
+      <option value="none">Summary</option>
+      <option value="day">By day</option>
+      <option value="model">By model</option>
+    </select>
+  </div>
+  <div class="cards">
+    <div class="card"><h3>Jobs</h3><div class="value" id="stat-jobs">-</div></div>
+    <div class="card"><h3>Input Tokens</h3><div class="value" id="stat-input">-</div></div>
+    <div class="card"><h3>Output Tokens</h3><div class="value" id="stat-output">-</div></div>
+    <div class="card"><h3>Cost (USD)</h3><div class="value" id="stat-cost">$0.00</div></div>
+  </div>
+  <div id="breakdown"></div>
+  <script>
+    function loadUsage() {
+      var range = document.getElementById('range').value;
+      var group = document.getElementById('group').value;
+      var url = '/api/usage?group=' + group;
+      if (range !== 'all') {
+        var d = new Date();
+        d.setDate(d.getDate() - parseInt(range));
+        url += '&from_date=' + d.toISOString().slice(0,10);
+      }
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        document.getElementById('stat-jobs').textContent = data.total_jobs;
+        document.getElementById('stat-input').textContent = (data.total_input_tokens || 0).toLocaleString();
+        document.getElementById('stat-output').textContent = (data.total_output_tokens || 0).toLocaleString();
+        document.getElementById('stat-cost').textContent = '$' + (data.total_cost || 0).toFixed(6);
+
+        var el = document.getElementById('breakdown');
+        if (data.breakdown && data.breakdown.length > 0) {
+          var keys = Object.keys(data.breakdown[0]);
+          var html = '<table><thead><tr>' + keys.map(function(k) { return '<th>' + k + '</th>'; }).join('') + '</tr></thead><tbody>';
+          data.breakdown.forEach(function(row) {
+            html += '<tr>' + keys.map(function(k) {
+              var v = row[k];
+              if (k === 'cost') v = '$' + (v || 0).toFixed(6);
+              else if (k === 'jobs') v = v || 0;
+              else if (k === 'input_tokens' || k === 'output_tokens') v = (v || 0).toLocaleString();
+              return '<td>' + v + '</td>';
+            }).join('') + '</tr>';
+          });
+          html += '</tbody></table>';
+          el.innerHTML = html;
+        } else {
+          el.innerHTML = '';
+        }
+      });
+    }
+    loadUsage();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

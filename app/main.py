@@ -584,6 +584,11 @@ async def ui_settings(user: User = Depends(get_current_user)):
     return FileResponse("app/templates/settings.html")
 
 
+@app.get("/usage")
+async def usage_page(user: User = Depends(get_current_user)):
+    return FileResponse("app/templates/usage.html")
+
+
 @app.post("/ui/extract")
 async def ui_extract(
     background_tasks: BackgroundTasks,
