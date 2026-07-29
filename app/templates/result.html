@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Extraction Result — Struct My Data</title>
+  <style>
+    body {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .stats {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1rem;
+      font-size: 0.875rem;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f5f5f5; font-weight: 600; }
+    td pre { margin: 0; font-size: 0.8rem; }
+    .error {
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 0.75rem;
+      border-radius: 4px;
+    }
+    .error pre { margin: 0.5rem 0 0; white-space: pre-wrap; }
+    .actions { margin-top: 1rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #1d4ed8; }
+    pre { font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="nav"><a href="/">&larr; Back to extraction</a></div>
+  <h1>Extraction Result</h1>
+  {% if status == "completed" %}
+    <div class="stats">{{ stats_html | safe }}</div>
+    <div class="actions">
+      <a href="/ui/jobs/{{ job_id }}/download" class="btn">Download JSON</a>
+    </div>
+    <div>{{ output_html | safe }}</div>
+  {% elif status == "failed" %}
+    <div class="error">
+      <p>Extraction failed:</p>
+      <pre>{{ error_message }}</pre>
+    </div>
+    <div class="actions">
+      <a href="/" class="btn">Return to extraction</a>
+    </div>
+  {% else %}
+    <p>&#x23F3; {{ status | capitalize }}...</p>
+    <script>setTimeout(function() { location.reload(); }, 2000);</script>
+  {% endif %}
+</body>
+</html>

@@ -24,6 +24,9 @@ from app.providers import list_all_models
 from app.schema_parser import parse_schema
 from app.storage import save_file
 from app.ws import manager
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="app/templates")
 
 
 @asynccontextmanager
@@ -368,13 +371,12 @@ async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not job:
         return HTMLResponse("<div>Job not found</div>")
 
-    stats = _job_stats_html(job)
     if job.status in (JobStatus.pending, JobStatus.running):
         return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
-    elif job.status == JobStatus.completed:
-        return HTMLResponse(stats + _render_output(job.output_data))
-    else:
-        return HTMLResponse(stats + f'<div style="color:red">Error: {job.error_message}</div>')
+
+    resp = HTMLResponse(f'<div hx-redirect="/ui/jobs/{job.id}/result">Complete</div>')
+    resp.headers["HX-Redirect"] = f"/ui/jobs/{job.id}/result"
+    return resp
 
 
 @app.post("/ui/jobs/{job_id}/retry")
@@ -420,6 +422,29 @@ async def ui_job_download(job_id: uuid.UUID, db: AsyncSession = Depends(get_db))
         media_type="application/json",
         headers={"Content-Disposition": f'attachment; filename="extraction-{job_id}.json"'},
     )
+
+
+@app.get("/ui/jobs/{job_id}/result")
+async def ui_job_result_page(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    st = job.status
+    if hasattr(st, "value"):
+        st = st.value
+
+    output_html = _render_output(job.output_data) if job.output_data else ""
+    stats_html = _job_stats_html(job) if job.completed_at else ""
+
+    return templates.TemplateResponse("result.html", {
+        "request": Request,
+        "job_id": job.id,
+        "status": st,
+        "output_html": output_html,
+        "stats_html": stats_html,
+        "error_message": job.error_message or "",
+    })
 
 
 @app.get("/ui/jobs")
