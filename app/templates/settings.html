@@ -14,9 +14,10 @@
       color: #1a1a1a;
     }
     h1 { font-size: 1.5rem; }
-    .nav { margin-bottom: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
     .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
     .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
     .connection-card {
       border: 1px solid #e5e7eb;
       border-radius: 8px;
@@ -106,10 +107,34 @@
     }
     .modal-box h3 { margin: 0 0 0.75rem 0; }
     .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] .connection-card { background: #2d2d2d; border-color: #404040; }
+    [data-theme="dark"] .connection-card h2 .badge { background: #404040; color: #9ca3af; }
+    [data-theme="dark"] .connection-card h2 .badge.online { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .connection-card h2 .badge.offline { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .connection-card h2 .badge.default { background: #1e3a5f; color: #93c5fd; }
+    [data-theme="dark"] .field-group label { color: #9ca3af; }
+    [data-theme="dark"] .field-group input, [data-theme="dark"] .field-group select { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .field-group input:disabled { background: #1f1f1f; color: #6b7280; }
+    [data-theme="dark"] .msg.ok { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .msg.err { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .btn-secondary { background: #4b5563; }
+    [data-theme="dark"] .btn-secondary:hover { background: #6b7280; }
+    [data-theme="dark"] .btn-danger:hover { background: #7f1d1d; }
+    [data-theme="dark"] .btn-success:hover { background: #047857; }
+    [data-theme="dark"] .btn-primary:hover { background: #3b82f6; }
+    [data-theme="dark"] #add-card { border-color: #404040; color: #9ca3af; }
+    [data-theme="dark"] #add-card:hover { border-color: #60a5fa; color: #60a5fa; }
+    [data-theme="dark"] .modal-box { background: #2d2d2d; }
   </style>
 </head>
 <body>
-  <div class="nav"><a href="/">&larr; Back to extraction</a></div>
+  <div class="nav">
+    <a href="/">&larr; Back to extraction</a>
+    <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+  </div>
   <h1>Provider Connections</h1>
   <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
     Configure LLM provider connections. API keys are encrypted at rest.
@@ -438,6 +463,22 @@
     }
 
     loadConnections();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
+    })();
   </script>
 </body>
 </html>
