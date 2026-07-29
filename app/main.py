@@ -406,6 +406,22 @@ async def ui_job_retry(
     return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Retrying...</div>')
 
 
+@app.get("/ui/jobs/{job_id}/download")
+async def ui_job_download(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.output_data:
+        raise HTTPException(status_code=404, detail="No output data available")
+
+    content = json.dumps(job.output_data, indent=2, ensure_ascii=False)
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="extraction-{job_id}.json"'},
+    )
+
+
 @app.get("/ui/jobs")
 async def ui_jobs(
     offset: int = 0,
