@@ -133,7 +133,10 @@
 <body>
   <div class="nav">
     <a href="/">&larr; Back to extraction</a>
-    <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;color:#2563eb;text-decoration:none">Logout</a>
+    </div>
   </div>
   <h1>Provider Connections</h1>
   <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
