@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Struct My Data</title>
+  <style>
+    body { max-width: 400px; margin: 4rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; text-align: center; }
+    form { display: flex; flex-direction: column; gap: 0.75rem; }
+    label { font-weight: 600; font-size: 0.875rem; }
+    input { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.875rem; }
+    button { padding: 0.6rem 1.2rem; background: #2563eb; color: #fff; border: none; border-radius: 4px; font-size: 0.9rem; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+    .info { text-align: center; font-size: 0.85rem; color: #6b7280; margin-top: 1rem; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
+    [data-theme="dark"] .info { color: #9ca3af; }
+    [data-theme="dark"] button:hover { background: #3b82f6; }
+  </style>
+</head>
+<body>
+  <h1>Create an Account</h1>
+  <div id="error" class="error" style="display:none"></div>
+  <form id="register-form">
+    <label>Email <input type="email" id="email" required></label>
+    <label>Display Name <input type="text" id="display_name"></label>
+    <label>Password <input type="password" id="password" required minlength="8"></label>
+    <label>Confirm Password <input type="password" id="confirm" required></label>
+    <button type="submit">Register</button>
+  </form>
+  <div class="info"><a href="/login" style="color:#2563eb">Already have an account? Log in</a></div>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var err = document.getElementById('error');
+      err.style.display = 'none';
+      var pw = document.getElementById('password').value;
+      if (pw !== document.getElementById('confirm').value) {
+        err.textContent = 'Passwords do not match';
+        err.style.display = 'block';
+        return;
+      }
+      if (pw.length < 8) {
+        err.textContent = 'Password must be at least 8 characters';
+        err.style.display = 'block';
+        return;
+      }
+      fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: pw,
+          display_name: document.getElementById('display_name').value,
+        }),
+      }).then(function(r) {
+        if (r.ok) { window.location.href = '/'; return; }
+        return r.json().then(function(d) { throw new Error(d.detail || 'Registration failed'); });
+      }).catch(function(e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+      });
+    });
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    })();
+  </script>
+</body>
+</html>
