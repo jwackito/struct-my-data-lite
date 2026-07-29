@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.auth import create_jwt, decode_jwt, get_current_user, hash_password, verify_password
+from app.auth import create_jwt, decode_jwt, get_admin_user, get_current_user, hash_password, verify_password
 from app.config import settings
 from app.connections import (
     delete_connection,
@@ -115,6 +115,16 @@ async def auth_logout():
     resp = JSONResponse({"ok": True})
     resp.delete_cookie("token")
     return resp
+
+
+@app.get("/auth/me")
+async def auth_me(user: User = Depends(get_current_user)):
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "role": user.role,
+    }
 
 
 @app.get("/login")
@@ -731,6 +741,106 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
     await db.commit()
     await db.refresh(schema)
     return {"id": str(schema.id), "name": schema.name}
+
+
+@app.get("/admin")
+async def admin_index(admin: User = Depends(get_admin_user)):
+    return FileResponse("app/templates/admin.html")
+
+
+@app.get("/admin/users")
+async def admin_users(
+    offset: int = 0,
+    limit: int = 20,
+    search: str = "",
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    conditions = []
+    if search:
+        pattern = f"%{search}%"
+        conditions.append(
+            User.email.ilike(pattern) | User.display_name.ilike(pattern)
+        )
+
+    total_q = select(func.count()).select_from(User)
+    for c in conditions:
+        total_q = total_q.where(c)
+    total = (await db.execute(total_q)).scalar()
+
+    q = select(User).order_by(User.created_at.desc()).offset(offset).limit(limit)
+    for c in conditions:
+        q = q.where(c)
+    rows = (await db.execute(q)).scalars().all()
+
+    users = []
+    for u in rows:
+        job_count_q = select(func.count()).select_from(ExtractionJob).where(ExtractionJob.user_id == u.id)
+        job_count = (await db.execute(job_count_q)).scalar()
+        users.append({
+            "id": str(u.id),
+            "email": u.email,
+            "display_name": u.display_name,
+            "role": u.role,
+            "is_active": u.is_active,
+            "job_count": job_count,
+            "created_at": u.created_at.isoformat(),
+        })
+
+    return {"users": users, "total": total}
+
+
+@app.post("/admin/users/{user_id}/toggle-status")
+async def admin_toggle_user_status(
+    user_id: uuid.UUID,
+    body: dict,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if str(user.id) == str(admin.id):
+        raise HTTPException(status_code=422, detail="Cannot toggle your own status")
+    user.is_active = body.get("is_active", True)
+    await db.commit()
+    return {"ok": True, "is_active": user.is_active}
+
+
+@app.post("/admin/users/{user_id}/set-role")
+async def admin_set_user_role(
+    user_id: uuid.UUID,
+    body: dict,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    role = body.get("role", "")
+    if role not in ("admin", "user"):
+        raise HTTPException(status_code=422, detail="Role must be 'admin' or 'user'")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if str(user.id) == str(admin.id):
+        raise HTTPException(status_code=422, detail="Cannot change your own role")
+    user.role = role
+    await db.commit()
+    return {"ok": True, "role": user.role}
+
+
+@app.delete("/admin/users/{user_id}")
+async def admin_delete_user(
+    user_id: uuid.UUID,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if str(user.id) == str(admin.id):
+        raise HTTPException(status_code=422, detail="Cannot delete your own account")
+    user.is_active = False
+    await db.commit()
+    return {"ok": True}
 
 
 @app.websocket("/ws/jobs/{job_id}")
