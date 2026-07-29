@@ -7,8 +7,9 @@ from contextlib import asynccontextmanager
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
+from app.auth import create_jwt, decode_jwt, get_current_user, hash_password, verify_password
 from app.config import settings
 from app.connections import (
     delete_connection,
@@ -18,7 +19,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.models import Document, ExtractionJob, JobStatus, SavedSchema
+from app.models import Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.processing import process_job
 from app.providers import list_all_models
 from app.schema_parser import parse_schema
@@ -57,23 +58,94 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.post("/auth/register")
+async def auth_register(body: dict, db: AsyncSession = Depends(get_db)):
+    if not settings.allow_registration:
+        raise HTTPException(status_code=403, detail="Registration is closed")
+
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    display_name = (body.get("display_name") or "").strip()
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Valid email is required")
+    if len(password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    existing = await db.execute(select(User).where(User.email == email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=422, detail="Email already registered")
+
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        display_name=display_name or email.split("@")[0],
+        role=UserRole.user,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    token = create_jwt(str(user.id), user.role.value)
+    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role.value}})
+    resp.set_cookie(key="token", value=token, httponly=True, max_age=settings.jwt_expiry_hours * 3600)
+    return resp
+
+
+@app.post("/auth/login")
+async def auth_login(body: dict, db: AsyncSession = Depends(get_db)):
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is disabled")
+
+    token = create_jwt(str(user.id), user.role.value)
+    resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role.value}})
+    resp.set_cookie(key="token", value=token, httponly=True, max_age=settings.jwt_expiry_hours * 3600)
+    return resp
+
+
+@app.post("/auth/logout")
+async def auth_logout():
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("token")
+    return resp
+
+
+@app.get("/login")
+async def login_page():
+    return FileResponse("app/templates/login.html")
+
+
+@app.get("/register")
+async def register_page():
+    if not settings.allow_registration:
+        return HTMLResponse('<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>Registration is closed</h1><p><a href="/login">Back to login</a></p></body></html>', status_code=403)
+    return FileResponse("app/templates/register.html")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
 @app.get("/models")
-async def models(db: AsyncSession = Depends(get_db)):
+async def models(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return {"models": await list_all_models(db)}
 
 
 @app.get("/providers/connections")
-async def get_connections(db: AsyncSession = Depends(get_db)):
+async def get_connections(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return {"connections": await list_connections(db)}
 
 
 @app.get("/providers/connections/{name}")
-async def get_connection_endpoint(name: str, db: AsyncSession = Depends(get_db)):
+async def get_connection_endpoint(name: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     conn = await get_connection(name, db)
     if not conn:
         raise HTTPException(status_code=404, detail="Connection not found")
@@ -81,7 +153,7 @@ async def get_connection_endpoint(name: str, db: AsyncSession = Depends(get_db))
 
 
 @app.put("/providers/connections/{name}")
-async def put_connection(name: str, body: dict, db: AsyncSession = Depends(get_db)):
+async def put_connection(name: str, body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     provider = body.get("provider", "")
     config = body.get("config", {})
     secrets = body.get("secrets", {})
@@ -104,7 +176,7 @@ async def put_connection(name: str, body: dict, db: AsyncSession = Depends(get_d
 
 
 @app.delete("/providers/connections/{name}")
-async def delete_connection_endpoint(name: str, db: AsyncSession = Depends(get_db)):
+async def delete_connection_endpoint(name: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     try:
         deleted = await delete_connection(name, db)
     except ValueError as e:
@@ -115,7 +187,7 @@ async def delete_connection_endpoint(name: str, db: AsyncSession = Depends(get_d
 
 
 @app.post("/providers/connections/{name}/test")
-async def test_connection_endpoint(name: str, body: dict, db: AsyncSession = Depends(get_db)):
+async def test_connection_endpoint(name: str, body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     config = body.get("config", {})
     secrets = body.get("secrets", {})
     provider = body.get("provider", "")
@@ -126,7 +198,7 @@ async def test_connection_endpoint(name: str, body: dict, db: AsyncSession = Dep
 
 
 @app.post("/upload")
-async def upload(file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def upload(file: UploadFile, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     content = await file.read()
     if len(content) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail="File exceeds maximum upload size")
@@ -190,6 +262,7 @@ async def create_extraction(
     document_id: uuid.UUID = Body(...),
     pydantic_schema: str = Body(..., max_length=10000),
     model_id: str = Body(""),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     doc = await db.get(Document, document_id)
@@ -203,6 +276,7 @@ async def create_extraction(
 
     provider_type, connection_name, model_name = _parse_model_id(model_id)
     job = ExtractionJob(
+        user_id=user.id,
         document_id=document_id,
         pydantic_schema=pydantic_schema,
         upload_duration_ms=0,
@@ -224,7 +298,7 @@ async def create_extraction(
 
 
 @app.get("/jobs/{job_id}")
-async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -249,12 +323,15 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/")
-async def index():
+async def index(request: Request):
+    token = request.cookies.get("token")
+    if not token or not decode_jwt(token):
+        return RedirectResponse(url="/login")
     return FileResponse("app/templates/index.html")
 
 
 @app.get("/ui/settings")
-async def ui_settings():
+async def ui_settings(user: User = Depends(get_current_user)):
     return FileResponse("app/templates/settings.html")
 
 
@@ -264,6 +341,7 @@ async def ui_extract(
     file: UploadFile,
     pydantic_schema: str = Form(..., max_length=10000),
     model_id: str = Form(""),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     t0 = time.monotonic_ns()
@@ -280,6 +358,7 @@ async def ui_extract(
     if not doc:
         storage_path = save_file(file.filename or "unnamed", content)
         doc = Document(
+            user_id=user.id,
             filename=file.filename or "unnamed",
             content_type=file.content_type or "application/octet-stream",
             file_size=len(content),
@@ -299,6 +378,7 @@ async def ui_extract(
 
     provider_type, connection_name, model_name = _parse_model_id(model_id)
     job = ExtractionJob(
+        user_id=user.id,
         document_id=doc.id,
         pydantic_schema=pydantic_schema,
         upload_duration_ms=upload_duration_ms,
@@ -349,7 +429,7 @@ def _fmt_ms(ms: int) -> str:
 
 
 @app.get("/ui/jobs/{job_id}")
-async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def ui_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         return HTMLResponse("<div>Job not found</div>")
@@ -366,6 +446,7 @@ async def ui_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 async def ui_job_retry(
     job_id: uuid.UUID,
     background_tasks: BackgroundTasks,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     job = await db.get(ExtractionJob, job_id)
@@ -392,7 +473,7 @@ async def ui_job_retry(
 
 
 @app.get("/ui/jobs/{job_id}/download")
-async def ui_job_download(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def ui_job_download(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -408,7 +489,7 @@ async def ui_job_download(job_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 
 
 @app.get("/ui/jobs/{job_id}/result")
-async def ui_job_result_page(job_id: uuid.UUID, request: Request, db: AsyncSession = Depends(get_db)):
+async def ui_job_result_page(job_id: uuid.UUID, request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -433,14 +514,16 @@ async def ui_job_result_page(job_id: uuid.UUID, request: Request, db: AsyncSessi
 async def ui_jobs(
     offset: int = 0,
     limit: int = 20,
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    total_q = select(func.count()).select_from(ExtractionJob)
+    total_q = select(func.count()).select_from(ExtractionJob).where(ExtractionJob.user_id == user.id)
     total = (await db.execute(total_q)).scalar()
 
     q = (
         select(ExtractionJob, Document.filename)
         .join(Document, ExtractionJob.document_id == Document.id)
+        .where(ExtractionJob.user_id == user.id)
         .order_by(ExtractionJob.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -503,8 +586,10 @@ async def ui_jobs(
 
 
 @app.get("/schemas")
-async def list_schemas(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(SavedSchema).order_by(SavedSchema.created_at.desc()))
+async def list_schemas(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SavedSchema).where(SavedSchema.user_id == user.id).order_by(SavedSchema.created_at.desc())
+    )
     schemas = result.scalars().all()
     return [
         {
@@ -518,7 +603,7 @@ async def list_schemas(db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/schemas")
-async def create_schema(body: dict = Body(...), db: AsyncSession = Depends(get_db)):
+async def create_schema(body: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     name = body.get("name", "").strip()
     pydantic_schema = body.get("pydantic_schema", "").strip()
     if not name:
@@ -528,7 +613,7 @@ async def create_schema(body: dict = Body(...), db: AsyncSession = Depends(get_d
     if len(pydantic_schema) > 10000:
         raise HTTPException(status_code=422, detail="Schema code too long")
 
-    schema = SavedSchema(name=name, pydantic_schema=pydantic_schema)
+    schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
     await db.commit()
     await db.refresh(schema)
@@ -536,7 +621,7 @@ async def create_schema(body: dict = Body(...), db: AsyncSession = Depends(get_d
 
 
 @app.get("/schemas/{schema_id}")
-async def get_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
@@ -550,7 +635,7 @@ async def get_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 @app.put("/schemas/{schema_id}")
-async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), db: AsyncSession = Depends(get_db)):
+async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
@@ -572,7 +657,7 @@ async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), db: AsyncS
 
 
 @app.delete("/schemas/{schema_id}")
-async def delete_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
@@ -582,7 +667,7 @@ async def delete_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
 
 @app.get("/schemas/{schema_id}/export")
-async def export_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def export_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
         raise HTTPException(status_code=404, detail="Schema not found")
@@ -601,7 +686,7 @@ async def export_schema(schema_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
 
 @app.post("/schemas/parse")
-async def parse_schema_endpoint(body: dict = Body(...)):
+async def parse_schema_endpoint(body: dict = Body(...), user: User = Depends(get_current_user)):
     code = body.get("pydantic_schema", "")
     if not code:
         raise HTTPException(status_code=422, detail="Empty schema")
@@ -615,7 +700,7 @@ async def parse_schema_endpoint(body: dict = Body(...)):
 
 
 @app.post("/schemas/import")
-async def import_schema(file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def import_schema(file: UploadFile, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     content = await file.read()
     if len(content) > 10000:
         raise HTTPException(status_code=422, detail="File too large")
@@ -641,7 +726,7 @@ async def import_schema(file: UploadFile, db: AsyncSession = Depends(get_db)):
     if not pydantic_schema:
         raise HTTPException(status_code=422, detail="No schema code found in file")
 
-    schema = SavedSchema(name=name, pydantic_schema=pydantic_schema)
+    schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
     await db.commit()
     await db.refresh(schema)
