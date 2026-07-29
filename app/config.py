@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     openai_base_url: str = ""
     gemini_api_key: str = ""
     app_secret_key: str = ""
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_expiry_hours: int = 24
+    allow_registration: bool = True
     skip_db_wait: bool = False
 
     class Config:
