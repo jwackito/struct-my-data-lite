@@ -1,3 +1,5 @@
+import base64
+
 import pydantic
 from instructor import Instructor
 
@@ -34,6 +36,15 @@ class ExtractionService:
                         {"type": "image_url", "image_url": {"url": data_uri}},
                     ],
                 }]
+            elif isinstance(content, dict) and content.get("type") == "image-pdf":
+                parts = [{"type": "text", "text": "Extract structured data from this document"}]
+                for img in content["images"]:
+                    b64 = base64.b64encode(img["data"]).decode("ascii")
+                    parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/{img['format']};base64,{b64}"},
+                    })
+                messages = [{"role": "user", "content": parts}]
             else:
                 messages = [{"role": "user", "content": content}]
 
