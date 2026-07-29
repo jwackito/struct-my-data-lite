@@ -74,7 +74,7 @@ class TestExtractionJobModel:
             pydantic_schema="class X: pass",
         )
         assert hasattr(job, "connection_name")
-        assert job.connection_name == "ollama"
+        assert job.connection_name is None
 
     def test_job_has_model_name_field(self):
         job = ExtractionJob(
