@@ -2,6 +2,7 @@ import hashlib
 import json
 import time
 import uuid
+from datetime import datetime
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
@@ -19,7 +20,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.models import Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
+from app.models import ApiToken, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.processing import process_job
 from app.providers import list_all_models
 from app.schema_parser import parse_schema
@@ -201,6 +202,72 @@ async def api_delete_key(name: str, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=422, detail=str(e))
     if not deleted:
         raise HTTPException(status_code=404, detail="Key not found")
+    return {"ok": True}
+
+
+@app.post("/api/tokens")
+async def api_create_token(body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.auth import generate_api_token
+
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Name is required")
+
+    raw, token_hash, prefix = generate_api_token()
+    expires_at = None
+    if body.get("expires_at"):
+        try:
+            expires_at = datetime.fromisoformat(body["expires_at"])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=422, detail="Invalid expires_at format")
+
+    tok = ApiToken(user_id=user.id, name=name, token_hash=token_hash, prefix=prefix, expires_at=expires_at)
+    db.add(tok)
+    await db.commit()
+    await db.refresh(tok)
+
+    return {
+        "id": str(tok.id),
+        "name": tok.name,
+        "token": raw,
+        "prefix": tok.prefix,
+        "expires_at": tok.expires_at.isoformat() if tok.expires_at else None,
+        "created_at": tok.created_at.isoformat(),
+    }
+
+
+@app.get("/api/tokens")
+async def api_list_tokens(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ApiToken).where(ApiToken.user_id == user.id).order_by(ApiToken.created_at.desc())
+    )
+    tokens = result.scalars().all()
+    return {
+        "tokens": [
+            {
+                "id": str(t.id),
+                "name": t.name,
+                "prefix": t.prefix,
+                "is_active": t.is_active,
+                "expires_at": t.expires_at.isoformat() if t.expires_at else None,
+                "last_used_at": t.last_used_at.isoformat() if t.last_used_at else None,
+                "created_at": t.created_at.isoformat(),
+            }
+            for t in tokens
+        ]
+    }
+
+
+@app.delete("/api/tokens/{token_id}")
+async def api_revoke_token(token_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ApiToken).where(ApiToken.id == token_id, ApiToken.user_id == user.id)
+    )
+    tok = result.scalar_one_or_none()
+    if not tok:
+        raise HTTPException(status_code=404, detail="Token not found")
+    tok.is_active = False
+    await db.commit()
     return {"ok": True}
 
 
