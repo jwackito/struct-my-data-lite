@@ -305,12 +305,30 @@
       background: #dc2626;
     }
     .btn-danger:hover { background: #b91c1c; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] input[type="file"], [data-theme="dark"] textarea, [data-theme="dark"] select#model-select, [data-theme="dark"] .field-row input, [data-theme="dark"] .templates-row input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .tab-bar { border-bottom-color: #404040; }
+    [data-theme="dark"] .tab { background: #2d2d2d; border-color: #404040; color: #9ca3af; }
+    [data-theme="dark"] .tab.active { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+    [data-theme="dark"] .error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
+    [data-theme="dark"] .btn:hover, [data-theme="dark"] #add-field:hover { background: #3b82f6; }
+    [data-theme="dark"] .field-row .remove-field:hover { color: #fca5a5; }
+    [data-theme="dark"] .validation-error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
+    [data-theme="dark"] .schema-templates .templates-row button { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
   </style>
 </head>
 <body>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
     <h1 style="margin:0">Struct My Data</h1>
-    <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings">&#9881;</a>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+      <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings">&#9881;</a>
+    </div>
   </div>
   <form hx-post="/ui/extract" hx-target="#result" enctype="multipart/form-data">
     <div>
@@ -1018,6 +1036,22 @@ class OfficialsList(BaseModel):
       toggleGenerateButton();
       loadTemplateList();
       loadModels();
+    })();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
     })();
   </script>
 </body>
