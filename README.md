@@ -87,6 +87,11 @@ GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
 POST /ui/jobs/{id}/retry  →  Retry a failed job
 ```
 
+Scanned PDFs (no extractable text on any page) are detected per-page and
+rendered to PNG images, then sent as multi-image messages to a vision-capable
+model. Gemini supports PDF natively via its File API — see `AGENTS.md` for
+the provider limitation and future work.
+
 ## Stack
 
 | Component | Choice |
