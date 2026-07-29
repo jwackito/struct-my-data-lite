@@ -68,13 +68,13 @@ class TestExtractionJobModel:
         assert hasattr(job, "llm_duration_ms")
         assert job.llm_duration_ms is None
 
-    def test_job_has_provider_name_field(self):
+    def test_job_has_connection_name_field(self):
         job = ExtractionJob(
             document_id=uuid.uuid4(),
             pydantic_schema="class X: pass",
         )
-        assert hasattr(job, "provider_name")
-        assert job.provider_name is None
+        assert hasattr(job, "connection_name")
+        assert job.connection_name == "ollama"
 
     def test_job_has_model_name_field(self):
         job = ExtractionJob(
