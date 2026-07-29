@@ -75,7 +75,8 @@ class LLMConnection(Base):
     __tablename__ = "llm_connections"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(100), unique=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    name: Mapped[str] = mapped_column(String(100))
     provider: Mapped[str] = mapped_column(String(50))
     config: Mapped[dict] = mapped_column(JSON, default=dict)
     secrets: Mapped[str] = mapped_column(Text, default="{}")
