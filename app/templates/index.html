@@ -1036,6 +1036,13 @@ class OfficialsList(BaseModel):
       toggleGenerateButton();
       loadTemplateList();
       loadModels();
+
+      document.querySelector('form').addEventListener('htmx:beforeRequest', function() {
+        var sel = document.getElementById('model-select');
+        if (sel) sessionStorage.setItem('smd_last_model', sel.value);
+        var ta = document.querySelector("textarea[name='pydantic_schema']");
+        if (ta) sessionStorage.setItem('smd_last_schema', ta.value);
+      });
     })();
   </script>
   <script>
