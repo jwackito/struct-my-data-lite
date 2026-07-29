@@ -1048,6 +1048,12 @@ class OfficialsList(BaseModel):
       loadTemplateList();
       loadModels();
 
+      var lastSchema = sessionStorage.getItem('smd_last_schema');
+      if (lastSchema) {
+        var ta = document.querySelector("textarea[name='pydantic_schema']");
+        if (ta) { ta.value = lastSchema; switchTab('code'); }
+      }
+
       document.querySelector('form').addEventListener('htmx:beforeRequest', function() {
         var sel = document.getElementById('model-select');
         if (sel) sessionStorage.setItem('smd_last_model', sel.value);
