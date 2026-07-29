@@ -326,6 +326,7 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
     <h1 style="margin:0">Struct My Data</h1>
     <div style="display:flex;gap:0.5rem;align-items:center">
+      <a id="admin-link" href="/admin" style="display:none;font-size:0.85rem;text-decoration:none">Admin</a>
       <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
       <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings">&#9881;</a>
       <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
@@ -1078,6 +1079,11 @@ class OfficialsList(BaseModel):
         });
       }
     })();
+  </script>
+  <script>
+    fetch('/auth/me').then(function(r) { return r.json(); }).then(function(u) {
+      if (u.role === 'admin') document.getElementById('admin-link').style.display = 'inline';
+    });
   </script>
 </body>
 </html>
