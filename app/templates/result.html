@@ -15,9 +15,10 @@
       color: #1a1a1a;
     }
     h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
-    .nav { margin-bottom: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
     .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
     .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
     .stats {
       font-size: 0.85rem;
       color: #666;
@@ -68,10 +69,22 @@
     }
     .btn:hover { background: #1d4ed8; }
     pre { font-size: 0.8rem; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] .stats { color: #9ca3af; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+    [data-theme="dark"] .error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
+    [data-theme="dark"] .output pre { background: #2d2d2d; }
+    [data-theme="dark"] .btn:hover { background: #3b82f6; }
   </style>
 </head>
 <body>
-  <div class="nav"><a href="/">&larr; Back to extraction</a></div>
+  <div class="nav">
+    <a href="/">&larr; Back to extraction</a>
+    <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+  </div>
   <h1>Extraction Result</h1>
   {% if status == "completed" %}
     <div class="stats">{{ stats_html | safe }}</div>
@@ -93,8 +106,33 @@
   {% endif %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/highlight.min.js"></script>
   <script>
-    var el = document.querySelector('.output pre');
-    if (el) hljs.highlightElement(el);
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+          var hl = document.querySelector('link[href*="highlight"][href*="github"]');
+          if (hl) {
+            hl.href = next === 'dark'
+              ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github-dark.min.css'
+              : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github.min.css';
+          }
+        });
+      }
+      if (theme === 'dark') {
+        var hl = document.querySelector('link[href*="highlight"][href*="github"]');
+        if (hl && hl.href.indexOf('dark') === -1)
+          hl.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github-dark.min.css';
+      }
+      var el = document.querySelector('.output pre');
+      if (el) hljs.highlightElement(el);
+    })();
   </script>
 </body>
 </html>
