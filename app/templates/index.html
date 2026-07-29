@@ -1024,7 +1024,18 @@ class OfficialsList(BaseModel):
               sel.appendChild(grp);
             });
             if (data.models.length > 0) {
-              sel.value = data.models[0].id;
+              var saved = sessionStorage.getItem('smd_last_model');
+              var found = false;
+              if (saved) {
+                for (var i = 0; i < sel.options.length; i++) {
+                  if (sel.options[i].value === saved) {
+                    sel.value = saved;
+                    found = true;
+                    break;
+                  }
+                }
+              }
+              if (!found) sel.value = data.models[0].id;
             }
           });
       }
