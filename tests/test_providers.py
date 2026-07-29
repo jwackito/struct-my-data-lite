@@ -5,7 +5,7 @@ import pytest
 from app.providers.base import LLMProvider
 from app.providers.factory import get_provider, list_all_models
 from app.providers.ollama import OllamaProvider
-from app.providers.openai import OpenAIProvider
+from app.providers.openai import OpenAIProvider, _classify
 from app.providers.gemini import GeminiProvider
 
 
@@ -142,6 +142,10 @@ async def test_list_all_models_filters_embeddings(mock_list_conn, mock_get_conn,
     assert "openai/my-openai/text-embedding-3-small" not in ids
     openai_build_call = [c for c in mock_build_provider.call_args_list if c[0][0] == "openai"][0]
     assert openai_build_call[0][1]["api_key"] == "sk-test-secret"
+
+
+def test_classify_unknown_model_defaults_to_text():
+    assert _classify("llama-3.1-70b") == ["text"]
 
 
 class TestABC:
