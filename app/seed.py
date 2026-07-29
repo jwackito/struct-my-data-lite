@@ -1,6 +1,8 @@
 import asyncio
 import argparse
 
+from sqlalchemy import select
+
 from app.auth import hash_password
 from app.database import async_session
 from app.models import User, UserRole
@@ -8,7 +10,7 @@ from app.models import User, UserRole
 
 async def create_user(email: str, password: str, role: str, display_name: str):
     async with async_session() as s:
-        existing = await s.get(User, email)
+        existing = (await s.execute(select(User).where(User.email == email))).scalar_one_or_none()
         if existing:
             print(f"User {email} already exists.")
             return
