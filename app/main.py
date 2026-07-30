@@ -331,6 +331,11 @@ async def api_usage(
 
 
 @app.get("/admin/usage")
+async def admin_usage_page(admin: User = Depends(get_admin_user)):
+    return FileResponse("app/templates/admin_usage.html")
+
+
+@app.get("/admin/usage/data")
 async def admin_usage(
     from_date: str = "",
     to_date: str = "",
@@ -368,7 +373,13 @@ async def admin_usage(
         per_user[uid]["cost"] += calculate_cost(r.provider_type or "", r.model_name or "", r.input_tokens or 0, r.output_tokens or 0)
 
     total_users = len(per_user)
-    per_user_list = [{"user_id": uid, **v} for uid, v in sorted(per_user.items(), key=lambda x: -x[1]["jobs"])]
+    user_ids = [uid for uid in per_user.keys() if uid != "unknown"]
+    user_emails = {}
+    if user_ids:
+        from sqlalchemy import or_
+        user_rows = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        user_emails = {str(u.id): u.email for u in user_rows}
+    per_user_list = [{"user_id": uid, "email": user_emails.get(uid, uid), **v} for uid, v in sorted(per_user.items(), key=lambda x: -x[1]["jobs"])]
 
     result = {
         "total_users": total_users,
