@@ -62,7 +62,7 @@
   <script>
     function loadUsage() {
       var range = document.getElementById('range').value;
-      var url = '/admin/usage';
+      var url = '/admin/usage/data';
       if (range !== 'all') {
         var d = new Date();
         d.setDate(d.getDate() - parseInt(range));
