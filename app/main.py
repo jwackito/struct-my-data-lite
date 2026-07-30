@@ -1002,6 +1002,11 @@ async def admin_index(admin: User = Depends(get_admin_user)):
 
 
 @app.get("/admin/users")
+async def admin_users_page(admin: User = Depends(get_admin_user)):
+    return FileResponse("app/templates/admin_users.html")
+
+
+@app.get("/admin/users/data")
 async def admin_users(
     offset: int = 0,
     limit: int = 20,
