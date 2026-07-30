@@ -672,28 +672,42 @@ def _render_output(data):
 def _job_stats_html(job) -> str:
     from app.pricing import calculate_cost
 
-    parts = []
+    cards = []
 
     if job.input_tokens is not None:
-        parts.append(f"Tokens: {job.input_tokens} in / {job.output_tokens} out")
+        cards.append(f"""<div class="stat-card">
+          <div class="stat-label">Tokens <span class="stat-info" title="Tokens sent to and received from the AI model">&#9432;</span></div>
+          <div class="stat-value">{job.input_tokens} in / {job.output_tokens} out</div>
+        </div>""")
         cost = calculate_cost(job.provider_type or "", job.model_name or "", job.input_tokens, job.output_tokens)
         if cost > 0:
-            parts.append(f"Cost: ${cost:.6f}")
+            cards.append(f"""<div class="stat-card">
+              <div class="stat-label">Cost <span class="stat-info" title="Estimated cost in USD based on model pricing">&#9432;</span></div>
+              <div class="stat-value">${cost:.6f}</div>
+            </div>""")
 
-    timing_parts = []
-    if job.upload_duration_ms is not None:
-        timing_parts.append(f"upload {_fmt_ms(job.upload_duration_ms)}")
-    if job.parsing_duration_ms is not None:
-        timing_parts.append(f"parse {_fmt_ms(job.parsing_duration_ms)}")
-    if job.llm_duration_ms is not None:
-        timing_parts.append(f"llm {_fmt_ms(job.llm_duration_ms)}")
-    if timing_parts:
-        parts.append(" | ".join(timing_parts))
+    timing = [
+        ("Upload", job.upload_duration_ms, "Time to upload and store the file"),
+        ("Parse", job.parsing_duration_ms, "Time to extract text from the document"),
+        ("LLM", job.llm_duration_ms, "Time the AI model took to generate the result"),
+    ]
+    for label, ms, desc in timing:
+        if ms is not None:
+            cards.append(f"""<div class="stat-card">
+              <div class="stat-label">{label} <span class="stat-info" title="{desc}">&#9432;</span></div>
+              <div class="stat-value">{_fmt_ms(ms)}</div>
+            </div>""")
 
-    if not parts:
+    if job.model_name:
+        cards.append(f"""<div class="stat-card">
+          <div class="stat-label">Model <span class="stat-info" title="The AI model used for extraction">&#9432;</span></div>
+          <div class="stat-value">{job.model_name}</div>
+        </div>""")
+
+    if not cards:
         return ""
 
-    return f'<div style="font-size:0.85rem;color:#666;margin-bottom:0.5rem">{" | ".join(parts)}</div>'
+    return '<div class="stats-bar">' + "".join(cards) + "</div>"
 
 
 def _fmt_ms(ms: int) -> str:
