@@ -31,6 +31,47 @@ def test_cost_unknown_provider():
 
 
 @pytest.mark.asyncio
+async def test_usage_with_jobs(async_client, db_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "usage-jobs@example.com",
+        "password": "password123",
+    })
+    assert reg.status_code == 200
+    user_id = reg.json()["user"]["id"]
+    token = reg.json()["token"]
+
+    from app.models import Document, ExtractionJob
+    doc = Document(
+        user_id=user_id,
+        filename="test.txt", content_type="text/plain",
+        file_size=10, storage_path="/tmp/test.txt",
+    )
+    db_session.add(doc)
+    await db_session.flush()
+
+    job = ExtractionJob(
+        user_id=user_id,
+        document_id=doc.id,
+        status="completed",
+        pydantic_schema="class X(BaseModel): pass",
+        input_tokens=1000,
+        output_tokens=500,
+        model_name="gpt-4o-mini",
+        provider_type="openai",
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get("/api/usage", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_jobs"] == 1
+    assert data["total_input_tokens"] == 1000
+    assert data["total_output_tokens"] == 500
+    assert data["total_cost"] > 0
+
+
+@pytest.mark.asyncio
 async def test_api_usage(async_client):
     reg = await async_client.post("/auth/register", json={
         "email": "usage-test@example.com",
