@@ -23,6 +23,7 @@ from app.database import get_db, async_session, wait_for_db
 from app.models import ApiToken, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.pricing import calculate_cost
 from app.processing import process_job
+from sqlalchemy import cast, Date
 from app.providers import list_all_models
 from app.schema_parser import parse_schema
 from app.storage import save_file
@@ -280,17 +281,17 @@ async def api_usage(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import Date, cast
-
     q = select(ExtractionJob).where(
         ExtractionJob.user_id == user.id,
         ExtractionJob.status == JobStatus.completed,
         ExtractionJob.input_tokens.isnot(None),
     )
+    from datetime import date as _dt, timedelta as _td
+
     if from_date:
-        q = q.where(ExtractionJob.created_at >= from_date)
+        q = q.where(ExtractionJob.created_at >= _dt.fromisoformat(from_date))
     if to_date:
-        q = q.where(ExtractionJob.created_at <= to_date + "T23:59:59")
+        q = q.where(ExtractionJob.created_at < _dt.fromisoformat(to_date) + _td(days=1))
 
     rows = (await db.execute(q)).scalars().all()
     total_jobs = len(rows)
@@ -342,10 +343,12 @@ async def admin_usage(
         ExtractionJob.status == JobStatus.completed,
         ExtractionJob.input_tokens.isnot(None),
     )
+    from datetime import date as _dt, timedelta as _td
+
     if from_date:
-        q = q.where(ExtractionJob.created_at >= from_date)
+        q = q.where(ExtractionJob.created_at >= _dt.fromisoformat(from_date))
     if to_date:
-        q = q.where(ExtractionJob.created_at <= to_date + "T23:59:59")
+        q = q.where(ExtractionJob.created_at < _dt.fromisoformat(to_date) + _td(days=1))
     if user_filter:
         q = q.where(ExtractionJob.user_id == user_filter)
 
