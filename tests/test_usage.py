@@ -112,3 +112,27 @@ async def test_api_usage(async_client):
     assert "total_input_tokens" in data
     assert "total_output_tokens" in data
     assert "total_cost" in data
+
+
+@pytest.mark.asyncio
+async def test_admin_usage_data(async_client, db_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "admin-usage-tester@example.com",
+        "password": "password123",
+    })
+    assert reg.status_code == 200
+    user_id = reg.json()["user"]["id"]
+    token = reg.json()["token"]
+
+    from app.models import User
+    from sqlalchemy import select
+    u = (await db_session.execute(select(User).where(User.email == "admin-usage-tester@example.com"))).scalar_one()
+    u.role = "admin"
+    await db_session.commit()
+
+    resp = await async_client.get("/admin/usage/data", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "total_users" in data
+    assert "total_jobs" in data
+    assert "per_user" in data
