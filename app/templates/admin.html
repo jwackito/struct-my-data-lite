@@ -48,10 +48,10 @@
     <a href="/admin/users">Manage Users</a>
   </div>
   <script>
-    fetch('/admin/users?limit=1').then(function(r) { return r.json(); }).then(function(data) {
+    fetch('/admin/users/data?limit=1').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('total-users').textContent = data.total;
     });
-    fetch('/admin/users?limit=1&search=').then(function(r) { return r.json(); }).then(function(data) {
+    fetch('/admin/users/data?limit=1&search=').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('active-users').textContent = data.users.filter(function(u) { return u.is_active; }).length;
     });
     document.getElementById('total-jobs').textContent = '\u2026';

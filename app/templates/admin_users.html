@@ -68,7 +68,7 @@
       currentOffset = (offset !== undefined) ? offset : currentOffset;
       document.getElementById('users-table').innerHTML = '<p>Loading...</p>';
 
-      var url = '/admin/users?offset=' + currentOffset + '&limit=' + pageSize;
+      var url = '/admin/users/data?offset=' + currentOffset + '&limit=' + pageSize;
       if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
 
       fetch(url).then(function(r) { return r.json(); }).then(function(data) {
