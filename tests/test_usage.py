@@ -72,6 +72,31 @@ async def test_usage_with_jobs(async_client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_usage_with_date_filter(async_client, db_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "usage-date@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+    user_id = reg.json()["user"]["id"]
+
+    from app.models import Document, ExtractionJob
+    doc = Document(user_id=user_id, filename="t.txt", content_type="text/plain", file_size=1, storage_path="/tmp/t.txt")
+    db_session.add(doc)
+    await db_session.flush()
+    job = ExtractionJob(user_id=user_id, document_id=doc.id, status="completed",
+                        pydantic_schema="class X: pass", input_tokens=10, output_tokens=5,
+                        model_name="gpt-4o-mini", provider_type="openai")
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get("/api/usage?from_date=2020-01-01", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_jobs"] == 1
+
+
+@pytest.mark.asyncio
 async def test_api_usage(async_client):
     reg = await async_client.post("/auth/register", json={
         "email": "usage-test@example.com",
