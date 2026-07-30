@@ -21,6 +21,7 @@ from app.connections import (
 )
 from app.database import get_db, async_session, wait_for_db
 from app.models import ApiToken, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
+from app.pricing import calculate_cost
 from app.processing import process_job
 from app.providers import list_all_models
 from app.schema_parser import parse_schema
