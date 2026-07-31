@@ -1067,11 +1067,13 @@ class OfficialsList(BaseModel):
       var fileInput = document.querySelector('input[type="file"][name="file"]');
       if (fileInput) {
         var form = document.querySelector('form');
+        var pendingConfirm = null;
+
         form.addEventListener('htmx:configRequest', function(evt) {
-          if (fileInput.files && fileInput.files.length > 1) {
-            evt.detail.path = '/ui/batch-extract';
-          } else {
-            evt.detail.path = '/ui/extract';
+          var isBatch = fileInput.files && fileInput.files.length > 1;
+          evt.detail.path = isBatch ? '/ui/batch-extract' : '/ui/extract';
+          if (isBatch && pendingConfirm && !confirm(pendingConfirm)) {
+            evt.preventDefault();
           }
         });
 
@@ -1086,11 +1088,11 @@ class OfficialsList(BaseModel):
               body: JSON.stringify({ file_sizes: sizes, model_id: model ? model.value : '' }),
             }).then(function(r) { return r.json(); }).then(function(data) {
               if (data.estimated_cost !== undefined) {
-                form.setAttribute('hx-confirm', 'Estimated cost $' + data.estimated_cost.toFixed(6) + ' for ' + data.documents + ' documents with ' + data.model + '. Continue?');
+                pendingConfirm = 'Estimated cost $' + data.estimated_cost.toFixed(6) + ' for ' + data.documents + ' documents with ' + data.model + '. Continue?';
               }
             });
           } else {
-            form.removeAttribute('hx-confirm');
+            pendingConfirm = null;
           }
         });
       }
