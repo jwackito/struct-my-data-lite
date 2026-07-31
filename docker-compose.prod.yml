@@ -5,7 +5,7 @@ services:
       - .env
     environment:
       PORT: 8080
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/structmydata
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/structmydata
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.6:35b}
       OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:31b}
