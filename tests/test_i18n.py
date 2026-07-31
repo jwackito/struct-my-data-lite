@@ -16,3 +16,7 @@ def test_t_en_fallback_for_missing_es_key(monkeypatch):
 
     monkeypatch.setitem(i18n.DICTS["es"], "Hello", None)
     assert t("Hello", "es") == "Hello"
+
+
+def test_t_interpolation():
+    assert t("Hello {name}", "es", name="Mundo") == "Hola Mundo"
