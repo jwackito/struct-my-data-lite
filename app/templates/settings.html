@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings — Struct My Data</title>
+  <title data-i18n="Settings — Struct My Data">Settings — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body {
       max-width: 720px;
@@ -133,43 +134,44 @@
 </head>
 <body>
   <div class="nav">
-      <a href="/">&larr; Extraction</a>
-      <a href="/usage">Usage</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/usage" data-i18n="Usage">Usage</a>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1 id="section-title">Loading...</h1>
-  <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
+  <h1 id="section-title" data-i18n="Loading...">Loading...</h1>
+  <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem" data-i18n="Configure LLM provider connections. API keys are encrypted at rest.">
     Configure LLM provider connections. API keys are encrypted at rest.
   </p>
   <div id="connections"></div>
-  <div id="add-card" onclick="openAddModal()">+ Add Connection</div>
+  <div id="add-card" onclick="openAddModal()" data-i18n="+ Add Connection">+ Add Connection</div>
 
-  <h2 style="margin-top:2rem">API Tokens</h2>
-  <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem">
+  <h2 style="margin-top:2rem" data-i18n="API Tokens">API Tokens</h2>
+  <p style="font-size:0.85rem;color:#6b7280;margin-top:-0.5rem" data-i18n="Generate tokens for programmatic API access.">
     Generate tokens for programmatic API access.
   </p>
-  <div id="tokens-list"><p style="color:#9ca3af">Loading...</p></div>
+  <div id="tokens-list"><p style="color:#9ca3af" data-i18n="Loading...">Loading...</p></div>
   <div style="margin-top:0.5rem">
-    <button class="btn-primary" onclick="openTokenModal()">+ Generate Token</button>
+    <button class="btn-primary" onclick="openTokenModal()" data-i18n="+ Generate Token">+ Generate Token</button>
   </div>
 
   <div id="token-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);align-items:center;justify-content:center" class="open">
     <div class="modal-box">
-      <h3>Generate API Token</h3>
+      <h3 data-i18n="Generate API Token">Generate API Token</h3>
       <div class="field-group">
-        <label>Token Name</label>
-        <input type="text" id="new-token-name" placeholder="e.g. CI pipeline">
+        <label data-i18n="Token Name">Token Name</label>
+        <input type="text" id="new-token-name" placeholder="e.g. CI pipeline" data-i18n-ph="e.g. CI pipeline">
       </div>
       <div class="field-group">
-        <label>Expires (optional)</label>
+        <label data-i18n="Expires (optional)">Expires (optional)</label>
         <input type="date" id="new-token-expires">
       </div>
       <div class="modal-actions">
-        <button class="btn-primary" onclick="createToken()">Generate</button>
-        <button class="btn-secondary" onclick="closeTokenModal()">Cancel</button>
+        <button class="btn-primary" onclick="createToken()" data-i18n="Generate">Generate</button>
+        <button class="btn-secondary" onclick="closeTokenModal()" data-i18n="Cancel">Cancel</button>
       </div>
       <div id="token-result" class="msg hidden" style="margin-top:0.75rem"></div>
     </div>
@@ -177,13 +179,13 @@
 
   <div id="add-modal">
     <div class="modal-box">
-      <h3>Add Connection</h3>
+      <h3 data-i18n="Add Connection">Add Connection</h3>
       <div class="field-group">
-        <label>Connection Name</label>
-        <input type="text" id="new-name" placeholder="e.g. my-openai-work">
+        <label data-i18n="Connection Name">Connection Name</label>
+        <input type="text" id="new-name" placeholder="e.g. my-openai-work" data-i18n-ph="e.g. my-openai-work">
       </div>
       <div class="field-group">
-        <label>Provider</label>
+        <label data-i18n="Provider">Provider</label>
         <select id="new-provider">
           <option value="openai">OpenAI</option>
           <option value="gemini">Gemini</option>
@@ -192,8 +194,8 @@
       </div>
       <div id="new-fields"></div>
       <div class="modal-actions">
-        <button class="btn-primary" onclick="saveNewConnection()">Save & Test</button>
-        <button class="btn-secondary" onclick="closeAddModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveNewConnection()" data-i18n="Save & Test">Save & Test</button>
+        <button class="btn-secondary" onclick="closeAddModal()" data-i18n="Cancel">Cancel</button>
       </div>
       <div id="new-msg" class="msg hidden"></div>
     </div>

@@ -94,5 +94,22 @@
   "Page {page} of {total} ({count} users)": "Page {page} of {total} ({count} users)",
   "Failed": "Failed",
   "Change role to {role}?": "Change role to {role}?",
-  "Delete this user? This will disable their account.": "Delete this user? This will disable their account."
+  "Delete this user? This will disable their account.": "Delete this user? This will disable their account.",
+  "Settings — Struct My Data": "Settings — Struct My Data",
+  "Configure LLM provider connections. API keys are encrypted at rest.": "Configure LLM provider connections. API keys are encrypted at rest.",
+  "+ Add Connection": "+ Add Connection",
+  "API Tokens": "API Tokens",
+  "Generate tokens for programmatic API access.": "Generate tokens for programmatic API access.",
+  "+ Generate Token": "+ Generate Token",
+  "Generate API Token": "Generate API Token",
+  "Token Name": "Token Name",
+  "e.g. CI pipeline": "e.g. CI pipeline",
+  "Expires (optional)": "Expires (optional)",
+  "Generate": "Generate",
+  "Cancel": "Cancel",
+  "Add Connection": "Add Connection",
+  "Connection Name": "Connection Name",
+  "e.g. my-openai-work": "e.g. my-openai-work",
+  "Provider": "Provider",
+  "Save & Test": "Save & Test"
 }

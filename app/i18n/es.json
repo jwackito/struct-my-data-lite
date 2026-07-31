@@ -94,5 +94,22 @@
   "Page {page} of {total} ({count} users)": "Página {page} de {total} ({count} usuarios)",
   "Failed": "Error",
   "Change role to {role}?": "¿Cambiar rol a {role}?",
-  "Delete this user? This will disable their account.": "¿Eliminar este usuario? Esto deshabilitará su cuenta."
+  "Delete this user? This will disable their account.": "¿Eliminar este usuario? Esto deshabilitará su cuenta.",
+  "Settings — Struct My Data": "Configuración — Struct My Data",
+  "Configure LLM provider connections. API keys are encrypted at rest.": "Configura las conexiones de proveedores LLM. Las claves API están cifradas en reposo.",
+  "+ Add Connection": "+ Agregar conexión",
+  "API Tokens": "Tokens de API",
+  "Generate tokens for programmatic API access.": "Genera tokens para acceso programático a la API.",
+  "+ Generate Token": "+ Generar token",
+  "Generate API Token": "Generar token de API",
+  "Token Name": "Nombre del token",
+  "e.g. CI pipeline": "p. ej. CI pipeline",
+  "Expires (optional)": "Expira (opcional)",
+  "Generate": "Generar",
+  "Cancel": "Cancelar",
+  "Add Connection": "Agregar conexión",
+  "Connection Name": "Nombre de la conexión",
+  "e.g. my-openai-work": "p. ej. my-openai-work",
+  "Provider": "Proveedor",
+  "Save & Test": "Guardar y probar"
 }
