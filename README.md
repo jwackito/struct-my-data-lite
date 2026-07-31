@@ -1,10 +1,10 @@
 # Struct My Data — Lite Edition
 
-**Single-user, self-deployed document-to-structured-data extraction.**
+**Self-hosted document-to-structured-data extraction.**
 
-Upload a document (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a visual builder or raw code, and get structured JSON/YAML output powered by [Instructor](https://github.com/jxnl/instructor) and an LLM provider of your choice (Ollama, OpenAI, or Gemini).
+Upload documents (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a visual builder or raw code, and get structured JSON output powered by [Instructor](https://github.com/jxnl/instructor) and an LLM provider of your choice (Ollama, OpenAI, or Gemini).
 
-> **Lite Edition** — no authentication, no multi-tenancy. One user, one instance, zero config.
+> **Lite Edition** — single instance, self-deployed, with multi-user support (JWT auth, admin dashboard, per-user API keys and usage tracking).
 
 ## Prerequisites
 
@@ -18,12 +18,14 @@ Upload a document (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a v
 ```bash
 docker compose up -d --build
 docker compose exec app python -m alembic upgrade head
+docker compose exec app python -m app.seed --email admin@example.com --password <password> --role admin
 ```
 
 Open **http://localhost:8080** in your browser:
-1. Upload a document (PDF, DOCX, TXT, CSV, or image)
-2. Build a Pydantic schema using the visual field builder (or write raw code)
-3. Click **Extract** — result renders as a table via HTMX polling
+1. Log in with the seeded admin account (or register if `ALLOW_REGISTRATION=true`)
+2. Upload one or more documents (PDF, DOCX, TXT, CSV, or image)
+3. Build a Pydantic schema using the visual field builder (or write raw code)
+4. Click **Extract** — single files go to the result page; multiple files form a batch with per-file progress and results
 
 Or use the API directly:
 
@@ -58,9 +60,15 @@ curl -H "Authorization: Bearer $SMD_TOKEN" http://localhost:8080/upload -F "file
 | Feature | Description |
 |---|---|
 | **Document parsing** | PDF (text + scanned via OCR), DOCX, TXT, CSV, images (JPEG/PNG/WebP) |
+| **Bulk processing** | Upload 1–50 files at once — batch progress page, per-file results, combined JSON download, retry failed, cancel pending |
 | **Visual field builder** | Drag-and-drop schema builder with nested model support — no Python required |
 | **Raw code mode** | Write Pydantic v2 schemas directly in the Code tab |
 | **LLM extraction** | Powered by Instructor + Ollama, OpenAI, or Gemini — structured output from unstructured docs |
+| **Multi-user auth** | Register/login with JWT sessions, per-user data isolation, `ALLOW_REGISTRATION` toggle |
+| **Admin interface** | User management (enable/disable, promote/demote, delete), system-wide usage view |
+| **Bring Your Own API Key** | Users can register their own provider keys alongside admin-managed global connections |
+| **API tokens** | Generate scoped tokens (`smd_...`) for programmatic access, with hashed storage and revocation |
+| **Usage & cost tracking** | Per-user and system-wide token/cost statistics with model pricing table |
 | **Schema templates** | Save and reuse schemas; load from a dropdown |
 | **Real-time updates** | WebSocket and HTMX polling for job status |
 | **API-first** | Full REST API + WebSocket for programmatic access |
