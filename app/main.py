@@ -847,6 +847,14 @@ async def ui_batches_page(user: User = Depends(get_current_user)):
     return FileResponse("app/templates/batches.html")
 
 
+@app.get("/ui/batches/{batch_id}")
+async def ui_batch_page(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    batch = await db.get(Batch, batch_id)
+    if not batch or batch.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return FileResponse("app/templates/batch.html")
+
+
 @app.post("/ui/extract")
 async def ui_extract(
     background_tasks: BackgroundTasks,
