@@ -95,3 +95,18 @@ async def test_i18n_js_served(client):
     response = await client.get("/i18n.js")
     assert response.status_code == 200
     assert "text/javascript" in response.headers["content-type"]
+
+
+def test_all_backend_strings_are_translated():
+    import re
+    from pathlib import Path
+
+    from app.i18n import DICTS
+
+    keys = set()
+    for name in ("app/main.py", "app/auth.py", "app/i18n.py"):
+        src = Path(name).read_text()
+        for m in re.findall(r'(?<![a-zA-Z])(?:t_req|t)\("([^"]+)"', src):
+            keys.add(m)
+    assert keys <= set(DICTS["en"].keys())
+    assert keys <= set(DICTS["es"].keys())
