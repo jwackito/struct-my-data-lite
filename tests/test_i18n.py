@@ -20,3 +20,9 @@ def test_t_en_fallback_for_missing_es_key(monkeypatch):
 
 def test_t_interpolation():
     assert t("Hello {name}", "es", name="Mundo") == "Hola Mundo"
+
+
+def test_es_covers_all_en_keys():
+    from app.i18n import DICTS
+
+    assert set(DICTS["es"].keys()) == set(DICTS["en"].keys())
