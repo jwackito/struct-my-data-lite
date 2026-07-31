@@ -1,4 +1,5 @@
 import json
+from contextvars import ContextVar
 from pathlib import Path
 
 SUPPORTED_LANGS = ("en", "es")
@@ -10,6 +11,8 @@ DICTS = {}
 for _lang in SUPPORTED_LANGS:
     with open(_DIR / f"{_lang}.json", encoding="utf-8") as _f:
         DICTS[_lang] = json.load(_f)
+
+current_lang = ContextVar("current_lang", default=_DEFAULT_LANG)
 
 
 def t(key, lang="en", **kwargs):
@@ -40,3 +43,7 @@ def resolve_lang(request):
         return lang
     lang = _normalize(request.headers.get("accept-language"))
     return lang or _DEFAULT_LANG
+
+
+def t_req(key, **kwargs):
+    return t(key, current_lang.get(), **kwargs)

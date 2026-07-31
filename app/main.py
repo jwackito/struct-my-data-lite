@@ -19,7 +19,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.i18n import DICTS, SUPPORTED_LANGS, resolve_lang, t
+from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.pricing import calculate_cost
 from app.processing import process_job
@@ -48,7 +48,11 @@ app = FastAPI(title="Struct My Data", lifespan=lifespan)
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())
     request.state.request_id = request_id
-    response = await call_next(request)
+    lang_token = current_lang.set(resolve_lang(request))
+    try:
+        response = await call_next(request)
+    finally:
+        current_lang.reset(lang_token)
     response.headers["X-Request-ID"] = request_id
     return response
 
@@ -58,7 +62,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", "unknown")
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "request_id": request_id},
+        content={"detail": t_req("Internal server error"), "request_id": request_id},
     )
 
 
@@ -139,7 +143,7 @@ async def login_page():
 @app.get("/register")
 async def register_page():
     if not settings.allow_registration:
-        return HTMLResponse('<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>Registration is closed</h1><p><a href="/login">Back to login</a></p></body></html>', status_code=403)
+        return HTMLResponse(f'<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>{t_req("Registration is closed")}</h1><p><a href="/login">{t_req("Back to login")}</a></p></body></html>', status_code=403)
     return FileResponse("app/templates/register.html")
 
 

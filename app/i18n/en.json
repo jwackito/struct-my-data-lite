@@ -189,5 +189,8 @@
   "Delete this schema?": "Delete this schema?",
   "Estimated cost ${cost} for {count} {noun} with {model}. Continue?": "Estimated cost ${cost} for {count} {noun} with {model}. Continue?",
   "document": "document",
-  "documents": "documents"
+  "documents": "documents",
+  "Internal server error": "Internal server error",
+  "Registration is closed": "Registration is closed",
+  "Back to login": "Back to login"
 }

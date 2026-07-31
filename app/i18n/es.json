@@ -189,5 +189,8 @@
   "Delete this schema?": "¿Eliminar este esquema?",
   "Estimated cost ${cost} for {count} {noun} with {model}. Continue?": "Costo estimado ${cost} para {count} {noun} con {model}. ¿Continuar?",
   "document": "documento",
-  "documents": "documentos"
+  "documents": "documentos",
+  "Internal server error": "Error interno del servidor",
+  "Registration is closed": "El registro está cerrado",
+  "Back to login": "Volver al inicio de sesión"
 }
