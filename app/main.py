@@ -20,7 +20,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.models import ApiToken, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
+from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.pricing import calculate_cost
 from app.processing import process_job
 from sqlalchemy import cast, Date
