@@ -903,6 +903,72 @@ async def ui_extract(
     return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
 
 
+@app.post("/ui/batch-extract")
+async def ui_batch_extract(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile],
+    pydantic_schema: str = Form(..., max_length=10000),
+    model_id: str = Form(""),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if len(files) > settings.max_batch_size:
+        return HTMLResponse(f'<div style="color:red">Batch exceeds max size of {settings.max_batch_size}</div>')
+    if len(files) < 2:
+        return HTMLResponse('<div style="color:red">Select at least 2 files for batch processing</div>')
+
+    try:
+        compile(pydantic_schema, "<schema>", "exec")
+    except SyntaxError as e:
+        return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
+
+    batch = Batch(user_id=user.id, name=f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    db.add(batch)
+    await db.commit()
+    await db.refresh(batch)
+
+    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    job_ids = []
+    for file in files:
+        content = await file.read()
+        if len(content) > settings.max_upload_size:
+            continue
+        content_hash = hashlib.sha256(content).hexdigest()
+        result = await db.execute(select(Document).where(Document.content_hash == content_hash))
+        doc = result.scalar_one_or_none()
+        if not doc:
+            storage_path = save_file(file.filename or "unnamed", content)
+            doc = Document(
+                user_id=user.id,
+                filename=file.filename or "unnamed",
+                content_type=file.content_type or "application/octet-stream",
+                file_size=len(content),
+                storage_path=storage_path,
+                content_hash=content_hash,
+            )
+            db.add(doc)
+            await db.flush()
+        job = ExtractionJob(
+            user_id=user.id,
+            batch_id=batch.id,
+            document_id=doc.id,
+            pydantic_schema=pydantic_schema,
+            upload_duration_ms=0,
+            connection_name=connection_name,
+            provider_type=provider_type,
+            model_name=model_name,
+        )
+        db.add(job)
+        await db.flush()
+        job_ids.append(job.id)
+    await db.commit()
+
+    for job_id in job_ids:
+        background_tasks.add_task(process_job, job_id)
+
+    return HTMLResponse(f'<div hx-redirect="/ui/batches/{batch.id}">Batch started</div>')
+
+
 def _render_output(data):
     return f"<pre>{json.dumps(data, indent=2, ensure_ascii=False)}</pre>"
 
