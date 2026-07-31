@@ -225,18 +225,18 @@
       if (u.role === 'admin') {
         IS_ADMIN = true;
         KEYS_ENDPOINT = '/providers/connections';
-        document.getElementById('section-title').textContent = 'Global Connections';
+        document.getElementById('section-title').textContent = window.t('Global Connections');
       } else {
-        document.getElementById('section-title').textContent = 'My API Keys';
+        document.getElementById('section-title').textContent = window.t('My API Keys');
       }
       loadConnections();
     }).catch(function() {
-      document.getElementById('connections').innerHTML = '<div style="color:red;padding:1rem">Not authenticated</div>';
+      document.getElementById('connections').innerHTML = '<div style="color:red;padding:1rem">' + window.t('Not authenticated') + '</div>';
     });
 
     function loadConnections() {
       var el = document.getElementById("connections");
-      el.innerHTML = '<div style="padding:1rem;text-align:center;color:#9ca3af">Loading...</div>';
+      el.innerHTML = '<div style="padding:1rem;text-align:center;color:#9ca3af">' + window.t('Loading...') + '</div>';
       fetch(KEYS_ENDPOINT)
         .then(function (r) { return r.json(); })
         .then(function (data) {
@@ -252,9 +252,9 @@
       var isDefault = c.name === "ollama";
 
       var h2 = document.createElement("h2");
-      h2.innerHTML = (c.name || "?") + ' <span class="badge' + (isDefault ? " default" : "") + '">' + (isDefault ? "default" : c.provider) + "</span>";
+      h2.innerHTML = (c.name || "?") + ' <span class="badge' + (isDefault ? " default" : "") + '">' + (isDefault ? window.t("default") : c.provider) + "</span>";
       if (c.available !== undefined) {
-        h2.innerHTML += ' <span class="badge ' + (c.available ? "online" : "offline") + '">' + (c.available ? "online" : "offline") + "</span>";
+        h2.innerHTML += ' <span class="badge ' + (c.available ? "online" : "offline") + '">' + window.t(c.available ? "online" : "offline") + "</span>";
       }
       card.appendChild(h2);
 
@@ -265,7 +265,7 @@
         var grp = document.createElement("div");
         grp.className = "field-group";
         var label = document.createElement("label");
-        label.textContent = f.label + " (" + f.key + ")";
+        label.textContent = window.t(f.label) + " (" + f.key + ")";
         grp.appendChild(label);
 
         var inp = document.createElement("input");
@@ -288,19 +288,19 @@
       if (!isDefault) {
         var saveBtn = document.createElement("button");
         saveBtn.className = "btn-primary";
-        saveBtn.textContent = "Save & Test";
+        saveBtn.textContent = window.t("Save & Test");
         saveBtn.onclick = function () { saveConnection(c.name, c.provider, card); };
         actions.appendChild(saveBtn);
 
         var testBtn = document.createElement("button");
         testBtn.className = "btn-secondary";
-        testBtn.textContent = "Test";
+        testBtn.textContent = window.t("Test");
         testBtn.onclick = function () { testConnection(c.name, c.provider, card); };
         actions.appendChild(testBtn);
 
         var delBtn = document.createElement("button");
         delBtn.className = "btn-danger";
-        delBtn.textContent = "Delete";
+        delBtn.textContent = window.t("Delete");
         delBtn.onclick = function () { deleteConnection(c.name, card); };
         actions.appendChild(delBtn);
       }
@@ -368,19 +368,19 @@
         body: JSON.stringify(data),
       }).then(function (r) {
         saveBtn.disabled = false;
-        saveBtn.textContent = "Save & Test";
+        saveBtn.textContent = window.t("Save & Test");
         if (r.ok) {
-          showMsg(card, "Saved and tested successfully", false);
+          showMsg(card, window.t("Saved and tested successfully"), false);
           loadConnections();
         } else {
           r.json().then(function (e) {
-            showMsg(card, e.detail || "Save failed", true);
+            showMsg(card, window.t(e.detail) || window.t("Save failed"), true);
           });
         }
       }).catch(function () {
         saveBtn.disabled = false;
-        saveBtn.textContent = "Save & Test";
-        showMsg(card, "Network error", true);
+        saveBtn.textContent = window.t("Save & Test");
+        showMsg(card, window.t("Network error"), true);
       });
     }
 
@@ -401,21 +401,21 @@
         body: JSON.stringify(data),
       }).then(function (r) { return r.json(); }).then(function (res) {
         testBtn.disabled = false;
-        testBtn.textContent = "Test";
+        testBtn.textContent = window.t("Test");
         if (res.ok) {
-          showMsg(card, "Connected! Models: " + (res.models || []).join(", "), false);
+          showMsg(card, window.t("Connected! Models: {models}", {models: (res.models || []).join(", ")}), false);
         } else {
-          showMsg(card, "Connection failed: " + (res.error || "unknown"), true);
+          showMsg(card, window.t("Connection failed: {error}", {error: res.error || window.t("unknown")}), true);
         }
       }).catch(function () {
         testBtn.disabled = false;
-        testBtn.textContent = "Test";
-        showMsg(card, "Network error", true);
+        testBtn.textContent = window.t("Test");
+        showMsg(card, window.t("Network error"), true);
       });
     }
 
     function deleteConnection(name, card) {
-      if (!confirm("Delete connection \"" + name + "\"?")) return;
+      if (!confirm(window.t('Delete connection "{name}"?', {name: name}))) return;
 
       var delBtn = card.querySelector(".btn-danger");
       delBtn.disabled = true;
@@ -426,9 +426,9 @@
           if (r.ok) {
             card.remove();
           } else {
-            r.json().then(function (e) { showMsg(card, e.detail || "Delete failed", true); });
+            r.json().then(function (e) { showMsg(card, window.t(e.detail) || window.t("Delete failed"), true); });
             delBtn.disabled = false;
-            delBtn.textContent = "Delete";
+            delBtn.textContent = window.t("Delete");
           }
         });
     }
@@ -454,7 +454,7 @@
         var grp = document.createElement("div");
         grp.className = "field-group";
         var label = document.createElement("label");
-        label.textContent = f.label;
+        label.textContent = window.t(f.label);
         grp.appendChild(label);
         var inp = document.createElement("input");
         inp.type = f.secret ? "password" : "text";
@@ -470,8 +470,8 @@
     function saveNewConnection() {
       var name = document.getElementById("new-name").value.trim();
       var provider = document.getElementById("new-provider").value;
-      if (!name) { showNewMsg("Connection name is required", true); return; }
-      if (name === "ollama") { showNewMsg("Cannot use 'ollama' as a connection name", true); return; }
+      if (!name) { showNewMsg(window.t("Connection name is required"), true); return; }
+      if (name === "ollama") { showNewMsg(window.t("Cannot use 'ollama' as a connection name"), true); return; }
 
       var config = {};
       var secrets = {};
@@ -487,7 +487,7 @@
 
       var btn = document.querySelector("#add-modal .btn-primary");
       btn.disabled = true;
-      btn.textContent = "Saving...";
+      btn.textContent = window.t("Saving...");
 
       fetch(KEYS_ENDPOINT + "/" + encodeURIComponent(name), {
         method: "PUT",
@@ -495,17 +495,17 @@
         body: JSON.stringify({ provider: provider, config: config, secrets: secrets }),
       }).then(function (r) {
         btn.disabled = false;
-        btn.textContent = "Save & Test";
+        btn.textContent = window.t("Save & Test");
         if (r.ok) {
           closeAddModal();
           loadConnections();
         } else {
-          r.json().then(function (e) { showNewMsg(e.detail || "Save failed", true); });
+          r.json().then(function (e) { showNewMsg(window.t(e.detail) || window.t("Save failed"), true); });
         }
       }).catch(function () {
         btn.disabled = false;
-        btn.textContent = "Save & Test";
-        showNewMsg("Network error", true);
+        btn.textContent = window.t("Save & Test");
+        showNewMsg(window.t("Network error"), true);
       });
     }
 
