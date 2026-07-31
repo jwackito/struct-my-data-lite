@@ -855,67 +855,6 @@ async def ui_batch_page(batch_id: uuid.UUID, user: User = Depends(get_current_us
     return FileResponse("app/templates/batch.html")
 
 
-@app.post("/ui/extract")
-async def ui_extract(
-    background_tasks: BackgroundTasks,
-    file: UploadFile,
-    pydantic_schema: str = Form(..., max_length=10000),
-    model_id: str = Form(""),
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    t0 = time.monotonic_ns()
-    content = await file.read()
-    if len(content) > settings.max_upload_size:
-        return HTMLResponse('<div style="color:red">File exceeds maximum upload size</div>')
-
-    content_hash = hashlib.sha256(content).hexdigest()
-
-    stmt = select(Document).where(Document.content_hash == content_hash)
-    result = await db.execute(stmt)
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        storage_path = save_file(file.filename or "unnamed", content)
-        doc = Document(
-            user_id=user.id,
-            filename=file.filename or "unnamed",
-            content_type=file.content_type or "application/octet-stream",
-            file_size=len(content),
-            storage_path=storage_path,
-            content_hash=content_hash,
-        )
-        db.add(doc)
-        await db.commit()
-        await db.refresh(doc)
-
-    upload_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
-
-    try:
-        compile(pydantic_schema, "<schema>", "exec")
-    except SyntaxError as e:
-        return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
-
-    provider_type, connection_name, model_name = _parse_model_id(model_id)
-    job = ExtractionJob(
-        user_id=user.id,
-        document_id=doc.id,
-        pydantic_schema=pydantic_schema,
-        upload_duration_ms=upload_duration_ms,
-        connection_name=connection_name,
-        provider_type=provider_type,
-        model_name=model_name,
-    )
-    db.add(job)
-    await db.commit()
-    await db.refresh(job)
-
-    if background_tasks:
-        background_tasks.add_task(process_job, job.id)
-
-    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
-
-
 @app.post("/ui/batch-extract")
 async def ui_batch_extract(
     background_tasks: BackgroundTasks,
