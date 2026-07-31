@@ -248,5 +248,6 @@
   "The AI model used for extraction": "El modelo de IA usado para la extracción",
   "Not authenticated": "No autenticado",
   "Invalid or expired token": "Token inválido o expirado",
-  "Admin access required": "Se requiere acceso de administrador"
+  "Admin access required": "Se requiere acceso de administrador",
+  "Language not found": "Idioma no encontrado"
 }

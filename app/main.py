@@ -160,7 +160,7 @@ async def i18n_js():
 @app.get("/i18n/{lang}.json")
 async def i18n_json(lang: str):
     if lang not in SUPPORTED_LANGS:
-        raise HTTPException(status_code=404, detail="Language not found")
+        raise HTTPException(status_code=404, detail=t_req("Language not found"))
     return JSONResponse(DICTS[lang])
 
 
