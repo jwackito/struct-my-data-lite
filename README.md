@@ -77,26 +77,45 @@ curl -H "Authorization: Bearer $SMD_TOKEN" http://localhost:8080/upload -F "file
 
 ```
 ── API ──────────────────────────────────────────
-POST /upload                    →  Document stored (local fs + DB)
-POST /extract                   →  ExtractionJob created → BackgroundTask:
+POST /auth/register            →  Create account (JWT cookie + token)
+POST /auth/login               →  Authenticate
+POST /auth/logout              →  Clear session
+POST /upload                   →  Document stored (local fs + DB)
+POST /extract                  →  ExtractionJob created → BackgroundTask:
                                      1. Parse document (PDF/DOCX/TXT/CSV/image)
-                                     2. Send content + schema to LLM (thread pool)
+                                     2. Send content + schema to LLM (thread pool, 2 concurrent)
                                      3. Store structured result
-GET  /jobs/{id}                 →  Poll job status
-GET  /models                    →  List available LLM models
-GET  /schemas                   →  List saved schema templates
-POST /schemas/parse             →  Parse schema code into builder fields
-GET  /providers/connections     →  List provider connections
-PUT  /providers/connections/{n} →  Create/update connection
-WS   /ws/jobs/{id}              →  Real-time status push
+GET  /jobs/{id}                →  Poll job status
+GET  /api/batches              →  List batches
+POST /api/batches              →  Create batch from document IDs
+GET  /api/batches/{id}         →  Batch progress (per-job status)
+POST /api/batches/{id}/retry-failed →  Re-run failed jobs
+POST /api/batches/{id}/cancel  →  Cancel pending jobs
+GET  /api/batches/{id}/results →  Download all results as one JSON
+GET  /api/usage                →  User usage stats (tokens, cost)
+GET  /admin/usage/data         →  System-wide usage (admin)
+GET  /admin/users/data         →  User management list (admin)
+GET  /models                   →  List available LLM models
+GET  /schemas                  →  List saved schema templates
+POST /schemas/parse            →  Parse schema code into builder fields
+GET  /api/keys                 →  User's own API keys (BYOAK)
+GET  /api/tokens               →  User's API tokens
+WS   /ws/jobs/{id}             →  Real-time status push
 
 ── Web UI (HTMX) ─────────────────────────────────
 GET  /              →  Upload form, field builder, schema editor, template dropdown
-GET  /ui/settings   →  Provider connection management
+GET  /login         →  Login page
+GET  /register      →  Registration page
+GET  /usage         →  Usage stats (own)
+GET  /ui/batches    →  Batch list
+GET  /ui/batches/{id} →  Batch progress + per-file results
 GET  /ui/jobs       →  Job history with pagination
-POST /ui/extract    →  Upload + job creation in one call
-GET  /ui/jobs/{id}  →  HTML fragment (spinner / table / error)
+POST /ui/batch-extract →  Upload 1–50 files + schema + model → batch
+GET  /ui/jobs/{id}/result →  Dedicated result page (JSON + download)
 POST /ui/jobs/{id}/retry  →  Retry a failed job
+GET  /admin         →  Admin dashboard
+GET  /admin/users   →  Admin user management page
+GET  /admin/usage   →  System-wide usage page
 ```
 
 Scanned PDFs (no extractable text on any page) are detected per-page and
@@ -124,16 +143,30 @@ the provider limitation and future work.
 | Method | Path | Description |
 |---|---|---|
 | GET | `/` | Web UI — upload form, field builder, schema editor, template dropdown |
-| GET | `/ui/settings` | Settings page — manage provider connections |
-| GET | `/ui/jobs` | Job history with pagination |
-| GET | `/ui/jobs/{id}` | Job status as HTML fragment (for HTMX polling) |
-| POST | `/ui/jobs/{id}/retry` | Retry a failed job |
-| POST | `/ui/extract` | Upload + job creation (multipart form, returns HTML) |
+| GET | `/login` | Login page |
+| GET | `/register` | Registration page (hidden when `ALLOW_REGISTRATION=false`) |
+| POST | `/auth/register` | Create account, returns JWT + sets cookie |
+| POST | `/auth/login` | Authenticate, returns JWT + sets cookie |
+| POST | `/auth/logout` | Clear session |
+| GET | `/auth/me` | Current user info |
 | GET | `/health` | Health check |
 | POST | `/upload` | Upload a document (10 MB max) |
 | POST | `/extract` | Create an extraction job (JSON body) |
 | GET | `/jobs/{id}` | Poll job status and result (JSON) |
 | GET | `/models` | List available LLM models across all connections |
+| POST | `/api/batches/estimate` | Preflight cost estimate for file sizes + model |
+| POST | `/api/batches` | Create a batch from document IDs |
+| GET | `/api/batches` | List user's batches (paginated) |
+| GET | `/api/batches/{id}` | Batch progress with per-job status |
+| POST | `/api/batches/{id}/retry-failed` | Re-run failed jobs in a batch |
+| POST | `/api/batches/{id}/cancel` | Cancel pending jobs |
+| GET | `/api/batches/{id}/results` | Download all batch results as one JSON |
+| GET | `/api/usage` | User's own usage stats (tokens, cost, breakdown) |
+| GET | `/admin/usage/data` | System-wide usage with per-user breakdown (admin) |
+| GET | `/admin/users/data` | User list with job counts (admin) |
+| POST | `/admin/users/{id}/toggle-status` | Enable/disable a user (admin) |
+| POST | `/admin/users/{id}/set-role` | Promote/demote a user (admin) |
+| DELETE | `/admin/users/{id}` | Soft-delete a user (admin) |
 | GET | `/schemas` | List saved schemas |
 | POST | `/schemas` | Create a saved schema |
 | GET | `/schemas/{id}` | Get a single schema |
@@ -142,11 +175,29 @@ the provider limitation and future work.
 | GET | `/schemas/{id}/export` | Download schema as `.py` file |
 | POST | `/schemas/import` | Upload `.py` or `.json` file to create schema |
 | POST | `/schemas/parse` | Parse Pydantic code into builder fields |
-| GET | `/providers/connections` | List provider connections |
-| PUT | `/providers/connections/{name}` | Create or update a connection |
-| DELETE | `/providers/connections/{name}` | Delete a connection |
-| POST | `/providers/connections/{name}/test` | Test a connection |
+| GET | `/api/keys` | List user's personal provider keys |
+| POST | `/api/keys` | Create a personal provider key |
+| PUT | `/api/keys/{name}` | Update a personal provider key |
+| DELETE | `/api/keys/{name}` | Delete a personal provider key |
+| GET | `/api/tokens` | List user's API tokens |
+| POST | `/api/tokens` | Generate an API token (shown once) |
+| DELETE | `/api/tokens/{id}` | Revoke an API token |
+| GET | `/providers/connections` | List global connections (admin) |
+| PUT | `/providers/connections/{name}` | Create/update a global connection (admin) |
+| DELETE | `/providers/connections/{name}` | Delete a global connection (admin) |
+| POST | `/providers/connections/{name}/test` | Test a connection (admin) |
 | WS | `/ws/jobs/{id}` | Real-time job status updates |
+
+## Bulk Processing
+
+Selecting multiple files on the extraction page creates a **batch** — one `ExtractionJob` per file, all sharing the same schema and model.
+
+- **Batch page** (`/ui/batches/{id}`): progress bar, per-file status, links to individual result pages, combined JSON download, retry-failed and cancel buttons
+- **Cost estimate**: before submitting, the UI shows an estimated cost and asks for confirmation when the estimated cost is greater than zero
+- **Concurrency**: at most 2 extraction jobs run at once (`BATCH_CONCURRENCY`), protecting Ollama and API rate limits; the rest queue automatically
+- **Limits**: up to 50 files per batch (`MAX_BATCH_SIZE`), 10 MB per file
+- **Single files**: uploading one file also creates a batch of one, and the batch page auto-redirects to the job result page when done
+- **History**: batch jobs also appear in the job history tab; the batch list is at `/ui/batches`
 
 ## Environment Variables
 
