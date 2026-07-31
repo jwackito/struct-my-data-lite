@@ -927,8 +927,6 @@ async def ui_batch_extract(
 ):
     if len(file) > settings.max_batch_size:
         return HTMLResponse(f'<div style="color:red">Batch exceeds max size of {settings.max_batch_size}</div>')
-    if len(file) < 2:
-        return HTMLResponse('<div style="color:red">Select at least 2 files for batch processing</div>')
 
     try:
         compile(pydantic_schema, "<schema>", "exec")
