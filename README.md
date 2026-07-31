@@ -263,15 +263,21 @@ OLLAMA_HOST=0.0.0.0:11434 ollama serve
 ## Production
 
 ```bash
+cp .env.example .env        # fill in real values (never commit .env)
+mkdir caddy                 # place your Caddyfile (domains, TLS) here
 docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec app python -m alembic upgrade head
 ```
 
 Differences from development:
 - Multi-stage Dockerfile — smaller image, no build tools in runtime
-- No volume mounts — code is baked into the image
+- No volume mounts — code is baked into the image (migrations included)
 - `restart: unless-stopped` — auto-restart on failure or host reboot
 - No `--reload` flag
-- Healthchecks on both app and database services
+- Healthchecks on app, database, and Caddy services
+- Secrets and config come from `.env` (`secrets.env` is deprecated)
+- Caddy terminates TLS in front of the app; app and database are not exposed on the host
+- Uploaded documents persist in the `storage` volume
 
 See `docker-compose.prod.yml` and `.dockerignore`.
 
