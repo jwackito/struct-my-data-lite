@@ -70,6 +70,7 @@ curl -H "Authorization: Bearer $SMD_TOKEN" http://localhost:8080/upload -F "file
 | **API tokens** | Generate scoped tokens (`smd_...`) for programmatic access, with hashed storage and revocation |
 | **Usage & cost tracking** | Per-user and system-wide token/cost statistics with model pricing table |
 | **Schema templates** | Save and reuse schemas; load from a dropdown |
+| **i18n** | English and Spanish UI — EN/ES switcher on every page, stored in a `lang` cookie; API errors and HTMX fragments localize to match |
 | **Real-time updates** | WebSocket and HTMX polling for job status |
 | **API-first** | Full REST API + WebSocket for programmatic access |
 
@@ -198,6 +199,14 @@ Selecting multiple files on the extraction page creates a **batch** — one `Ext
 - **Limits**: up to 50 files per batch (`MAX_BATCH_SIZE`), 10 MB per file
 - **Single files**: uploading one file also creates a batch of one, and the batch page auto-redirects to the job result page when done
 - **History**: batch jobs also appear in the job history tab; the batch list is at `/ui/batches`
+
+## i18n
+
+The UI ships in English and Spanish. A language switcher (EN/ES) appears on every page; the choice is stored in a `lang` cookie.
+
+- **Client side**: `app/static/i18n.js` translates `data-i18n` elements on load and after every HTMX swap; inline scripts use `window.t()`. No build step.
+- **Server side**: `app/i18n.py` reads the same JSON dictionaries (`app/i18n/en.json`, `app/i18n/es.json` — keys are the English strings themselves). A per-request language context makes API error messages and server-rendered HTMX fragments (job stats, history, batch notices) follow the visitor's language.
+- **Selection order**: `lang` cookie → `Accept-Language` header → English. Unknown languages fall back to English.
 
 ## Environment Variables
 
