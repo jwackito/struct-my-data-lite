@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from fastapi.encoders import jsonable_encoder
 
 from app.connections import get_connection
+from app.config import settings
 from app.database import async_session
 from app.extraction import ExtractionService
 from app.models import Document, ExtractionJob, JobStatus, User
@@ -15,6 +16,8 @@ from app.providers import get_provider
 from app.ws import manager
 
 logger = logging.getLogger(__name__)
+
+_process_semaphore = asyncio.Semaphore(settings.batch_concurrency)
 
 
 def _job_payload(job: ExtractionJob) -> dict:
@@ -35,7 +38,7 @@ def _job_payload(job: ExtractionJob) -> dict:
     }
 
 
-async def process_job(job_id: uuid.UUID):
+async def _run_job(job_id: uuid.UUID):
     async with async_session() as db:
         job = await db.get(ExtractionJob, job_id)
         if not job:
