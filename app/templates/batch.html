@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Batch — Struct My Data</title>
+  <style>
+    body { max-width: 860px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    .progress { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .progress-bar { flex: 1; height: 10px; background: #e5e7eb; border-radius: 5px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #2563eb; border-radius: 5px; transition: width 0.5s; }
+    .progress-text { font-size: 0.85rem; color: #6b7280; white-space: nowrap; }
+    .badge { font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
+    .badge.completed { background: #d1fae5; color: #065f46; }
+    .badge.failed { background: #fee2e2; color: #991b1b; }
+    .badge.running { background: #dbeafe; color: #1e40af; }
+    .badge.pending { background: #e5e7eb; color: #374151; }
+    .actions { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .btn { padding: 0.5rem 0.9rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-secondary { background: #6b7280; color: #fff; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-success { background: #059669; color: #fff; }
+    .btn:hover { opacity: 0.85; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    td pre { margin: 0; font-size: 0.75rem; white-space: pre-wrap; max-width: 300px; }
+    .view-link { color: #2563eb; text-decoration: none; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] .progress-bar { background: #404040; }
+    [data-theme="dark"] .progress-text { color: #9ca3af; }
+    [data-theme="dark"] .badge.pending { background: #404040; color: #9ca3af; }
+    [data-theme="dark"] .badge.completed { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .badge.failed { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .badge.running { background: #1e3a5f; color: #93c5fd; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+    [data-theme="dark"] .view-link { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:1rem;align-items:center">
+      <a href="/">&larr; Extraction</a>
+      <a href="/ui/batches">Batches</a>
+      <a href="/usage">Usage</a>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+    </div>
+  </div>
+  <h1 id="batch-name">Batch</h1>
+  <div class="progress">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-text" id="progress-text">0/0</div>
+  </div>
+  <div class="actions">
+    <a href="#" class="btn btn-success" id="download-btn" style="display:none">Download Results</a>
+    <button class="btn btn-secondary" id="retry-btn" style="display:none" onclick="retryFailed()">Retry Failed</button>
+    <button class="btn btn-danger" id="cancel-btn" style="display:none" onclick="cancelBatch()">Cancel</button>
+  </div>
+  <div id="jobs-table"><p>Loading...</p></div>
+  <script>
+    var batchId = window.location.pathname.split('/').pop();
+    var pollTimer;
+
+    function loadBatch() {
+      fetch('/api/batches/' + batchId).then(function(r) { return r.json(); }).then(function(data) {
+        document.getElementById('batch-name').textContent = data.name || 'Batch';
+
+        var done = data.completed + data.failed;
+        var pct = data.total > 0 ? Math.round(done / data.total * 100) : 0;
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-text').textContent = done + '/' + data.total + ' (' + data.completed + ' ok, ' + data.failed + ' failed)';
+
+        var allDone = done >= data.total;
+        document.getElementById('download-btn').style.display = allDone && data.completed > 0 ? 'inline-block' : 'none';
+        document.getElementById('retry-btn').style.display = data.failed > 0 && !data.running ? 'inline-block' : 'none';
+        document.getElementById('cancel-btn').style.display = (data.pending > 0 || data.running > 0) ? 'inline-block' : 'none';
+
+        document.getElementById('download-btn').href = '/api/batches/' + batchId + '/results';
+
+        var html = '<table><thead><tr><th>File</th><th>Status</th><th>Model</th><th>Error</th><th></th></tr></thead><tbody>';
+        data.jobs.forEach(function(j) {
+          var badge = '<span class="badge ' + j.status + '">' + j.status + '</span>';
+          var err = j.error_message ? '<pre>' + j.error_message + '</pre>' : '';
+          var view = j.status === 'completed'
+            ? '<a class="view-link" href="/ui/jobs/' + j.id + '/result">View</a>'
+            : '';
+          html += '<tr><td>' + j.filename + '</td><td>' + badge + '</td><td>' + (j.model_name || '-') + '</td><td>' + err + '</td><td>' + view + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('jobs-table').innerHTML = html;
+
+        if (!allDone) {
+          clearTimeout(pollTimer);
+          pollTimer = setTimeout(loadBatch, 2000);
+        }
+      });
+    }
+
+    function retryFailed() {
+      fetch('/api/batches/' + batchId + '/retry-failed', { method: 'POST' }).then(function(r) {
+        if (r.ok) loadBatch();
+      });
+    }
+
+    function cancelBatch() {
+      if (!confirm('Cancel pending jobs? Running jobs will finish.')) return;
+      fetch('/api/batches/' + batchId + '/cancel', { method: 'POST' }).then(function(r) {
+        if (r.ok) loadBatch();
+      });
+    }
+
+    loadBatch();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
