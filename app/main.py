@@ -346,6 +346,39 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
     return {"batch_id": str(batch.id), "job_ids": [str(j) for j in job_ids], "name": batch.name}
 
 
+@app.get("/api/batches")
+async def api_list_batches(offset: int = 0, limit: int = 20, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import func as sa_func
+
+    total_q = select(sa_func.count()).select_from(Batch).where(Batch.user_id == user.id)
+    total = (await db.execute(total_q)).scalar()
+
+    result = await db.execute(
+        select(Batch).where(Batch.user_id == user.id).order_by(Batch.created_at.desc()).offset(offset).limit(limit)
+    )
+    batches = result.scalars().all()
+
+    items = []
+    for b in batches:
+        counts = await db.execute(
+            select(ExtractionJob.status, sa_func.count()).where(ExtractionJob.batch_id == b.id).group_by(ExtractionJob.status)
+        )
+        status_counts = {st.value if hasattr(st, "value") else st: cnt for st, cnt in counts.all()}
+        items.append({
+            "id": str(b.id),
+            "name": b.name,
+            "created_at": b.created_at.isoformat(),
+            "completed_at": b.completed_at.isoformat() if b.completed_at else None,
+            "total": sum(status_counts.values()),
+            "completed": status_counts.get("completed", 0),
+            "failed": status_counts.get("failed", 0),
+            "running": status_counts.get("running", 0),
+            "pending": status_counts.get("pending", 0),
+        })
+
+    return {"batches": items, "total": total}
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
