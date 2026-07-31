@@ -296,6 +296,56 @@ async def api_batch_estimate(body: dict, user: User = Depends(get_current_user),
     }
 
 
+@app.post("/api/batches")
+async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    document_ids = body.get("document_ids", [])
+    pydantic_schema = body.get("pydantic_schema", "")
+    model_id = body.get("model_id", "")
+    name = (body.get("name") or "").strip() or f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+    if not document_ids:
+        raise HTTPException(status_code=422, detail="document_ids is required")
+    if len(document_ids) > settings.max_batch_size:
+        raise HTTPException(status_code=422, detail=f"Batch exceeds max size of {settings.max_batch_size}")
+    if not pydantic_schema:
+        raise HTTPException(status_code=422, detail="pydantic_schema is required")
+    try:
+        compile(pydantic_schema, "<schema>", "exec")
+    except SyntaxError as e:
+        raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
+
+    batch = Batch(user_id=user.id, name=name)
+    db.add(batch)
+    await db.commit()
+    await db.refresh(batch)
+
+    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    job_ids = []
+    for doc_id in document_ids:
+        doc = await db.get(Document, doc_id)
+        if not doc:
+            continue
+        job = ExtractionJob(
+            user_id=user.id,
+            batch_id=batch.id,
+            document_id=doc.id,
+            pydantic_schema=pydantic_schema,
+            upload_duration_ms=0,
+            connection_name=connection_name,
+            provider_type=provider_type,
+            model_name=model_name,
+        )
+        db.add(job)
+        await db.flush()
+        job_ids.append(job.id)
+    await db.commit()
+
+    for job_id in job_ids:
+        background_tasks.add_task(process_job, job_id)
+
+    return {"batch_id": str(batch.id), "job_ids": [str(j) for j in job_ids], "name": batch.name}
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
