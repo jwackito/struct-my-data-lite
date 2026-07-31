@@ -452,6 +452,31 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
     return {"ok": True, "retried": [str(j) for j in retried]}
 
 
+@app.post("/api/batches/{batch_id}/cancel")
+async def api_batch_cancel(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    batch = await db.get(Batch, batch_id)
+    if not batch or batch.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    result = await db.execute(
+        select(ExtractionJob).where(
+            ExtractionJob.batch_id == batch.id,
+            ExtractionJob.status.in_([JobStatus.pending, JobStatus.running]),
+        )
+    )
+    pending_jobs = result.scalars().all()
+
+    cancelled = []
+    for job in pending_jobs:
+        job.status = JobStatus.failed
+        job.error_message = "Cancelled by user"
+        job.completed_at = datetime.now()
+        cancelled.append(job.id)
+
+    await db.commit()
+    return {"ok": True, "cancelled": [str(j) for j in cancelled]}
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
