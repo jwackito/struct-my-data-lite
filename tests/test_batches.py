@@ -94,3 +94,35 @@ async def test_batch_retry_failed(async_client, db_session):
     assert progress.json()["jobs"][0]["status"] == "pending"
 
 
+@pytest.mark.asyncio
+async def test_batch_cancel_pending(async_client, db_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-cancel@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    from app.models import Batch, Document, ExtractionJob
+    batch = Batch(name="cancel-batch", user_id=reg.json()["user"]["id"])
+    db_session.add(batch)
+    await db_session.flush()
+
+    doc = Document(filename="c.txt", content_type="text/plain", file_size=10, storage_path="/tmp/c.txt")
+    db_session.add(doc)
+    await db_session.flush()
+
+    job = ExtractionJob(batch_id=batch.id, document_id=doc.id, user_id=reg.json()["user"]["id"],
+                        pydantic_schema="class X: pass", status="pending", model_name="qwen3.6:35b")
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.post(f"/api/batches/{batch.id}/cancel", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json()["cancelled"] == [str(job.id)]
+
+    progress = await async_client.get(f"/api/batches/{batch.id}", headers={"Authorization": f"Bearer {token}"})
+    assert progress.json()["jobs"][0]["status"] == "failed"
+    assert "Cancelled" in progress.json()["jobs"][0]["error_message"]
+
+
+
