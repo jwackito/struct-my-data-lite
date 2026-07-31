@@ -125,4 +125,38 @@ async def test_batch_cancel_pending(async_client, db_session):
     assert "Cancelled" in progress.json()["jobs"][0]["error_message"]
 
 
+@pytest.mark.asyncio
+async def test_batch_results_download(async_client, db_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-results@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    from app.models import Batch, Document, ExtractionJob
+    batch = Batch(name="results-batch", user_id=reg.json()["user"]["id"])
+    db_session.add(batch)
+    await db_session.flush()
+
+    doc = Document(filename="r.txt", content_type="text/plain", file_size=10, storage_path="/tmp/r.txt")
+    db_session.add(doc)
+    await db_session.flush()
+
+    job = ExtractionJob(batch_id=batch.id, document_id=doc.id, user_id=reg.json()["user"]["id"],
+                        pydantic_schema="class X: pass", status="completed",
+                        input_tokens=10, output_tokens=5, model_name="qwen3.6:35b",
+                        output_data={"name": "test"})
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get(f"/api/batches/{batch.id}/results", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["batch_id"] == str(batch.id)
+    assert len(data["results"]) == 1
+    assert data["results"][0]["filename"] == "r.txt"
+    assert data["results"][0]["output_data"] == {"name": "test"}
+
+
+
 
