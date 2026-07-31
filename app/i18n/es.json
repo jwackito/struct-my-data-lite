@@ -249,5 +249,6 @@
   "Not authenticated": "No autenticado",
   "Invalid or expired token": "Token inválido o expirado",
   "Admin access required": "Se requiere acceso de administrador",
-  "Language not found": "Idioma no encontrado"
+  "Language not found": "Idioma no encontrado",
+  "Job not found": "Trabajo no encontrado"
 }
