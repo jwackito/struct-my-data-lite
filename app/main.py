@@ -477,6 +477,40 @@ async def api_batch_cancel(batch_id: uuid.UUID, user: User = Depends(get_current
     return {"ok": True, "cancelled": [str(j) for j in cancelled]}
 
 
+@app.get("/api/batches/{batch_id}/results")
+async def api_batch_results(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    batch = await db.get(Batch, batch_id)
+    if not batch or batch.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    result = await db.execute(
+        select(ExtractionJob, Document.filename)
+        .join(Document, ExtractionJob.document_id == Document.id)
+        .where(ExtractionJob.batch_id == batch.id)
+        .order_by(ExtractionJob.created_at)
+    )
+    rows = result.all()
+
+    results = []
+    for job, filename in rows:
+        st = job.status.value if hasattr(job.status, "value") else job.status
+        results.append({
+            "job_id": str(job.id),
+            "filename": filename,
+            "status": st,
+            "output_data": job.output_data,
+            "error_message": job.error_message,
+            "model_name": job.model_name,
+        })
+
+    content = json.dumps({"batch_id": str(batch.id), "name": batch.name, "results": results}, indent=2, ensure_ascii=False)
+    return Response(
+        content=content,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="batch-{batch.id}.json"'},
+    )
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
