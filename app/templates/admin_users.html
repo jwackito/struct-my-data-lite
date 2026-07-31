@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Users — Admin — Struct My Data</title>
+  <title data-i18n="Users — Admin — Struct My Data">Users — Admin — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 860px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -45,19 +46,20 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Extraction</a>
-      <a href="/admin/usage">Usage</a>
-      <a href="/admin">Admin</a>
-      <a href="/admin/users" style="font-weight:600">Users</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/admin/usage" data-i18n="Usage">Usage</a>
+      <a href="/admin" data-i18n="Admin">Admin</a>
+      <a href="/admin/users" style="font-weight:600" data-i18n="Users">Users</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1>Users</h1>
-  <input type="text" id="search" placeholder="Search by email or name..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(function(){loadUsers(v)},300)">
-  <div id="users-table"><p>Loading...</p></div>
+  <h1 data-i18n="Users">Users</h1>
+  <input type="text" id="search" placeholder="Search by email or name..." data-i18n-ph="Search by email or name..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(function(){loadUsers(v)},300)">
+  <div id="users-table"><p data-i18n="Loading...">Loading...</p></div>
   <script>
     var t;
     var currentSearch = '';
@@ -67,20 +69,20 @@
     function loadUsers(search, offset) {
       currentSearch = (search !== undefined) ? search : currentSearch;
       currentOffset = (offset !== undefined) ? offset : currentOffset;
-      document.getElementById('users-table').innerHTML = '<p>Loading...</p>';
+      document.getElementById('users-table').innerHTML = '<p>' + window.t('Loading...') + '</p>';
 
       var url = '/admin/users/data?offset=' + currentOffset + '&limit=' + pageSize;
       if (currentSearch) url += '&search=' + encodeURIComponent(currentSearch);
 
       fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        var html = '<table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Status</th><th>Jobs</th><th>Registered</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<table><thead><tr><th>' + window.t('Email') + '</th><th>' + window.t('Name') + '</th><th>' + window.t('Role') + '</th><th>' + window.t('Status') + '</th><th>' + window.t('Jobs') + '</th><th>' + window.t('Registered') + '</th><th>' + window.t('Actions') + '</th></tr></thead><tbody>';
         data.users.forEach(function(u) {
-          var roleBadge = '<span class="badge ' + u.role + '">' + u.role + '</span>';
-          var statusBadge = u.is_active ? '<span class="badge active">active</span>' : '<span class="badge disabled">disabled</span>';
-          var toggleLabel = u.is_active ? 'Disable' : 'Enable';
+          var roleBadge = '<span class="badge ' + u.role + '">' + window.t(u.role) + '</span>';
+          var statusBadge = u.is_active ? '<span class="badge active">' + window.t('active') + '</span>' : '<span class="badge disabled">' + window.t('disabled') + '</span>';
+          var toggleLabel = u.is_active ? window.t('Disable') : window.t('Enable');
           var roleAction = u.role === 'admin'
-            ? '<button class="action-btn demote" onclick="setRole(\'' + u.id + '\', \'user\')">Demote</button>'
-            : '<button class="action-btn promote" onclick="setRole(\'' + u.id + '\', \'admin\')">Promote</button>';
+            ? '<button class="action-btn demote" onclick="setRole(\'' + u.id + '\', \'user\')">' + window.t('Demote') + '</button>'
+            : '<button class="action-btn promote" onclick="setRole(\'' + u.id + '\', \'admin\')">' + window.t('Promote') + '</button>';
           var date = u.created_at ? u.created_at.slice(0, 10) : '-';
           html += '<tr>'
             + '<td>' + u.email + '</td>'
@@ -92,7 +94,7 @@
             + '<td>'
             + '<button class="action-btn toggle" onclick="toggleStatus(\'' + u.id + '\', ' + !u.is_active + ')">' + toggleLabel + '</button> '
             + roleAction + ' '
-            + '<button class="action-btn delete" onclick="deleteUser(\'' + u.id + '\')">Delete</button>'
+            + '<button class="action-btn delete" onclick="deleteUser(\'' + u.id + '\')">' + window.t('Delete') + '</button>'
             + '</td></tr>';
         });
         html += '</tbody></table>';
@@ -102,9 +104,9 @@
         var prevDisabled = currentOffset === 0 ? 'disabled' : '';
         var nextDisabled = (currentOffset + pageSize) >= data.total ? 'disabled' : '';
         html += '<div class="pagination">'
-          + '<button ' + prevDisabled + ' onclick="loadUsers(currentSearch, ' + Math.max(0, currentOffset - pageSize) + ')">&larr; Prev</button>'
-          + '<span>Page ' + page + ' of ' + totalPages + ' (' + data.total + ' users)</span>'
-          + '<button ' + nextDisabled + ' onclick="loadUsers(currentSearch, ' + (currentOffset + pageSize) + ')">Next &rarr;</button>'
+          + '<button ' + prevDisabled + ' onclick="loadUsers(currentSearch, ' + Math.max(0, currentOffset - pageSize) + ')">&larr; ' + window.t('Prev') + '</button>'
+          + '<span>' + window.t('Page {page} of {total} ({count} users)', {page: page, total: totalPages, count: data.total}) + '</span>'
+          + '<button ' + nextDisabled + ' onclick="loadUsers(currentSearch, ' + (currentOffset + pageSize) + ')">' + window.t('Next') + ' &rarr;</button>'
           + '</div>';
 
         document.getElementById('users-table').innerHTML = html;
@@ -118,27 +120,27 @@
         body: JSON.stringify({ is_active: isActive }),
       }).then(function(r) {
         if (r.ok) loadUsers();
-        else r.json().then(function(e) { alert(e.detail || 'Failed'); });
+        else r.json().then(function(e) { alert(window.t(e.detail) || window.t('Failed')); });
       });
     }
 
     function setRole(id, role) {
-      if (!confirm('Change role to ' + role + '?')) return;
+      if (!confirm(window.t('Change role to {role}?', {role: role}))) return;
       fetch('/admin/users/' + id + '/set-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: role }),
       }).then(function(r) {
         if (r.ok) loadUsers();
-        else r.json().then(function(e) { alert(e.detail || 'Failed'); });
+        else r.json().then(function(e) { alert(window.t(e.detail) || window.t('Failed')); });
       });
     }
 
     function deleteUser(id) {
-      if (!confirm('Delete this user? This will disable their account.')) return;
+      if (!confirm(window.t('Delete this user? This will disable their account.'))) return;
       fetch('/admin/users/' + id, { method: 'DELETE' }).then(function(r) {
         if (r.ok) loadUsers();
-        else r.json().then(function(e) { alert(e.detail || 'Failed'); });
+        else r.json().then(function(e) { alert(window.t(e.detail) || window.t('Failed')); });
       });
     }
 
