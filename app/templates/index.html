@@ -1070,8 +1070,21 @@ class OfficialsList(BaseModel):
           var form = document.querySelector('form');
           if (this.files && this.files.length > 1) {
             form.setAttribute('hx-post', '/ui/batch-extract');
+            var sizes = [];
+            for (var i = 0; i < this.files.length; i++) sizes.push(this.files[i].size);
+            var model = document.getElementById('model-select');
+            fetch('/api/batches/estimate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ file_sizes: sizes, model_id: model ? model.value : '' }),
+            }).then(function(r) { return r.json(); }).then(function(data) {
+              if (data.estimated_cost !== undefined) {
+                form.setAttribute('hx-confirm', 'Estimated cost $' + data.estimated_cost.toFixed(6) + ' for ' + data.documents + ' documents with ' + data.model + '. Continue?');
+              }
+            });
           } else {
             form.setAttribute('hx-post', '/ui/extract');
+            form.removeAttribute('hx-confirm');
           }
         });
       }
