@@ -41,8 +41,8 @@ async def test_admin_users_list(async_client):
         u.role = "admin"
         await s.commit()
 
-    # Now access /admin/users with admin token
-    resp = await async_client.get("/admin/users", headers={"Authorization": f"Bearer {token}"})
+    # Now access /admin/users/data with admin token
+    resp = await async_client.get("/admin/users/data", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     data = resp.json()
     assert "users" in data
