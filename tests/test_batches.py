@@ -199,6 +199,43 @@ async def test_batch_estimate(async_client):
     assert data["model"] == "gpt-4o-mini"
 
 
+@pytest.mark.asyncio
+async def test_batch_multipart_sets_hx_redirect(async_client, db_session, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr("app.main.process_job", AsyncMock())
+
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-multipart@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    files = [
+        ("files", ("a.txt", b"content a", "text/plain")),
+        ("files", ("b.txt", b"content b", "text/plain")),
+        ("files", ("c.txt", b"content c", "text/plain")),
+    ]
+    resp = await async_client.post(
+        "/ui/batch-extract",
+        data={"pydantic_schema": "class X(BaseModel): pass", "model_id": "ollama/ollama/qwen3.6:35b"},
+        files=files,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert "HX-Redirect" in resp.headers
+    assert resp.headers["HX-Redirect"].startswith("/ui/batches/")
+
+    from app.models import Batch
+    from sqlalchemy import select
+    result = await db_session.execute(select(Batch))
+    batches = result.scalars().all()
+    assert len(batches) == 1
+    from app.models import ExtractionJob
+    jobs = await db_session.execute(select(ExtractionJob).where(ExtractionJob.batch_id == batches[0].id))
+    assert len(jobs.scalars().all()) == 3
+
+
 
 
 
