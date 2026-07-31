@@ -134,5 +134,17 @@
   "Default Model": "Default Model",
   "Vision Model": "Vision Model",
   "API Key": "API Key",
-  "Base URL (optional)": "Base URL (optional)"
+  "Base URL (optional)": "Base URL (optional)",
+  "No tokens yet.": "No tokens yet.",
+  "Prefix": "Prefix",
+  "Expires": "Expires",
+  "Last Used": "Last Used",
+  "revoked": "revoked",
+  "Revoke": "Revoke",
+  "Name is required": "Name is required",
+  "Generating...": "Generating...",
+  "Token created! Copy it now — it won't be shown again.": "Token created! Copy it now — it won't be shown again.",
+  "Failed to create token": "Failed to create token",
+  "Revoke this token? It can no longer be used.": "Revoke this token? It can no longer be used.",
+  "Failed to revoke token": "Failed to revoke token"
 }
