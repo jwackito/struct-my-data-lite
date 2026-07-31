@@ -71,3 +71,14 @@ def test_resolve_lang_normalizes_region_and_case():
         headers={"accept-language": "es-AR,es;q=0.9"},
     )
     assert resolve_lang(request) == "es"
+
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_i18n_lang_endpoint(client):
+    response = await client.get("/i18n/es.json")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, dict) and len(data) > 0
