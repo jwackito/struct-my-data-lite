@@ -82,3 +82,9 @@ async def test_i18n_lang_endpoint(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict) and len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_i18n_unknown_lang_404(client):
+    response = await client.get("/i18n/fr.json")
+    assert response.status_code == 404
