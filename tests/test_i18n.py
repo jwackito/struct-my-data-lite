@@ -42,3 +42,32 @@ def test_resolve_lang_cookie_wins():
         headers={"accept-language": "en-US,en;q=0.9"},
     )
     assert resolve_lang(request) == "es"
+
+
+def test_resolve_lang_accept_header():
+    request = SimpleNamespace(
+        cookies={},
+        headers={"accept-language": "es-AR,es;q=0.9,en;q=0.8"},
+    )
+    assert resolve_lang(request) == "es"
+
+
+def test_resolve_lang_defaults_to_en():
+    request = SimpleNamespace(cookies={}, headers={})
+    assert resolve_lang(request) == "en"
+
+
+def test_resolve_lang_unsupported_cookie_ignored():
+    request = SimpleNamespace(
+        cookies={"lang": "fr"},
+        headers={"accept-language": "es,en;q=0.9"},
+    )
+    assert resolve_lang(request) == "es"
+
+
+def test_resolve_lang_normalizes_region_and_case():
+    request = SimpleNamespace(
+        cookies={"lang": "ES"},
+        headers={"accept-language": "es-AR,es;q=0.9"},
+    )
+    assert resolve_lang(request) == "es"
