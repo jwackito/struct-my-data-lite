@@ -1063,6 +1063,18 @@ class OfficialsList(BaseModel):
         var ta = document.querySelector("textarea[name='pydantic_schema']");
         if (ta) sessionStorage.setItem('smd_last_schema', ta.value);
       });
+
+      var fileInput = document.querySelector('input[type="file"][name="file"]');
+      if (fileInput) {
+        fileInput.addEventListener('change', function() {
+          var form = document.querySelector('form');
+          if (this.files && this.files.length > 1) {
+            form.setAttribute('hx-post', '/ui/batch-extract');
+          } else {
+            form.setAttribute('hx-post', '/ui/extract');
+          }
+        });
+      }
     })();
   </script>
   <script>
