@@ -919,15 +919,15 @@ async def ui_extract(
 @app.post("/ui/batch-extract")
 async def ui_batch_extract(
     background_tasks: BackgroundTasks,
-    files: list[UploadFile],
+    file: list[UploadFile],
     pydantic_schema: str = Form(..., max_length=10000),
     model_id: str = Form(""),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if len(files) > settings.max_batch_size:
+    if len(file) > settings.max_batch_size:
         return HTMLResponse(f'<div style="color:red">Batch exceeds max size of {settings.max_batch_size}</div>')
-    if len(files) < 2:
+    if len(file) < 2:
         return HTMLResponse('<div style="color:red">Select at least 2 files for batch processing</div>')
 
     try:
@@ -942,19 +942,19 @@ async def ui_batch_extract(
 
     provider_type, connection_name, model_name = _parse_model_id(model_id)
     job_ids = []
-    for file in files:
-        content = await file.read()
+    for up in file:
+        content = await up.read()
         if len(content) > settings.max_upload_size:
             continue
         content_hash = hashlib.sha256(content).hexdigest()
         result = await db.execute(select(Document).where(Document.content_hash == content_hash))
         doc = result.scalar_one_or_none()
         if not doc:
-            storage_path = save_file(file.filename or "unnamed", content)
+            storage_path = save_file(up.filename or "unnamed", content)
             doc = Document(
                 user_id=user.id,
-                filename=file.filename or "unnamed",
-                content_type=file.content_type or "application/octet-stream",
+                filename=up.filename or "unnamed",
+                content_type=up.content_type or "application/octet-stream",
                 file_size=len(content),
                 storage_path=storage_path,
                 content_hash=content_hash,
