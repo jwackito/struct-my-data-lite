@@ -175,6 +175,27 @@ async def test_batch_size_limit_rejects_51_files(async_client):
     assert "max size" in resp.json()["detail"]
 
 
+@pytest.mark.asyncio
+async def test_batch_estimate(async_client):
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-estimate@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    resp = await async_client.post("/api/batches/estimate", json={
+        "file_sizes": [4000, 4000],
+        "model_id": "openai/openai/gpt-4o-mini",
+    }, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["documents"] == 2
+    assert data["estimated_tokens"] > 0
+    assert data["estimated_cost"] > 0
+    assert data["model"] == "gpt-4o-mini"
+
+
+
 
 
 
