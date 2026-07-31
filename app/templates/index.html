@@ -1071,9 +1071,7 @@ class OfficialsList(BaseModel):
 
         form.addEventListener('htmx:configRequest', function(evt) {
           if (evt.detail.elt !== form) return;
-          var isBatch = fileInput.files && fileInput.files.length > 1;
-          evt.detail.path = isBatch ? '/ui/batch-extract' : '/ui/extract';
-          if (isBatch && pendingConfirm && !confirm(pendingConfirm)) {
+          if (pendingConfirm && !confirm(pendingConfirm)) {
             evt.preventDefault();
           }
         });
