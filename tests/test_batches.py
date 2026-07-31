@@ -158,5 +158,23 @@ async def test_batch_results_download(async_client, db_session):
     assert data["results"][0]["output_data"] == {"name": "test"}
 
 
+@pytest.mark.asyncio
+async def test_batch_size_limit_rejects_51_files(async_client):
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-limit@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    fake_ids = [str(i) for i in range(51)]
+    resp = await async_client.post("/api/batches", json={
+        "document_ids": fake_ids,
+        "pydantic_schema": "class X: pass",
+    }, headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 422
+    assert "max size" in resp.json()["detail"]
+
+
+
 
 
