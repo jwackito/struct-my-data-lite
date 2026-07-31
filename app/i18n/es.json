@@ -42,5 +42,18 @@
   "Jobs": "Trabajos",
   "Input Tokens": "Tokens de entrada",
   "Output Tokens": "Tokens de salida",
-  "Cost (USD)": "Costo (USD)"
+  "Cost (USD)": "Costo (USD)",
+  "Batches — Struct My Data": "Lotes — Struct My Data",
+  "Batches": "Lotes",
+  "Loading...": "Cargando...",
+  "No batches yet. Select multiple files on the extraction page to create one.": "No hay lotes todavía. Selecciona varios archivos en la página de extracción para crear uno.",
+  "Name": "Nombre",
+  "Created": "Creado",
+  "Progress": "Progreso",
+  "Status": "Estado",
+  "{ok} ok, {failed} failed": "{ok} ok, {failed} fallidos",
+  "Open": "Abrir",
+  "Prev": "Anterior",
+  "Next": "Siguiente",
+  "Page {page} of {total} ({count} batches)": "Página {page} de {total} ({count} lotes)"
 }
