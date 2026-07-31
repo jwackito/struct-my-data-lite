@@ -842,6 +842,11 @@ async def usage_page(user: User = Depends(get_current_user)):
     return FileResponse("app/templates/usage.html")
 
 
+@app.get("/ui/batches")
+async def ui_batches_page(user: User = Depends(get_current_user)):
+    return FileResponse("app/templates/batches.html")
+
+
 @app.post("/ui/extract")
 async def ui_extract(
     background_tasks: BackgroundTasks,
