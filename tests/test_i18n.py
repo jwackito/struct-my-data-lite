@@ -34,3 +34,11 @@ def test_translations_have_no_empty_values():
     for lang in ("en", "es"):
         for key, value in DICTS[lang].items():
             assert value.strip(), f"empty translation for {key!r} in {lang}"
+
+
+def test_resolve_lang_cookie_wins():
+    request = SimpleNamespace(
+        cookies={"lang": "es"},
+        headers={"accept-language": "en-US,en;q=0.9"},
+    )
+    assert resolve_lang(request) == "es"
