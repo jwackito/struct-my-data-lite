@@ -333,7 +333,7 @@
       <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
     </div>
   </div>
-  <form hx-post="/ui/extract" hx-target="#result" enctype="multipart/form-data">
+  <form hx-post="/ui/batch-extract" hx-target="#result" enctype="multipart/form-data">
     <div>
       <label>Document <input type="file" name="file" multiple required></label>
     </div>
