@@ -423,6 +423,35 @@ async def api_batch_progress(batch_id: uuid.UUID, user: User = Depends(get_curre
     }
 
 
+@app.post("/api/batches/{batch_id}/retry-failed")
+async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: BackgroundTasks, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    batch = await db.get(Batch, batch_id)
+    if not batch or batch.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    result = await db.execute(
+        select(ExtractionJob).where(ExtractionJob.batch_id == batch.id, ExtractionJob.status == JobStatus.failed)
+    )
+    failed_jobs = result.scalars().all()
+
+    retried = []
+    for job in failed_jobs:
+        job.status = JobStatus.pending
+        job.error_message = None
+        job.completed_at = None
+        job.input_tokens = None
+        job.output_tokens = None
+        retried.append(job.id)
+
+    batch.completed_at = None
+    await db.commit()
+
+    for job_id in retried:
+        background_tasks.add_task(process_job, job_id)
+
+    return {"ok": True, "retried": [str(j) for j in retried]}
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
