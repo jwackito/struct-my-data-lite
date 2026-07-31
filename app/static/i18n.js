@@ -34,13 +34,16 @@
     }
     var ph = el.getAttribute("data-i18n-ph");
     if (ph) el.placeholder = t(ph);
+    var title = el.getAttribute("data-i18n-title");
+    if (title) el.title = t(title);
   }
 
   function translateTree(root) {
-    root.querySelectorAll("[data-i18n],[data-i18n-ph]").forEach(translateElement);
+    root.querySelectorAll("[data-i18n],[data-i18n-ph],[data-i18n-title]").forEach(translateElement);
     var self = root.getAttribute ? root.getAttribute("data-i18n") : null;
     var selfPh = root.getAttribute ? root.getAttribute("data-i18n-ph") : null;
-    if (self || selfPh) translateElement(root);
+    var selfTitle = root.getAttribute ? root.getAttribute("data-i18n-title") : null;
+    if (self || selfPh || selfTitle) translateElement(root);
   }
 
   function renderSwitcher() {
