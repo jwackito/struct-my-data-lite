@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Register — Struct My Data</title>
+  <title data-i18n="Register — Struct My Data">Register — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 400px; margin: 4rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; text-align: center; }
@@ -22,16 +23,17 @@
   </style>
 </head>
 <body>
-  <h1>Create an Account</h1>
+  <div id="lang-switcher" style="text-align:right"></div>
+  <h1 data-i18n="Create an Account">Create an Account</h1>
   <div id="error" class="error" style="display:none"></div>
   <form id="register-form">
-    <label>Email <input type="email" id="email" required></label>
-    <label>Display Name <input type="text" id="display_name"></label>
-    <label>Password <input type="password" id="password" required minlength="8"></label>
-    <label>Confirm Password <input type="password" id="confirm" required></label>
-    <button type="submit">Register</button>
+    <label><span data-i18n="Email">Email</span> <input type="email" id="email" required></label>
+    <label><span data-i18n="Display Name">Display Name</span> <input type="text" id="display_name"></label>
+    <label><span data-i18n="Password">Password</span> <input type="password" id="password" required minlength="8"></label>
+    <label><span data-i18n="Confirm Password">Confirm Password</span> <input type="password" id="confirm" required></label>
+    <button type="submit" data-i18n="Register">Register</button>
   </form>
-  <div class="info"><a href="/login" style="color:#2563eb">Already have an account? Log in</a></div>
+  <div class="info"><a href="/login" style="color:#2563eb" data-i18n="Already have an account? Log in">Already have an account? Log in</a></div>
   <script>
     document.getElementById('register-form').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -39,12 +41,12 @@
       err.style.display = 'none';
       var pw = document.getElementById('password').value;
       if (pw !== document.getElementById('confirm').value) {
-        err.textContent = 'Passwords do not match';
+        err.textContent = window.t('Passwords do not match');
         err.style.display = 'block';
         return;
       }
       if (pw.length < 8) {
-        err.textContent = 'Password must be at least 8 characters';
+        err.textContent = window.t('Password must be at least 8 characters');
         err.style.display = 'block';
         return;
       }
@@ -58,7 +60,7 @@
         }),
       }).then(function(r) {
         if (r.ok) { window.location.href = '/'; return; }
-        return r.json().then(function(d) { throw new Error(d.detail || 'Registration failed'); });
+        return r.json().then(function(d) { throw new Error(window.t(d.detail) || window.t('Registration failed')); });
       }).catch(function(e) {
         err.textContent = e.message;
         err.style.display = 'block';
