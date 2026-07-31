@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usage — Admin — Struct My Data</title>
+  <title data-i18n="Usage — Admin — Struct My Data">Usage — Admin — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 860px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -33,30 +34,31 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Extraction</a>
-      <a href="/admin/users">Users</a>
-      <a href="/admin/usage" style="font-weight:600">Usage</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/admin/users" data-i18n="Users">Users</a>
+      <a href="/admin/usage" style="font-weight:600" data-i18n="Usage">Usage</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1>System Usage</h1>
+  <h1 data-i18n="System Usage">System Usage</h1>
   <div class="controls">
     <select id="range" onchange="loadUsage()">
-      <option value="7">Last 7 days</option>
-      <option value="30" selected>Last 30 days</option>
-      <option value="90">Last 90 days</option>
-      <option value="all">All time</option>
+      <option value="7" data-i18n="Last 7 days">Last 7 days</option>
+      <option value="30" selected data-i18n="Last 30 days">Last 30 days</option>
+      <option value="90" data-i18n="Last 90 days">Last 90 days</option>
+      <option value="all" data-i18n="All time">All time</option>
     </select>
   </div>
   <div class="cards">
-    <div class="card"><h3>Users</h3><div class="value" id="stat-users">-</div></div>
-    <div class="card"><h3>Jobs</h3><div class="value" id="stat-jobs">-</div></div>
-    <div class="card"><h3>Input Tokens</h3><div class="value" id="stat-input">-</div></div>
-    <div class="card"><h3>Output Tokens</h3><div class="value" id="stat-output">-</div></div>
-    <div class="card"><h3>Cost (USD)</h3><div class="value" id="stat-cost">$0.00</div></div>
+    <div class="card"><h3 data-i18n="Users">Users</h3><div class="value" id="stat-users">-</div></div>
+    <div class="card"><h3 data-i18n="Jobs">Jobs</h3><div class="value" id="stat-jobs">-</div></div>
+    <div class="card"><h3 data-i18n="Input Tokens">Input Tokens</h3><div class="value" id="stat-input">-</div></div>
+    <div class="card"><h3 data-i18n="Output Tokens">Output Tokens</h3><div class="value" id="stat-output">-</div></div>
+    <div class="card"><h3 data-i18n="Cost (USD)">Cost (USD)</h3><div class="value" id="stat-cost">$0.00</div></div>
   </div>
   <div id="breakdown"></div>
   <script>
@@ -77,8 +79,8 @@
 
         var el = document.getElementById('breakdown');
         if (data.per_user && data.per_user.length > 0) {
-          var html = '<h2 style="font-size:1.1rem;margin:1rem 0 0.5rem">Per User</h2>';
-          html += '<table><thead><tr><th>Email</th><th>Jobs</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th></tr></thead><tbody>';
+          var html = '<h2 style="font-size:1.1rem;margin:1rem 0 0.5rem">' + window.t('Per User') + '</h2>';
+          html += '<table><thead><tr><th>' + window.t('Email') + '</th><th>' + window.t('Jobs') + '</th><th>' + window.t('Input Tokens') + '</th><th>' + window.t('Output Tokens') + '</th><th>' + window.t('Cost') + '</th></tr></thead><tbody>';
           data.per_user.forEach(function(u) {
             html += '<tr>'
               + '<td>' + (u.email || u.user_id || 'unknown') + '</td>'

@@ -71,5 +71,10 @@
   "Users": "Users",
   "Active": "Active",
   "Total Jobs": "Total Jobs",
-  "Manage Users": "Manage Users"
+  "Manage Users": "Manage Users",
+  "Usage — Admin — Struct My Data": "Usage — Admin — Struct My Data",
+  "System Usage": "System Usage",
+  "Per User": "Per User",
+  "Email": "Email",
+  "Cost": "Cost"
 }
