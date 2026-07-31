@@ -28,5 +28,19 @@
   "pending": "pending",
   "running": "running",
   "completed": "completed",
-  "failed": "failed"
+  "failed": "failed",
+  "Usage — Struct My Data": "Usage — Struct My Data",
+  "Extraction": "Extraction",
+  "Settings": "Settings",
+  "Last 7 days": "Last 7 days",
+  "Last 30 days": "Last 30 days",
+  "Last 90 days": "Last 90 days",
+  "All time": "All time",
+  "Summary": "Summary",
+  "By day": "By day",
+  "By model": "By model",
+  "Jobs": "Jobs",
+  "Input Tokens": "Input Tokens",
+  "Output Tokens": "Output Tokens",
+  "Cost (USD)": "Cost (USD)"
 }

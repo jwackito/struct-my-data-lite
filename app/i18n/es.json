@@ -28,5 +28,19 @@
   "pending": "pendiente",
   "running": "en ejecución",
   "completed": "completado",
-  "failed": "fallido"
+  "failed": "fallido",
+  "Usage — Struct My Data": "Uso — Struct My Data",
+  "Extraction": "Extracción",
+  "Settings": "Configuración",
+  "Last 7 days": "Últimos 7 días",
+  "Last 30 days": "Últimos 30 días",
+  "Last 90 days": "Últimos 90 días",
+  "All time": "Todo el tiempo",
+  "Summary": "Resumen",
+  "By day": "Por día",
+  "By model": "Por modelo",
+  "Jobs": "Trabajos",
+  "Input Tokens": "Tokens de entrada",
+  "Output Tokens": "Tokens de salida",
+  "Cost (USD)": "Costo (USD)"
 }

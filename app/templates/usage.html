@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usage — Struct My Data</title>
+  <title data-i18n="Usage — Struct My Data">Usage — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -33,34 +34,35 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Extraction</a>
-      <a href="/ui/settings">Settings</a>
-      <a href="/usage" style="font-weight:600">Usage</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/ui/settings" data-i18n="Settings">Settings</a>
+      <a href="/usage" style="font-weight:600" data-i18n="Usage">Usage</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1>Usage</h1>
+  <h1 data-i18n="Usage">Usage</h1>
   <div class="controls">
     <select id="range" onchange="loadUsage()">
-      <option value="7">Last 7 days</option>
-      <option value="30" selected>Last 30 days</option>
-      <option value="90">Last 90 days</option>
-      <option value="all">All time</option>
+      <option value="7" data-i18n="Last 7 days">Last 7 days</option>
+      <option value="30" selected data-i18n="Last 30 days">Last 30 days</option>
+      <option value="90" data-i18n="Last 90 days">Last 90 days</option>
+      <option value="all" data-i18n="All time">All time</option>
     </select>
     <select id="group" onchange="loadUsage()">
-      <option value="none">Summary</option>
-      <option value="day">By day</option>
-      <option value="model">By model</option>
+      <option value="none" data-i18n="Summary">Summary</option>
+      <option value="day" data-i18n="By day">By day</option>
+      <option value="model" data-i18n="By model">By model</option>
     </select>
   </div>
   <div class="cards">
-    <div class="card"><h3>Jobs</h3><div class="value" id="stat-jobs">-</div></div>
-    <div class="card"><h3>Input Tokens</h3><div class="value" id="stat-input">-</div></div>
-    <div class="card"><h3>Output Tokens</h3><div class="value" id="stat-output">-</div></div>
-    <div class="card"><h3>Cost (USD)</h3><div class="value" id="stat-cost">$0.00</div></div>
+    <div class="card"><h3 data-i18n="Jobs">Jobs</h3><div class="value" id="stat-jobs">-</div></div>
+    <div class="card"><h3 data-i18n="Input Tokens">Input Tokens</h3><div class="value" id="stat-input">-</div></div>
+    <div class="card"><h3 data-i18n="Output Tokens">Output Tokens</h3><div class="value" id="stat-output">-</div></div>
+    <div class="card"><h3 data-i18n="Cost (USD)">Cost (USD)</h3><div class="value" id="stat-cost">$0.00</div></div>
   </div>
   <div id="breakdown"></div>
   <script>
