@@ -19,6 +19,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
+from app.i18n import DICTS, SUPPORTED_LANGS
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.pricing import calculate_cost
 from app.processing import process_job
@@ -144,6 +145,18 @@ async def register_page():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/i18n.js")
+async def i18n_js():
+    return FileResponse("app/static/i18n.js")
+
+
+@app.get("/i18n/{lang}.json")
+async def i18n_json(lang: str):
+    if lang not in SUPPORTED_LANGS:
+        raise HTTPException(status_code=404, detail="Language not found")
+    return JSONResponse(DICTS[lang])
 
 
 @app.get("/models")
