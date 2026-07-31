@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Extraction Result — Struct My Data</title>
+  <title data-i18n="Extraction Result — Struct My Data">Extraction Result — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github.min.css">
   <style>
     body {
@@ -91,31 +92,32 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Back to extraction</a>
-      <a href="/usage">Usage</a>
+      <a href="/">&larr; <span data-i18n="Back to extraction">Back to extraction</span></a>
+      <a href="/usage" data-i18n="Usage">Usage</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1>Extraction Result</h1>
+  <h1 data-i18n="Extraction Result">Extraction Result</h1>
   {% if status == "completed" %}
     <div class="stats">{{ stats_html | safe }}</div>
     <div class="actions">
-      <a href="/ui/jobs/{{ job_id }}/download" class="btn">Download JSON</a>
+      <a href="/ui/jobs/{{ job_id }}/download" class="btn" data-i18n="Download JSON">Download JSON</a>
     </div>
     <div class="output">{{ output_html | safe }}</div>
   {% elif status == "failed" %}
     <div class="error">
-      <p>Extraction failed:</p>
+      <p data-i18n="Extraction failed:">Extraction failed:</p>
       <pre>{{ error_message }}</pre>
     </div>
     <div class="actions">
-      <a href="/" class="btn">Return to extraction</a>
+      <a href="/" class="btn" data-i18n="Return to extraction">Return to extraction</a>
     </div>
   {% else %}
-    <p>&#x23F3; {{ status | capitalize }}...</p>
+    <p>&#x23F3; {{ t(status, lang) | capitalize }}...</p>
     <script>setTimeout(function() { location.reload(); }, 2000);</script>
   {% endif %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/highlight.min.js"></script>

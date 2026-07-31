@@ -15,5 +15,18 @@
   "Already have an account? Log in": "Already have an account? Log in",
   "Passwords do not match": "Passwords do not match",
   "Password must be at least 8 characters": "Password must be at least 8 characters",
-  "Registration failed": "Registration failed"
+  "Registration failed": "Registration failed",
+  "Extraction Result — Struct My Data": "Extraction Result — Struct My Data",
+  "Back to extraction": "Back to extraction",
+  "Usage": "Usage",
+  "Toggle theme": "Toggle theme",
+  "Logout": "Logout",
+  "Extraction Result": "Extraction Result",
+  "Download JSON": "Download JSON",
+  "Extraction failed:": "Extraction failed:",
+  "Return to extraction": "Return to extraction",
+  "pending": "pending",
+  "running": "running",
+  "completed": "completed",
+  "failed": "failed"
 }

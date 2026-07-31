@@ -19,7 +19,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.i18n import DICTS, SUPPORTED_LANGS
+from app.i18n import DICTS, SUPPORTED_LANGS, resolve_lang, t
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
 from app.pricing import calculate_cost
 from app.processing import process_job
@@ -31,6 +31,7 @@ from app.ws import manager
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["t"] = t
 
 
 @asynccontextmanager
@@ -1063,6 +1064,7 @@ async def ui_job_result_page(job_id: uuid.UUID, request: Request, user: User = D
         "output_html": output_html,
         "stats_html": stats_html,
         "error_message": job.error_message or "",
+        "lang": resolve_lang(request),
     })
 
 

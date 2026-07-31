@@ -15,5 +15,18 @@
   "Already have an account? Log in": "¿Ya tienes una cuenta? Inicia sesión",
   "Passwords do not match": "Las contraseñas no coinciden",
   "Password must be at least 8 characters": "La contraseña debe tener al menos 8 caracteres",
-  "Registration failed": "Error al registrarse"
+  "Registration failed": "Error al registrarse",
+  "Extraction Result — Struct My Data": "Resultado de extracción — Struct My Data",
+  "Back to extraction": "Volver a extracción",
+  "Usage": "Uso",
+  "Toggle theme": "Cambiar tema",
+  "Logout": "Cerrar sesión",
+  "Extraction Result": "Resultado de Extracción",
+  "Download JSON": "Descargar JSON",
+  "Extraction failed:": "Extracción fallida:",
+  "Return to extraction": "Volver a extracción",
+  "pending": "pendiente",
+  "running": "en ejecución",
+  "completed": "completado",
+  "failed": "fallido"
 }
