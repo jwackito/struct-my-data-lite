@@ -1,4 +1,10 @@
 {
   "Hello": "Hola",
-  "Hello {name}": "Hola {name}"
+  "Hello {name}": "Hola {name}",
+  "Login — Struct My Data": "Iniciar sesión — Struct My Data",
+  "Email": "Correo electrónico",
+  "Password": "Contraseña",
+  "Log in": "Iniciar sesión",
+  "Create an account": "Crear una cuenta",
+  "Login failed": "Error al iniciar sesión"
 }

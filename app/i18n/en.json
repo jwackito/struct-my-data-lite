@@ -1,4 +1,10 @@
 {
   "Hello": "Hello",
-  "Hello {name}": "Hello {name}"
+  "Hello {name}": "Hello {name}",
+  "Login — Struct My Data": "Login — Struct My Data",
+  "Email": "Email",
+  "Password": "Password",
+  "Log in": "Log in",
+  "Create an account": "Create an account",
+  "Login failed": "Login failed"
 }

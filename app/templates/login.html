@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — Struct My Data</title>
+  <title data-i18n="Login — Struct My Data">Login — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 400px; margin: 4rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; text-align: center; }
@@ -22,14 +23,15 @@
   </style>
 </head>
 <body>
+  <div id="lang-switcher" style="text-align:right"></div>
   <h1>Struct My Data</h1>
   <div id="error" class="error" style="display:none"></div>
   <form id="login-form">
-    <label>Email <input type="email" id="email" required></label>
-    <label>Password <input type="password" id="password" required></label>
-    <button type="submit">Log in</button>
+    <label><span data-i18n="Email">Email</span> <input type="email" id="email" required></label>
+    <label><span data-i18n="Password">Password</span> <input type="password" id="password" required></label>
+    <button type="submit" data-i18n="Log in">Log in</button>
   </form>
-  <div class="info" id="register-link"><a href="/register" style="color:#2563eb">Create an account</a></div>
+  <div class="info" id="register-link"><a href="/register" style="color:#2563eb" data-i18n="Create an account">Create an account</a></div>
   <script>
     document.getElementById('login-form').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -41,7 +43,7 @@
         body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('password').value }),
       }).then(function(r) {
         if (r.ok) { window.location.href = '/'; return; }
-        return r.json().then(function(d) { throw new Error(d.detail || 'Login failed'); });
+        return r.json().then(function(d) { throw new Error(window.t(d.detail) || window.t('Login failed')); });
       }).catch(function(e) {
         err.textContent = e.message;
         err.style.display = 'block';
