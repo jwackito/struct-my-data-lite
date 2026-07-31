@@ -236,6 +236,38 @@ async def test_batch_multipart_sets_hx_redirect(async_client, db_session, monkey
     assert len(jobs.scalars().all()) == 3
 
 
+@pytest.mark.asyncio
+async def test_single_file_upload_creates_batch_of_one(async_client, db_session, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr("app.main.process_job", AsyncMock())
+
+    reg = await async_client.post("/auth/register", json={
+        "email": "batch-single@example.com",
+        "password": "password123",
+    })
+    token = reg.json()["token"]
+
+    resp = await async_client.post(
+        "/ui/batch-extract",
+        data={"pydantic_schema": "class X(BaseModel): pass", "model_id": "ollama/ollama/qwen3.6:35b"},
+        files=[("file", ("single.txt", b"content", "text/plain"))],
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert "HX-Redirect" in resp.headers
+
+    from app.models import Batch, ExtractionJob
+    from sqlalchemy import select
+    result = await db_session.execute(select(Batch))
+    batches = result.scalars().all()
+    assert len(batches) == 1
+    jobs = await db_session.execute(select(ExtractionJob).where(ExtractionJob.batch_id == batches[0].id))
+    job_list = jobs.scalars().all()
+    assert len(job_list) == 1
+    assert job_list[0].batch_id == batches[0].id
+
+
 
 
 
