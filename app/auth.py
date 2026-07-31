@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.i18n import t_req
 from app.database import get_db
 from app.models import ApiToken, User
 
@@ -83,7 +84,7 @@ async def get_current_user(
 ) -> User:
     token = _extract_token(request)
     if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail=t_req("Not authenticated"))
 
     payload = decode_jwt(token)
     if payload:
@@ -97,10 +98,10 @@ async def get_current_user(
         request.state.user = api_user
         return api_user
 
-    raise HTTPException(status_code=401, detail="Invalid or expired token")
+    raise HTTPException(status_code=401, detail=t_req("Invalid or expired token"))
 
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+        raise HTTPException(status_code=403, detail=t_req("Admin access required"))
     return current_user

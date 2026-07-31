@@ -69,20 +69,20 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.post("/auth/register")
 async def auth_register(body: dict, db: AsyncSession = Depends(get_db)):
     if not settings.allow_registration:
-        raise HTTPException(status_code=403, detail="Registration is closed")
+        raise HTTPException(status_code=403, detail=t_req("Registration is closed"))
 
     email = (body.get("email") or "").strip().lower()
     password = body.get("password") or ""
     display_name = (body.get("display_name") or "").strip()
 
     if not email or "@" not in email:
-        raise HTTPException(status_code=422, detail="Valid email is required")
+        raise HTTPException(status_code=422, detail=t_req("Valid email is required"))
     if len(password) < 8:
-        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+        raise HTTPException(status_code=422, detail=t_req("Password must be at least 8 characters"))
 
     existing = await db.execute(select(User).where(User.email == email))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=422, detail="Email already registered")
+        raise HTTPException(status_code=422, detail=t_req("Email already registered"))
 
     user = User(
         email=email,
@@ -108,9 +108,9 @@ async def auth_login(body: dict, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail=t_req("Invalid email or password"))
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is disabled")
+        raise HTTPException(status_code=403, detail=t_req("Account is disabled"))
 
     token = create_jwt(str(user.id), user.role)
     resp = JSONResponse({"token": token, "user": {"id": str(user.id), "email": user.email, "display_name": user.display_name, "role": user.role}})
@@ -182,13 +182,13 @@ async def api_create_key(body: dict, user: User = Depends(get_current_user), db:
     secrets = body.get("secrets", {})
 
     if not name:
-        raise HTTPException(status_code=422, detail="Name is required")
+        raise HTTPException(status_code=422, detail=t_req("Name is required"))
     if provider not in ("openai", "gemini", "ollama"):
-        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+        raise HTTPException(status_code=422, detail=t_req("Unknown provider: {provider}", provider=provider))
 
     test_result = await test_connection(name, {**config, **secrets}, provider, db)
     if not test_result.get("ok"):
-        raise HTTPException(status_code=422, detail=f"Connection test failed: {test_result.get('error', 'unknown error')}")
+        raise HTTPException(status_code=422, detail=t_req("Connection test failed: {error}", error=test_result.get("error", "unknown error")))
 
     try:
         conn = await set_connection(name, provider, config, secrets, db, user=user)
@@ -204,7 +204,7 @@ async def api_update_key(name: str, body: dict, user: User = Depends(get_current
     secrets = body.get("secrets", {})
 
     if provider not in ("openai", "gemini", "ollama"):
-        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+        raise HTTPException(status_code=422, detail=t_req("Unknown provider: {provider}", provider=provider))
 
     try:
         conn = await set_connection(name, provider, config, secrets, db, user=user)
@@ -220,7 +220,7 @@ async def api_delete_key(name: str, user: User = Depends(get_current_user), db: 
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     if not deleted:
-        raise HTTPException(status_code=404, detail="Key not found")
+        raise HTTPException(status_code=404, detail=t_req("Key not found"))
     return {"ok": True}
 
 
@@ -230,7 +230,7 @@ async def api_create_token(body: dict, user: User = Depends(get_current_user), d
 
     name = (body.get("name") or "").strip()
     if not name:
-        raise HTTPException(status_code=422, detail="Name is required")
+        raise HTTPException(status_code=422, detail=t_req("Name is required"))
 
     raw, token_hash, prefix = generate_api_token()
     expires_at = None
@@ -238,7 +238,7 @@ async def api_create_token(body: dict, user: User = Depends(get_current_user), d
         try:
             expires_at = datetime.fromisoformat(body["expires_at"])
         except (ValueError, TypeError):
-            raise HTTPException(status_code=422, detail="Invalid expires_at format")
+            raise HTTPException(status_code=422, detail=t_req("Invalid expires_at format"))
 
     tok = ApiToken(user_id=user.id, name=name, token_hash=token_hash, prefix=prefix, expires_at=expires_at)
     db.add(tok)
@@ -284,7 +284,7 @@ async def api_revoke_token(token_id: uuid.UUID, user: User = Depends(get_current
     )
     tok = result.scalar_one_or_none()
     if not tok:
-        raise HTTPException(status_code=404, detail="Token not found")
+        raise HTTPException(status_code=404, detail=t_req("Token not found"))
     tok.is_active = False
     await db.commit()
     return {"ok": True}
@@ -297,9 +297,9 @@ async def api_batch_estimate(body: dict, user: User = Depends(get_current_user),
     file_sizes = body.get("file_sizes", [])
     model_id = body.get("model_id", "")
     if not file_sizes:
-        raise HTTPException(status_code=422, detail="file_sizes is required")
+        raise HTTPException(status_code=422, detail=t_req("file_sizes is required"))
     if len(file_sizes) > settings.max_batch_size:
-        raise HTTPException(status_code=422, detail=f"Batch exceeds max size of {settings.max_batch_size}")
+        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
 
     provider_type, connection_name, model_name = _parse_model_id(model_id)
     estimated_tokens = sum(size / 4 for size in file_sizes)
@@ -321,15 +321,15 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
     name = (body.get("name") or "").strip() or f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
     if not document_ids:
-        raise HTTPException(status_code=422, detail="document_ids is required")
+        raise HTTPException(status_code=422, detail=t_req("document_ids is required"))
     if len(document_ids) > settings.max_batch_size:
-        raise HTTPException(status_code=422, detail=f"Batch exceeds max size of {settings.max_batch_size}")
+        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
     if not pydantic_schema:
-        raise HTTPException(status_code=422, detail="pydantic_schema is required")
+        raise HTTPException(status_code=422, detail=t_req("pydantic_schema is required"))
     try:
         compile(pydantic_schema, "<schema>", "exec")
     except SyntaxError as e:
-        raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
+        raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
     batch = Batch(user_id=user.id, name=name)
     db.add(batch)
@@ -400,7 +400,7 @@ async def api_list_batches(offset: int = 0, limit: int = 20, user: User = Depend
 async def api_batch_progress(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Batch not found")
+        raise HTTPException(status_code=404, detail=t_req("Batch not found"))
 
     result = await db.execute(
         select(ExtractionJob, Document.filename)
@@ -444,7 +444,7 @@ async def api_batch_progress(batch_id: uuid.UUID, user: User = Depends(get_curre
 async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: BackgroundTasks, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Batch not found")
+        raise HTTPException(status_code=404, detail=t_req("Batch not found"))
 
     result = await db.execute(
         select(ExtractionJob).where(ExtractionJob.batch_id == batch.id, ExtractionJob.status == JobStatus.failed)
@@ -473,7 +473,7 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
 async def api_batch_cancel(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Batch not found")
+        raise HTTPException(status_code=404, detail=t_req("Batch not found"))
 
     result = await db.execute(
         select(ExtractionJob).where(
@@ -498,7 +498,7 @@ async def api_batch_cancel(batch_id: uuid.UUID, user: User = Depends(get_current
 async def api_batch_results(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Batch not found")
+        raise HTTPException(status_code=404, detail=t_req("Batch not found"))
 
     result = await db.execute(
         select(ExtractionJob, Document.filename)
@@ -667,7 +667,7 @@ async def get_connections(admin: User = Depends(get_admin_user), db: AsyncSessio
 async def get_connection_endpoint(name: str, admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     conn = await get_connection(name, db)
     if not conn:
-        raise HTTPException(status_code=404, detail="Connection not found")
+        raise HTTPException(status_code=404, detail=t_req("Connection not found"))
     return conn
 
 
@@ -678,13 +678,13 @@ async def put_connection(name: str, body: dict, admin: User = Depends(get_admin_
     secrets = body.get("secrets", {})
 
     if not provider:
-        raise HTTPException(status_code=422, detail="provider is required")
+        raise HTTPException(status_code=422, detail=t_req("provider is required"))
     if provider not in ("ollama", "openai", "gemini"):
-        raise HTTPException(status_code=422, detail=f"Unknown provider: {provider}")
+        raise HTTPException(status_code=422, detail=t_req("Unknown provider: {provider}", provider=provider))
 
     test_result = await test_connection(name, {**config, **secrets}, provider, db)
     if not test_result.get("ok"):
-        raise HTTPException(status_code=422, detail=f"Connection test failed: {test_result.get('error', 'unknown error')}")
+        raise HTTPException(status_code=422, detail=t_req("Connection test failed: {error}", error=test_result.get("error", "unknown error")))
 
     try:
         conn = await set_connection(name, provider, config, secrets, db)
@@ -701,7 +701,7 @@ async def delete_connection_endpoint(name: str, admin: User = Depends(get_admin_
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     if not deleted:
-        raise HTTPException(status_code=404, detail="Connection not found")
+        raise HTTPException(status_code=404, detail=t_req("Connection not found"))
     return {"ok": True}
 
 
@@ -711,7 +711,7 @@ async def test_connection_endpoint(name: str, body: dict, admin: User = Depends(
     secrets = body.get("secrets", {})
     provider = body.get("provider", "")
     if not provider:
-        raise HTTPException(status_code=422, detail="provider is required")
+        raise HTTPException(status_code=422, detail=t_req("provider is required"))
     result = await test_connection(name, {**config, **secrets}, provider, db)
     return result
 
@@ -720,7 +720,7 @@ async def test_connection_endpoint(name: str, body: dict, admin: User = Depends(
 async def upload(file: UploadFile, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     content = await file.read()
     if len(content) > settings.max_upload_size:
-        raise HTTPException(status_code=413, detail="File exceeds maximum upload size")
+        raise HTTPException(status_code=413, detail=t_req("File exceeds maximum upload size"))
 
     content_hash = hashlib.sha256(content).hexdigest()
 
@@ -786,12 +786,12 @@ async def create_extraction(
 ):
     doc = await db.get(Document, document_id)
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise HTTPException(status_code=404, detail=t_req("Document not found"))
 
     try:
         compile(pydantic_schema, "<schema>", "exec")
     except SyntaxError as e:
-        raise HTTPException(status_code=422, detail=f"Invalid Pydantic schema: {e}")
+        raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
     provider_type, connection_name, model_name = _parse_model_id(model_id)
     job = ExtractionJob(
@@ -820,7 +820,7 @@ async def create_extraction(
 async def get_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t_req("Job not found"))
 
     return {
         "id": str(job.id),
@@ -868,7 +868,7 @@ async def ui_batches_page(user: User = Depends(get_current_user)):
 async def ui_batch_page(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
-        raise HTTPException(status_code=404, detail="Batch not found")
+        raise HTTPException(status_code=404, detail=t_req("Batch not found"))
     return FileResponse("app/templates/batch.html")
 
 
@@ -882,12 +882,12 @@ async def ui_batch_extract(
     db: AsyncSession = Depends(get_db),
 ):
     if len(file) > settings.max_batch_size:
-        return HTMLResponse(f'<div style="color:red">Batch exceeds max size of {settings.max_batch_size}</div>')
+        return HTMLResponse(f'<div style="color:red">{t_req("Batch exceeds max size of {max}", max=settings.max_batch_size)}</div>')
 
     try:
         compile(pydantic_schema, "<schema>", "exec")
     except SyntaxError as e:
-        return HTMLResponse(f'<div style="color:red">Invalid Pydantic schema: {e}</div>')
+        return HTMLResponse(f'<div style="color:red">{t_req("Invalid Pydantic schema: {error}", error=e)}</div>')
 
     batch = Batch(user_id=user.id, name=f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     db.add(batch)
@@ -933,7 +933,7 @@ async def ui_batch_extract(
     for job_id in job_ids:
         background_tasks.add_task(process_job, job_id)
 
-    resp = HTMLResponse('<div>Batch started</div>')
+    resp = HTMLResponse(f'<div>{t_req("Batch started")}</div>')
     resp.headers["HX-Redirect"] = f"/ui/batches/{batch.id}"
     return resp
 
@@ -942,20 +942,20 @@ def _render_output(data):
     return f"<pre>{json.dumps(data, indent=2, ensure_ascii=False)}</pre>"
 
 
-def _job_stats_html(job) -> str:
+def _job_stats_html(job, lang="en") -> str:
     from app.pricing import calculate_cost
 
     cards = []
 
     if job.input_tokens is not None:
         cards.append(f"""<div class="stat-card">
-          <div class="stat-label">Tokens <span class="stat-info" title="Tokens sent to and received from the AI model">&#9432;</span></div>
+          <div class="stat-label">{t("Tokens", lang)} <span class="stat-info" title="{t('Tokens sent to and received from the AI model', lang)}">&#9432;</span></div>
           <div class="stat-value">{job.input_tokens} in / {job.output_tokens} out</div>
         </div>""")
         cost = calculate_cost(job.provider_type or "", job.model_name or "", job.input_tokens, job.output_tokens)
         if cost > 0:
             cards.append(f"""<div class="stat-card">
-              <div class="stat-label">Cost <span class="stat-info" title="Estimated cost in USD based on model pricing">&#9432;</span></div>
+              <div class="stat-label">{t("Cost", lang)} <span class="stat-info" title="{t('Estimated cost in USD based on model pricing', lang)}">&#9432;</span></div>
               <div class="stat-value">${cost:.6f}</div>
             </div>""")
 
@@ -967,13 +967,13 @@ def _job_stats_html(job) -> str:
     for label, ms, desc in timing:
         if ms is not None:
             cards.append(f"""<div class="stat-card">
-              <div class="stat-label">{label} <span class="stat-info" title="{desc}">&#9432;</span></div>
+              <div class="stat-label">{t(label, lang)} <span class="stat-info" title="{t(desc, lang)}">&#9432;</span></div>
               <div class="stat-value">{_fmt_ms(ms)}</div>
             </div>""")
 
     if job.model_name:
         cards.append(f"""<div class="stat-card">
-          <div class="stat-label">Model <span class="stat-info" title="The AI model used for extraction">&#9432;</span></div>
+          <div class="stat-label">{t("Model", lang)} <span class="stat-info" title="{t('The AI model used for extraction', lang)}">&#9432;</span></div>
           <div class="stat-value">{job.model_name}</div>
         </div>""")
 
@@ -993,12 +993,12 @@ def _fmt_ms(ms: int) -> str:
 async def ui_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        return HTMLResponse("<div>Job not found</div>")
+        return HTMLResponse(f'<div>{t_req("Job not found")}</div>')
 
     if job.status in (JobStatus.pending, JobStatus.running):
-        return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Processing...</div>')
+        return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ {t_req("Processing...")}</div>')
 
-    resp = HTMLResponse(f'<div hx-redirect="/ui/jobs/{job.id}/result">Complete</div>')
+    resp = HTMLResponse(f'<div hx-redirect="/ui/jobs/{job.id}/result">{t_req("Complete")}</div>')
     resp.headers["HX-Redirect"] = f"/ui/jobs/{job.id}/result"
     return resp
 
@@ -1012,13 +1012,13 @@ async def ui_job_retry(
 ):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        return HTMLResponse("<div>Job not found</div>")
+        return HTMLResponse(f'<div>{t_req("Job not found")}</div>')
 
     st = job.status
     if hasattr(st, "value"):
         st = st.value
     if st not in ("pending", "failed"):
-        return HTMLResponse("<div>Can only retry failed or pending jobs</div>")
+        return HTMLResponse(f'<div>{t_req("Can only retry failed or pending jobs")}</div>')
 
     job.status = JobStatus.pending
     job.error_message = None
@@ -1030,16 +1030,16 @@ async def ui_job_retry(
     await db.commit()
 
     background_tasks.add_task(process_job, job.id)
-    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ Retrying...</div>')
+    return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ {t_req("Retrying...")}</div>')
 
 
 @app.get("/ui/jobs/{job_id}/download")
 async def ui_job_download(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t_req("Job not found"))
     if not job.output_data:
-        raise HTTPException(status_code=404, detail="No output data available")
+        raise HTTPException(status_code=404, detail=t_req("No output data available"))
 
     content = json.dumps(job.output_data, indent=2, ensure_ascii=False)
     return Response(
@@ -1053,14 +1053,14 @@ async def ui_job_download(job_id: uuid.UUID, user: User = Depends(get_current_us
 async def ui_job_result_page(job_id: uuid.UUID, request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail=t_req("Job not found"))
 
     st = job.status
     if hasattr(st, "value"):
         st = st.value
 
     output_html = _render_output(job.output_data) if job.output_data else ""
-    stats_html = _job_stats_html(job) if job.completed_at else ""
+    stats_html = _job_stats_html(job, resolve_lang(request)) if job.completed_at else ""
 
     return templates.TemplateResponse(request, "result.html", {
         "job_id": job.id,
@@ -1107,10 +1107,10 @@ async def ui_jobs(
         badge = _status_badge(st)
         fn = (filename[:35] + "…") if len(filename) > 36 else filename
         ts = job.created_at.strftime("%b %d %H:%M")
-        view_btn = f'<button hx-get="/ui/jobs/{job.id}" hx-target="#result">View</button>'
+        view_btn = f'<button hx-get="/ui/jobs/{job.id}" hx-target="#result">{t_req("View")}</button>'
 
         if st in ("pending", "failed"):
-            retry = f'<button hx-post="/ui/jobs/{job.id}/retry" hx-target="#result">Retry</button>'
+            retry = f'<button hx-post="/ui/jobs/{job.id}/retry" hx-target="#result">{t_req("Retry")}</button>'
         else:
             retry = ""
 
@@ -1132,14 +1132,14 @@ async def ui_jobs(
 
     pagination = f"""
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;font-size:0.875rem">
-      <button hx-get="/ui/jobs?offset={prev_offset}&limit={limit}" hx-target="#tab-history" {prev_disabled}>← Prev</button>
-      <span>Page {page} of {pages}</span>
-      <button hx-get="/ui/jobs?offset={next_offset}&limit={limit}" hx-target="#tab-history" {next_disabled}>Next →</button>
+      <button hx-get="/ui/jobs?offset={prev_offset}&limit={limit}" hx-target="#tab-history" {prev_disabled}>← {t_req("Prev")}</button>
+      <span>{t_req("Page {page} of {pages}", page=page, pages=pages)}</span>
+      <button hx-get="/ui/jobs?offset={next_offset}&limit={limit}" hx-target="#tab-history" {next_disabled}>{t_req("Next")} →</button>
     </div>"""
 
     html = f"""
     <table>
-      <thead><tr><th></th><th>File</th><th>Date</th><th></th></tr></thead>
+      <thead><tr><th></th><th>{t_req("File")}</th><th>{t_req("Date")}</th><th></th></tr></thead>
       <tbody>{table_rows}</tbody>
     </table>
     {pagination}"""
@@ -1169,11 +1169,11 @@ async def create_schema(body: dict = Body(...), user: User = Depends(get_current
     name = body.get("name", "").strip()
     pydantic_schema = body.get("pydantic_schema", "").strip()
     if not name:
-        raise HTTPException(status_code=422, detail="Name is required")
+        raise HTTPException(status_code=422, detail=t_req("Name is required"))
     if not pydantic_schema:
-        raise HTTPException(status_code=422, detail="Schema code is required")
+        raise HTTPException(status_code=422, detail=t_req("Schema code is required"))
     if len(pydantic_schema) > 10000:
-        raise HTTPException(status_code=422, detail="Schema code too long")
+        raise HTTPException(status_code=422, detail=t_req("Schema code too long"))
 
     schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
@@ -1186,7 +1186,7 @@ async def create_schema(body: dict = Body(...), user: User = Depends(get_current
 async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
-        raise HTTPException(status_code=404, detail="Schema not found")
+        raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     return {
         "id": str(schema.id),
         "name": schema.name,
@@ -1200,18 +1200,18 @@ async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user
 async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
-        raise HTTPException(status_code=404, detail="Schema not found")
+        raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     if "name" in body:
         name = body["name"].strip()
         if not name:
-            raise HTTPException(status_code=422, detail="Name is required")
+            raise HTTPException(status_code=422, detail=t_req("Name is required"))
         schema.name = name
     if "pydantic_schema" in body:
         pydantic_schema = body["pydantic_schema"].strip()
         if not pydantic_schema:
-            raise HTTPException(status_code=422, detail="Schema code is required")
+            raise HTTPException(status_code=422, detail=t_req("Schema code is required"))
         if len(pydantic_schema) > 10000:
-            raise HTTPException(status_code=422, detail="Schema code too long")
+            raise HTTPException(status_code=422, detail=t_req("Schema code too long"))
         schema.pydantic_schema = pydantic_schema
     await db.commit()
     await db.refresh(schema)
@@ -1222,7 +1222,7 @@ async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), user: User
 async def delete_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
-        raise HTTPException(status_code=404, detail="Schema not found")
+        raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     await db.delete(schema)
     await db.commit()
     return {"ok": True}
@@ -1232,7 +1232,7 @@ async def delete_schema(schema_id: uuid.UUID, user: User = Depends(get_current_u
 async def export_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
     if not schema:
-        raise HTTPException(status_code=404, detail="Schema not found")
+        raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     content = (
         f"# name: {schema.name}\n"
         f"# exported: {schema.created_at.isoformat()}\n"
@@ -1251,11 +1251,11 @@ async def export_schema(schema_id: uuid.UUID, user: User = Depends(get_current_u
 async def parse_schema_endpoint(body: dict = Body(...), user: User = Depends(get_current_user)):
     code = body.get("pydantic_schema", "")
     if not code:
-        raise HTTPException(status_code=422, detail="Empty schema")
+        raise HTTPException(status_code=422, detail=t_req("Empty schema"))
     try:
         result = parse_schema(code)
     except SyntaxError as e:
-        raise HTTPException(status_code=422, detail=f"Invalid Python syntax: {e}")
+        raise HTTPException(status_code=422, detail=t_req("Invalid Python syntax: {error}", error=e))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return result
@@ -1265,18 +1265,18 @@ async def parse_schema_endpoint(body: dict = Body(...), user: User = Depends(get
 async def import_schema(file: UploadFile, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     content = await file.read()
     if len(content) > 10000:
-        raise HTTPException(status_code=422, detail="File too large")
+        raise HTTPException(status_code=422, detail=t_req("File too large"))
 
     try:
         decoded = content.decode("utf-8")
     except UnicodeDecodeError:
-        raise HTTPException(status_code=422, detail="Invalid UTF-8 file")
+        raise HTTPException(status_code=422, detail=t_req("Invalid UTF-8 file"))
 
     if decoded.lstrip().startswith("{"):
         try:
             data = json.loads(decoded)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=422, detail="Invalid JSON file")
+            raise HTTPException(status_code=422, detail=t_req("Invalid JSON file"))
         name = data.get("name", "").strip()
         pydantic_schema = data.get("pydantic_schema", "").strip()
     else:
@@ -1286,7 +1286,7 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
     if not name:
         name = "Imported Schema"
     if not pydantic_schema:
-        raise HTTPException(status_code=422, detail="No schema code found in file")
+        raise HTTPException(status_code=422, detail=t_req("No schema code found in file"))
 
     schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
@@ -1356,9 +1356,9 @@ async def admin_toggle_user_status(
 ):
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t_req("User not found"))
     if str(user.id) == str(admin.id):
-        raise HTTPException(status_code=422, detail="Cannot toggle your own status")
+        raise HTTPException(status_code=422, detail=t_req("Cannot toggle your own status"))
     user.is_active = body.get("is_active", True)
     await db.commit()
     return {"ok": True, "is_active": user.is_active}
@@ -1373,12 +1373,12 @@ async def admin_set_user_role(
 ):
     role = body.get("role", "")
     if role not in ("admin", "user"):
-        raise HTTPException(status_code=422, detail="Role must be 'admin' or 'user'")
+        raise HTTPException(status_code=422, detail=t_req("Role must be 'admin' or 'user'"))
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t_req("User not found"))
     if str(user.id) == str(admin.id):
-        raise HTTPException(status_code=422, detail="Cannot change your own role")
+        raise HTTPException(status_code=422, detail=t_req("Cannot change your own role"))
     user.role = role
     await db.commit()
     return {"ok": True, "role": user.role}
@@ -1392,9 +1392,9 @@ async def admin_delete_user(
 ):
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=t_req("User not found"))
     if str(user.id) == str(admin.id):
-        raise HTTPException(status_code=422, detail="Cannot delete your own account")
+        raise HTTPException(status_code=422, detail=t_req("Cannot delete your own account"))
     user.is_active = False
     await db.commit()
     return {"ok": True}
