@@ -273,6 +273,29 @@ async def api_revoke_token(token_id: uuid.UUID, user: User = Depends(get_current
     return {"ok": True}
 
 
+@app.post("/api/batches/estimate")
+async def api_batch_estimate(body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    from app.pricing import calculate_cost
+
+    file_sizes = body.get("file_sizes", [])
+    model_id = body.get("model_id", "")
+    if not file_sizes:
+        raise HTTPException(status_code=422, detail="file_sizes is required")
+    if len(file_sizes) > settings.max_batch_size:
+        raise HTTPException(status_code=422, detail=f"Batch exceeds max size of {settings.max_batch_size}")
+
+    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    estimated_tokens = sum(size / 4 for size in file_sizes)
+    estimated_cost = calculate_cost(provider_type, model_name, estimated_tokens, estimated_tokens / 4)
+
+    return {
+        "documents": len(file_sizes),
+        "estimated_tokens": int(estimated_tokens),
+        "estimated_cost": round(estimated_cost, 6),
+        "model": model_name,
+    }
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
