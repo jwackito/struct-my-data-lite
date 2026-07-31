@@ -26,3 +26,11 @@ def test_es_covers_all_en_keys():
     from app.i18n import DICTS
 
     assert set(DICTS["es"].keys()) == set(DICTS["en"].keys())
+
+
+def test_translations_have_no_empty_values():
+    from app.i18n import DICTS
+
+    for lang in ("en", "es"):
+        for key, value in DICTS[lang].items():
+            assert value.strip(), f"empty translation for {key!r} in {lang}"
