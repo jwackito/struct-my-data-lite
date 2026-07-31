@@ -88,3 +88,10 @@ async def test_i18n_lang_endpoint(client):
 async def test_i18n_unknown_lang_404(client):
     response = await client.get("/i18n/fr.json")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_i18n_js_served(client):
+    response = await client.get("/i18n.js")
+    assert response.status_code == 200
+    assert "text/javascript" in response.headers["content-type"]
