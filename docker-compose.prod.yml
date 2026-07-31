@@ -1,9 +1,17 @@
 services:
   app:
     build: .
+    env_file:
+      - .env
     environment:
       PORT: 8080
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/structmydata
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/structmydata
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3.6:35b}
+      OLLAMA_VISION_MODEL: ${OLLAMA_VISION_MODEL:-gemma4:31b}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      JWT_SECRET: ${JWT_SECRET:-}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -23,7 +31,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: structmydata
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -36,3 +44,4 @@ services:
 
 volumes:
   pgdata:
+  storage:
