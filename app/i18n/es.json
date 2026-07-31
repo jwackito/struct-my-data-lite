@@ -55,5 +55,15 @@
   "Open": "Abrir",
   "Prev": "Anterior",
   "Next": "Siguiente",
-  "Page {page} of {total} ({count} batches)": "Página {page} de {total} ({count} lotes)"
+  "Page {page} of {total} ({count} batches)": "Página {page} de {total} ({count} lotes)",
+  "Batch — Struct My Data": "Lote — Struct My Data",
+  "Batch": "Lote",
+  "Download Results": "Descargar resultados",
+  "Retry Failed": "Reintentar fallidos",
+  "Cancel": "Cancelar",
+  "File": "Archivo",
+  "Model": "Modelo",
+  "Error": "Error",
+  "View": "Ver",
+  "Cancel pending jobs? Running jobs will finish.": "¿Cancelar los trabajos pendientes? Los trabajos en ejecución terminarán."
 }

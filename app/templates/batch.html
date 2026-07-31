@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Batch — Struct My Data</title>
+  <title data-i18n="Batch — Struct My Data">Batch — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 860px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -49,26 +50,27 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Extraction</a>
-      <a href="/ui/batches">Batches</a>
-      <a href="/usage">Usage</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/ui/batches" data-i18n="Batches">Batches</a>
+      <a href="/usage" data-i18n="Usage">Usage</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1 id="batch-name">Batch</h1>
+  <h1 id="batch-name" data-i18n="Batch">Batch</h1>
   <div class="progress">
     <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
     <div class="progress-text" id="progress-text">0/0</div>
   </div>
   <div class="actions">
-    <a href="#" class="btn btn-success" id="download-btn" style="display:none">Download Results</a>
-    <button class="btn btn-secondary" id="retry-btn" style="display:none" onclick="retryFailed()">Retry Failed</button>
-    <button class="btn btn-danger" id="cancel-btn" style="display:none" onclick="cancelBatch()">Cancel</button>
+    <a href="#" class="btn btn-success" id="download-btn" style="display:none" data-i18n="Download Results">Download Results</a>
+    <button class="btn btn-secondary" id="retry-btn" style="display:none" onclick="retryFailed()" data-i18n="Retry Failed">Retry Failed</button>
+    <button class="btn btn-danger" id="cancel-btn" style="display:none" onclick="cancelBatch()" data-i18n="Cancel">Cancel</button>
   </div>
-  <div id="jobs-table"><p>Loading...</p></div>
+  <div id="jobs-table"><p data-i18n="Loading...">Loading...</p></div>
   <script>
     var batchId = window.location.pathname.split('/').pop();
     var pollTimer;
@@ -79,12 +81,12 @@
           window.location.href = '/ui/jobs/' + data.jobs[0].id + '/result';
           return;
         }
-        document.getElementById('batch-name').textContent = data.name || 'Batch';
+        document.getElementById('batch-name').textContent = data.name || window.t('Batch');
 
         var done = data.completed + data.failed;
         var pct = data.total > 0 ? Math.round(done / data.total * 100) : 0;
         document.getElementById('progress-fill').style.width = pct + '%';
-        document.getElementById('progress-text').textContent = done + '/' + data.total + ' (' + data.completed + ' ok, ' + data.failed + ' failed)';
+        document.getElementById('progress-text').textContent = done + '/' + data.total + ' (' + window.t('{ok} ok, {failed} failed', {ok: data.completed, failed: data.failed}) + ')';
 
         var allDone = done >= data.total;
         document.getElementById('download-btn').style.display = allDone && data.completed > 0 ? 'inline-block' : 'none';
@@ -93,12 +95,12 @@
 
         document.getElementById('download-btn').href = '/api/batches/' + batchId + '/results';
 
-        var html = '<table><thead><tr><th>File</th><th>Status</th><th>Model</th><th>Error</th><th></th></tr></thead><tbody>';
+        var html = '<table><thead><tr><th>' + window.t('File') + '</th><th>' + window.t('Status') + '</th><th>' + window.t('Model') + '</th><th>' + window.t('Error') + '</th><th></th></tr></thead><tbody>';
         data.jobs.forEach(function(j) {
-          var badge = '<span class="badge ' + j.status + '">' + j.status + '</span>';
+          var badge = '<span class="badge ' + j.status + '">' + window.t(j.status) + '</span>';
           var err = j.error_message ? '<pre>' + j.error_message + '</pre>' : '';
           var view = j.status === 'completed'
-            ? '<a class="view-link" href="/ui/jobs/' + j.id + '/result">View</a>'
+            ? '<a class="view-link" href="/ui/jobs/' + j.id + '/result">' + window.t('View') + '</a>'
             : '';
           html += '<tr><td>' + j.filename + '</td><td>' + badge + '</td><td>' + (j.model_name || '-') + '</td><td>' + err + '</td><td>' + view + '</td></tr>';
         });
@@ -119,7 +121,7 @@
     }
 
     function cancelBatch() {
-      if (!confirm('Cancel pending jobs? Running jobs will finish.')) return;
+      if (!confirm(window.t('Cancel pending jobs? Running jobs will finish.'))) return;
       fetch('/api/batches/' + batchId + '/cancel', { method: 'POST' }).then(function(r) {
         if (r.ok) loadBatch();
       });

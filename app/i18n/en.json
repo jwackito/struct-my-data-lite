@@ -55,5 +55,15 @@
   "Open": "Open",
   "Prev": "Prev",
   "Next": "Next",
-  "Page {page} of {total} ({count} batches)": "Page {page} of {total} ({count} batches)"
+  "Page {page} of {total} ({count} batches)": "Page {page} of {total} ({count} batches)",
+  "Batch — Struct My Data": "Batch — Struct My Data",
+  "Batch": "Batch",
+  "Download Results": "Download Results",
+  "Retry Failed": "Retry Failed",
+  "Cancel": "Cancel",
+  "File": "File",
+  "Model": "Model",
+  "Error": "Error",
+  "View": "View",
+  "Cancel pending jobs? Running jobs will finish.": "Cancel pending jobs? Running jobs will finish."
 }
