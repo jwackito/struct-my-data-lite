@@ -212,9 +212,9 @@ async def test_batch_multipart_sets_hx_redirect(async_client, db_session, monkey
     token = reg.json()["token"]
 
     files = [
-        ("files", ("a.txt", b"content a", "text/plain")),
-        ("files", ("b.txt", b"content b", "text/plain")),
-        ("files", ("c.txt", b"content c", "text/plain")),
+        ("file", ("a.txt", b"content a", "text/plain")),
+        ("file", ("b.txt", b"content b", "text/plain")),
+        ("file", ("c.txt", b"content c", "text/plain")),
     ]
     resp = await async_client.post(
         "/ui/batch-extract",
