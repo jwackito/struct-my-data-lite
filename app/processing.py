@@ -38,6 +38,11 @@ def _job_payload(job: ExtractionJob) -> dict:
     }
 
 
+async def process_job(job_id: uuid.UUID):
+    async with _process_semaphore:
+        await _run_job(job_id)
+
+
 async def _run_job(job_id: uuid.UUID):
     async with async_session() as db:
         job = await db.get(ExtractionJob, job_id)
