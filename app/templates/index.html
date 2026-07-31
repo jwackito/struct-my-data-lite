@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Struct My Data</title>
+  <script src="/i18n.js"></script>
   <script src="https://unpkg.com/htmx.org@2"></script>
   <style>
     body {
@@ -326,43 +327,44 @@
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
     <h1 style="margin:0">Struct My Data</h1>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <a id="admin-link" href="/admin" style="display:none;font-size:0.85rem;text-decoration:none">Admin</a>
-      <a id="usage-link" href="/usage" style="font-size:0.85rem;text-decoration:none">Usage</a>
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings">&#9881;</a>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <a id="admin-link" href="/admin" style="display:none;font-size:0.85rem;text-decoration:none" data-i18n="Admin">Admin</a>
+      <a id="usage-link" href="/usage" style="font-size:0.85rem;text-decoration:none" data-i18n="Usage">Usage</a>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings" data-i18n-title="Settings">&#9881;</a>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
   <form hx-post="/ui/batch-extract" hx-target="#result" enctype="multipart/form-data">
     <div>
-      <label>Document <input type="file" name="file" multiple required></label>
+      <label><span data-i18n="Document">Document</span> <input type="file" name="file" multiple required></label>
     </div>
     <div>
-      <label>Model
+      <label><span data-i18n="Model">Model</span>
         <select name="model_id" id="model-select">
           <option value="">Loading models...</option>
         </select>
       </label>
     </div>
     <div class="schema-section">
-      <label>Pydantic Schema</label>
+      <label data-i18n="Pydantic Schema">Pydantic Schema</label>
       <div class="tab-bar">
-        <button type="button" class="tab active" data-tab="builder">Builder</button>
-        <button type="button" class="tab" data-tab="code">Code</button>
-        <button type="button" class="tab" data-tab="history" hx-get="/ui/jobs" hx-target="#tab-history" hx-trigger="click once">History</button>
+        <button type="button" class="tab active" data-tab="builder" data-i18n="Builder">Builder</button>
+        <button type="button" class="tab" data-tab="code" data-i18n="Code">Code</button>
+        <button type="button" class="tab" data-tab="history" hx-get="/ui/jobs" hx-target="#tab-history" hx-trigger="click once" data-i18n="History">History</button>
       </div>
       <div class="tab-panel active" id="tab-builder">
         <div class="builder">
           <div class="model-name-row">
-            <label for="model-name">Model Name</label>
+            <label for="model-name" data-i18n="Model Name">Model Name</label>
             <input type="text" id="model-name" value="ExtractedData">
           </div>
           <div class="field-separator"></div>
           <div class="field-list" id="field-list"></div>
           <div class="builder-actions">
-            <button type="button" id="add-field">+ Add Field</button>
-            <button type="button" id="generate-code" class="btn-secondary">Generate Code</button>
-            <button type="button" id="import-code" class="btn-secondary">&#8635; Import from Code</button>
+            <button type="button" id="add-field" data-i18n="+ Add Field">+ Add Field</button>
+            <button type="button" id="generate-code" class="btn-secondary" data-i18n="Generate Code">Generate Code</button>
+            <button type="button" id="import-code" class="btn-secondary">&#8635; <span data-i18n="Import from Code">Import from Code</span></button>
           </div>
           <div id="builder-error" class="validation-error" style="display:none"></div>
         </div>
@@ -376,25 +378,25 @@ class OfficialsList(BaseModel):
     positions: List[str] = Field(description="Positions in same order")</textarea>
       </div>
       <div class="schema-templates">
-        <label>Saved Schemas</label>
+        <label data-i18n="Saved Schemas">Saved Schemas</label>
         <div class="templates-row">
           <select id="template-select">
-            <option value="">Select a saved schema...</option>
+            <option value="" data-i18n="Select a saved schema...">Select a saved schema...</option>
           </select>
-          <button type="button" id="template-load">Load</button>
-          <button type="button" id="template-save" class="btn-secondary">Save</button>
+          <button type="button" id="template-load" data-i18n="Load">Load</button>
+          <button type="button" id="template-save" class="btn-secondary" data-i18n="Save">Save</button>
           <button type="button" id="template-delete" class="btn-danger">&times;</button>
-          <button type="button" id="template-export" class="btn-secondary">Export</button>
+          <button type="button" id="template-export" class="btn-secondary" data-i18n="Export">Export</button>
         </div>
         <div class="templates-import-row">
-          <button type="button" id="template-import" class="btn-secondary">Import .py file...</button>
+          <button type="button" id="template-import" class="btn-secondary" data-i18n="Import .py file...">Import .py file...</button>
           <input type="file" id="template-import-input" accept=".py,.json,.txt" style="display:none">
         </div>
       </div>
     </div>
     <button type="submit">
-      <span class="button-label">Extract</span>
-      <span class="htmx-indicator">⏳ Extracting...</span>
+      <span class="button-label" data-i18n="Extract">Extract</span>
+      <span class="htmx-indicator">⏳ <span data-i18n="Extracting...">Extracting...</span></span>
     </button>
   </form>
   <div id="result"></div>
