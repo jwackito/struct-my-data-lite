@@ -181,5 +181,13 @@
   "+ Add sub-field": "+ Agregar subcampo",
   "No fields yet. Click \"+ Add Field\" to start.": "No hay campos todavía. Haz clic en \"+ Agregar campo\" para comenzar.",
   "Duplicate field names: {names} — each name must be unique.": "Nombres de campo duplicados: {names} — cada nombre debe ser único.",
-  "Parse failed": "Error al analizar"
+  "Parse failed": "Error al analizar",
+  "Select a model...": "Selecciona un modelo...",
+  "No schema code to save. Build a schema first.": "No hay código de esquema para guardar. Primero construye un esquema.",
+  "Name for this schema:": "Nombre para este esquema:",
+  "Select a schema first.": "Selecciona un esquema primero.",
+  "Delete this schema?": "¿Eliminar este esquema?",
+  "Estimated cost ${cost} for {count} {noun} with {model}. Continue?": "Costo estimado ${cost} para {count} {noun} con {model}. ¿Continuar?",
+  "document": "documento",
+  "documents": "documentos"
 }

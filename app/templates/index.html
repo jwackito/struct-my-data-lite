@@ -919,7 +919,7 @@ class OfficialsList(BaseModel):
           .then(function (r) { return r.json(); })
           .then(function (data) {
             var sel = document.getElementById("template-select");
-            sel.innerHTML = '<option value="">Select a saved schema...</option>';
+            sel.innerHTML = '<option value="">' + window.t('Select a saved schema...') + '</option>';
             data.forEach(function (s) {
               var opt = document.createElement("option");
               opt.value = s.id;
@@ -943,22 +943,22 @@ class OfficialsList(BaseModel):
 
       document.getElementById("template-save").addEventListener("click", function () {
         var code = textarea.value.trim();
-        if (!code) { alert("No schema code to save. Build a schema first."); return; }
-        var name = prompt("Name for this schema:");
+        if (!code) { alert(window.t("No schema code to save. Build a schema first.")); return; }
+        var name = prompt(window.t("Name for this schema:"));
         if (!name || !name.trim()) return;
         fetch("/schemas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: name.trim(), pydantic_schema: code }),
         }).then(function (r) {
-          if (!r.ok) { r.json().then(function (e) { alert(e.detail); }); return; }
+          if (!r.ok) { r.json().then(function (e) { alert(window.t(e.detail)); }); return; }
           loadTemplateList();
         });
       });
 
       document.getElementById("template-load").addEventListener("click", function () {
         var id = getSelectedTemplateId();
-        if (!id) { alert("Select a schema first."); return; }
+        if (!id) { alert(window.t("Select a schema first.")); return; }
         fetch("/schemas/" + id)
           .then(function (r) { return r.json(); })
           .then(function (s) {
@@ -969,8 +969,8 @@ class OfficialsList(BaseModel):
 
       document.getElementById("template-delete").addEventListener("click", function () {
         var id = getSelectedTemplateId();
-        if (!id) { alert("Select a schema first."); return; }
-        if (!confirm("Delete this schema?")) return;
+        if (!id) { alert(window.t("Select a schema first.")); return; }
+        if (!confirm(window.t("Delete this schema?"))) return;
         fetch("/schemas/" + id, { method: "DELETE" }).then(function () {
           loadTemplateList();
         });
@@ -978,7 +978,7 @@ class OfficialsList(BaseModel):
 
       document.getElementById("template-export").addEventListener("click", function () {
         var id = getSelectedTemplateId();
-        if (!id) { alert("Select a schema first."); return; }
+        if (!id) { alert(window.t("Select a schema first.")); return; }
         window.open("/schemas/" + id + "/export", "_blank");
       });
 
@@ -993,7 +993,7 @@ class OfficialsList(BaseModel):
         formData.append("file", file);
         fetch("/schemas/import", { method: "POST", body: formData })
           .then(function (r) {
-            if (!r.ok) { r.json().then(function (e) { alert(e.detail); }); return; }
+            if (!r.ok) { r.json().then(function (e) { alert(window.t(e.detail)); }); return; }
             loadTemplateList();
           });
         this.value = "";
@@ -1004,7 +1004,7 @@ class OfficialsList(BaseModel):
           .then(function (r) { return r.json(); })
           .then(function (data) {
             var sel = document.getElementById("model-select");
-            sel.innerHTML = '<option value="">Select a model...</option>';
+            sel.innerHTML = '<option value="">' + window.t('Select a model...') + '</option>';
             var grouped = {};
             data.models.forEach(function (m) {
               var conn = m.connection || "";
@@ -1089,8 +1089,8 @@ class OfficialsList(BaseModel):
               body: JSON.stringify({ file_sizes: sizes, model_id: model ? model.value : '' }),
             }).then(function(r) { return r.json(); }).then(function(data) {
               if (data.estimated_cost !== undefined && data.estimated_cost > 0) {
-                var noun = data.documents === 1 ? 'document' : 'documents';
-                pendingConfirm = 'Estimated cost $' + data.estimated_cost.toFixed(6) + ' for ' + data.documents + ' ' + noun + ' with ' + data.model + '. Continue?';
+                var noun = data.documents === 1 ? window.t('document') : window.t('documents');
+                pendingConfirm = window.t('Estimated cost ${cost} for {count} {noun} with {model}. Continue?', {cost: data.estimated_cost.toFixed(6), count: data.documents, noun: noun, model: data.model});
               }
             });
           } else {

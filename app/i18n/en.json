@@ -181,5 +181,13 @@
   "+ Add sub-field": "+ Add sub-field",
   "No fields yet. Click \"+ Add Field\" to start.": "No fields yet. Click \"+ Add Field\" to start.",
   "Duplicate field names: {names} — each name must be unique.": "Duplicate field names: {names} — each name must be unique.",
-  "Parse failed": "Parse failed"
+  "Parse failed": "Parse failed",
+  "Select a model...": "Select a model...",
+  "No schema code to save. Build a schema first.": "No schema code to save. Build a schema first.",
+  "Name for this schema:": "Name for this schema:",
+  "Select a schema first.": "Select a schema first.",
+  "Delete this schema?": "Delete this schema?",
+  "Estimated cost ${cost} for {count} {noun} with {model}. Continue?": "Estimated cost ${cost} for {count} {noun} with {model}. Continue?",
+  "document": "document",
+  "documents": "documents"
 }
