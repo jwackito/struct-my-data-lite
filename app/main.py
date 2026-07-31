@@ -379,6 +379,50 @@ async def api_list_batches(offset: int = 0, limit: int = 20, user: User = Depend
     return {"batches": items, "total": total}
 
 
+@app.get("/api/batches/{batch_id}")
+async def api_batch_progress(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    batch = await db.get(Batch, batch_id)
+    if not batch or batch.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Batch not found")
+
+    result = await db.execute(
+        select(ExtractionJob, Document.filename)
+        .join(Document, ExtractionJob.document_id == Document.id)
+        .where(ExtractionJob.batch_id == batch.id)
+        .order_by(ExtractionJob.created_at)
+    )
+    rows = result.all()
+
+    jobs = []
+    for job, filename in rows:
+        st = job.status.value if hasattr(job.status, "value") else job.status
+        jobs.append({
+            "id": str(job.id),
+            "filename": filename,
+            "status": st,
+            "error_message": job.error_message,
+            "model_name": job.model_name,
+        })
+
+    completed = sum(1 for j in jobs if j["status"] == "completed")
+    failed = sum(1 for j in jobs if j["status"] == "failed")
+    running = sum(1 for j in jobs if j["status"] == "running")
+    pending = sum(1 for j in jobs if j["status"] == "pending")
+
+    return {
+        "id": str(batch.id),
+        "name": batch.name,
+        "created_at": batch.created_at.isoformat(),
+        "completed_at": batch.completed_at.isoformat() if batch.completed_at else None,
+        "total": len(jobs),
+        "completed": completed,
+        "failed": failed,
+        "running": running,
+        "pending": pending,
+        "jobs": jobs,
+    }
+
+
 @app.get("/api/usage")
 async def api_usage(
     from_date: str = "",
