@@ -63,7 +63,11 @@ async def test_batch_progress(async_client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_batch_retry_failed(async_client, db_session):
+async def test_batch_retry_failed(async_client, db_session, monkeypatch):
+    import asyncio
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr("app.main.process_job", AsyncMock())
+
     reg = await async_client.post("/auth/register", json={
         "email": "batch-retry@example.com",
         "password": "password123",
