@@ -979,7 +979,9 @@ async def ui_batch_extract(
     for job_id in job_ids:
         background_tasks.add_task(process_job, job_id)
 
-    return HTMLResponse(f'<div hx-redirect="/ui/batches/{batch.id}">Batch started</div>')
+    resp = HTMLResponse('<div>Batch started</div>')
+    resp.headers["HX-Redirect"] = f"/ui/batches/{batch.id}"
+    return resp
 
 
 def _render_output(data):
