@@ -11,9 +11,15 @@
     return LANGS.indexOf(code) !== -1 ? code : null;
   }
 
-  function t(key) {
+  function t(key, args) {
     var d = dicts[currentLang] || {};
-    return d[key] || enDict[key] || key;
+    var text = d[key] || enDict[key] || key;
+    if (args) {
+      Object.keys(args).forEach(function (k) {
+        text = text.split("{" + k + "}").join(args[k]);
+      });
+    }
+    return text;
   }
 
   function translateElement(el) {
