@@ -456,7 +456,7 @@ class OfficialsList(BaseModel):
         return types.map(function (t) {
           var opt = document.createElement("option");
           opt.value = t[0];
-          opt.textContent = t[1];
+          opt.textContent = window.t(t[1]);
           if (t[0] === (selected || "str")) opt.selected = true;
           return opt;
         });
@@ -617,7 +617,7 @@ class OfficialsList(BaseModel):
         var descInput = document.createElement("input");
         descInput.type = "text";
         descInput.className = "field-desc";
-        descInput.placeholder = "Description";
+        descInput.placeholder = window.t("Description");
         descInput.value = desc || "";
         descInput.addEventListener("keydown", function (e) {
           if (e.key === "Enter") {
@@ -660,7 +660,7 @@ class OfficialsList(BaseModel):
         var nestedAddBtn = document.createElement("button");
         nestedAddBtn.type = "button";
         nestedAddBtn.className = "nested-add-field";
-        nestedAddBtn.textContent = "+ Add sub-field";
+        nestedAddBtn.textContent = window.t("+ Add sub-field");
         nestedAddBtn.addEventListener("click", function () {
           addField("", "str", "", level + 1, nestedContainer);
           nestedContainer.style.display = "block";
@@ -722,7 +722,7 @@ class OfficialsList(BaseModel):
           if (!existing) {
             var el = document.createElement("div");
             el.className = "empty-state";
-            el.textContent = 'No fields yet. Click "+ Add Field" to start.';
+            el.textContent = window.t('No fields yet. Click "+ Add Field" to start.');
             var addBtn = findAddButton(container);
             if (addBtn) {
               container.insertBefore(el, addBtn);
@@ -819,7 +819,7 @@ class OfficialsList(BaseModel):
           if (allNames[k] > 1) dupes.push(k);
         }
         if (dupes.length > 0) {
-          builderError.textContent = "Duplicate field names: " + dupes.join(", ") + " — each name must be unique.";
+          builderError.textContent = window.t("Duplicate field names: {names} — each name must be unique.", {names: dupes.join(", ")});
           builderError.style.display = "block";
           highlightDupes(fieldList);
           return;
@@ -894,7 +894,7 @@ class OfficialsList(BaseModel):
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pydantic_schema: code }),
         }).then(function (r) {
-          if (!r.ok) { r.json().then(function (e) { builderError.textContent = e.detail || "Parse failed"; builderError.style.display = "block"; }); return; }
+          if (!r.ok) { r.json().then(function (e) { builderError.textContent = window.t(e.detail) || window.t("Parse failed"); builderError.style.display = "block"; }); return; }
           return r.json();
         }).then(function (data) {
           if (!data) return;

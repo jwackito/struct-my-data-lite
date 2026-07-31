@@ -166,5 +166,20 @@
   "Import .py file...": "Importar archivo .py...",
   "Extract": "Extraer",
   "Extracting...": "Extrayendo...",
-  "Settings": "Configuración"
+  "Settings": "Configuración",
+  "string": "cadena",
+  "integer": "entero",
+  "number": "número",
+  "boolean": "booleano",
+  "date": "fecha",
+  "list of string": "lista de cadenas",
+  "list of number": "lista de números",
+  "list of integer": "lista de enteros",
+  "Object": "Objeto",
+  "List of Object": "Lista de objetos",
+  "Description": "Descripción",
+  "+ Add sub-field": "+ Agregar subcampo",
+  "No fields yet. Click \"+ Add Field\" to start.": "No hay campos todavía. Haz clic en \"+ Agregar campo\" para comenzar.",
+  "Duplicate field names: {names} — each name must be unique.": "Nombres de campo duplicados: {names} — cada nombre debe ser único.",
+  "Parse failed": "Error al analizar"
 }

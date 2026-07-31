@@ -166,5 +166,20 @@
   "Import .py file...": "Import .py file...",
   "Extract": "Extract",
   "Extracting...": "Extracting...",
-  "Settings": "Settings"
+  "Settings": "Settings",
+  "string": "string",
+  "integer": "integer",
+  "number": "number",
+  "boolean": "boolean",
+  "date": "date",
+  "list of string": "list of string",
+  "list of number": "list of number",
+  "list of integer": "list of integer",
+  "Object": "Object",
+  "List of Object": "List of Object",
+  "Description": "Description",
+  "+ Add sub-field": "+ Add sub-field",
+  "No fields yet. Click \"+ Add Field\" to start.": "No fields yet. Click \"+ Add Field\" to start.",
+  "Duplicate field names: {names} — each name must be unique.": "Duplicate field names: {names} — each name must be unique.",
+  "Parse failed": "Parse failed"
 }
