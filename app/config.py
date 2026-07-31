@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 24
     allow_registration: bool = True
+    batch_concurrency: int = 2
+    max_batch_size: int = 50
     skip_db_wait: bool = False
 
     class Config:
