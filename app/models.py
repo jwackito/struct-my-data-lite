@@ -54,6 +54,7 @@ class ExtractionJob(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    batch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("batches.id"), nullable=True, index=True)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"))
     status: Mapped[JobStatus] = mapped_column(String(20), default=JobStatus.pending)
     pydantic_schema: Mapped[str] = mapped_column(Text)
