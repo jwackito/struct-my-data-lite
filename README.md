@@ -209,12 +209,18 @@ Selecting multiple files on the extraction page creates a **batch** — one `Ext
 | `OLLAMA_VISION_MODEL` | `gemma4:31b` | Model name for image extraction |
 | `OLLAMA_TIMEOUT` | `3600` (1h) | HTTP timeout in seconds for Ollama calls |
 | `MAX_UPLOAD_SIZE` | `10485760` (10 MB) | Max file upload size in bytes |
+| `MAX_BATCH_SIZE` | `50` | Max files per batch |
+| `BATCH_CONCURRENCY` | `2` | Max concurrent extraction jobs |
 | `PORT` | `8000` | App HTTP server port |
 | `SKIP_DB_WAIT` | `false` | Skip DB readiness check on startup |
 | `OPENAI_API_KEY` | `""` | OpenAI API key (optional, use connections UI instead) |
 | `OPENAI_BASE_URL` | `""` | OpenAI-compatible base URL (optional) |
 | `GEMINI_API_KEY` | `""` | Gemini API key (optional, use connections UI instead) |
 | `APP_SECRET_KEY` | `""` | Fernet key for encrypting stored provider secrets |
+| `JWT_SECRET` | `""` (auto-generated) | Secret for signing JWTs |
+| `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `JWT_EXPIRY_HOURS` | `24` | JWT session lifetime in hours |
+| `ALLOW_REGISTRATION` | `true` | Whether public registration is open |
 
 For production, at minimum set `DATABASE_URL`, `OLLAMA_HOST`, and `OLLAMA_MODEL`.
 
