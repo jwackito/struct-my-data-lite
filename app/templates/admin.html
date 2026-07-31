@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — Struct My Data</title>
+  <title data-i18n="Admin — Struct My Data">Admin — Struct My Data</title>
+  <script src="/i18n.js"></script>
   <style>
     body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; }
@@ -30,23 +31,24 @@
 <body>
   <div class="nav">
     <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; Extraction</a>
-      <a href="/admin/usage">Usage</a>
-      <a href="/admin/users" style="font-weight:600">Users</a>
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/admin/usage" data-i18n="Usage">Usage</a>
+      <a href="/admin/users" style="font-weight:600" data-i18n="Users">Users</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
-      <button id="theme-btn" class="theme-btn" title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none">Logout</a>
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
     </div>
   </div>
-  <h1>Admin</h1>
+  <h1 data-i18n="Admin">Admin</h1>
   <div class="cards" id="summary">
-    <div class="card"><h3>Users</h3><div class="value" id="total-users">-</div></div>
-    <div class="card"><h3>Active</h3><div class="value" id="active-users">-</div></div>
-    <div class="card"><h3>Total Jobs</h3><div class="value" id="total-jobs">-</div></div>
+    <div class="card"><h3 data-i18n="Users">Users</h3><div class="value" id="total-users">-</div></div>
+    <div class="card"><h3 data-i18n="Active">Active</h3><div class="value" id="active-users">-</div></div>
+    <div class="card"><h3 data-i18n="Total Jobs">Total Jobs</h3><div class="value" id="total-jobs">-</div></div>
   </div>
   <div class="actions">
-    <a href="/admin/users">Manage Users</a>
+    <a href="/admin/users" data-i18n="Manage Users">Manage Users</a>
   </div>
   <script>
     fetch('/admin/users/data?limit=1').then(function(r) { return r.json(); }).then(function(data) {

@@ -65,5 +65,11 @@
   "Model": "Model",
   "Error": "Error",
   "View": "View",
-  "Cancel pending jobs? Running jobs will finish.": "Cancel pending jobs? Running jobs will finish."
+  "Cancel pending jobs? Running jobs will finish.": "Cancel pending jobs? Running jobs will finish.",
+  "Admin — Struct My Data": "Admin — Struct My Data",
+  "Admin": "Admin",
+  "Users": "Users",
+  "Active": "Active",
+  "Total Jobs": "Total Jobs",
+  "Manage Users": "Manage Users"
 }

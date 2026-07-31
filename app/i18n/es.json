@@ -65,5 +65,11 @@
   "Model": "Modelo",
   "Error": "Error",
   "View": "Ver",
-  "Cancel pending jobs? Running jobs will finish.": "¿Cancelar los trabajos pendientes? Los trabajos en ejecución terminarán."
+  "Cancel pending jobs? Running jobs will finish.": "¿Cancelar los trabajos pendientes? Los trabajos en ejecución terminarán.",
+  "Admin — Struct My Data": "Administración — Struct My Data",
+  "Admin": "Administración",
+  "Users": "Usuarios",
+  "Active": "Activos",
+  "Total Jobs": "Total de trabajos",
+  "Manage Users": "Gestionar usuarios"
 }
