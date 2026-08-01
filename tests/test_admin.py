@@ -158,3 +158,16 @@ async def test_admin_create_user_invalid_email(async_client):
     )
     assert resp.status_code == 422
     assert "email" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user_rejects_non_admin(async_client):
+    await async_client.post("/auth/register", json={"email": "nobody@example.com", "password": "password123"})
+    login = await async_client.post("/auth/login", json={"email": "nobody@example.com", "password": "password123"})
+    token = login.json()["token"]
+    resp = await async_client.post(
+        "/admin/users",
+        json={"email": "someone@example.com", "password": "password123"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 403
