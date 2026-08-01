@@ -30,6 +30,20 @@
     .pagination { margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
     .pagination button { padding: 0.3rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; }
     .pagination button:disabled { opacity: 0.4; cursor: default; }
+    .create-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .create-btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; background: #2563eb; color: #fff; }
+    .create-btn:hover { background: #1d4ed8; }
+    #create-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; }
+    #create-modal.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 8px; padding: 1.5rem; max-width: 420px; width: 90%; }
+    .modal-box h3 { margin: 0 0 0.75rem 0; }
+    .modal-box label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.6rem; }
+    .modal-box input, .modal-box select { padding: 0.4rem 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .modal-actions button { padding: 0.5rem 0.9rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; }
+    .msg { font-size: 0.8rem; margin-top: 0.5rem; padding: 0.3rem 0.5rem; border-radius: 4px; display: none; }
+    .msg.err { display: block; background: #fee2e2; color: #991b1b; }
+    .msg.ok { display: block; background: #d1fae5; color: #065f46; }
     [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
     [data-theme="dark"] .nav a { color: #60a5fa; }
     [data-theme="dark"] .theme-btn { border-color: #555; }
@@ -41,6 +55,11 @@
     [data-theme="dark"] .badge.active { background: #064e3b; color: #6ee7b7; }
     [data-theme="dark"] .badge.disabled { background: #7f1d1d; color: #fca5a5; }
     [data-theme="dark"] .pagination button { background: #2d2d2d; border-color: #555; color: #e5e5e5; }
+    [data-theme="dark"] .create-btn:hover { background: #3b82f6; }
+    [data-theme="dark"] .modal-box { background: #2d2d2d; }
+    [data-theme="dark"] .modal-box input, [data-theme="dark"] .modal-box select { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .msg.err { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .msg.ok { background: #064e3b; color: #6ee7b7; }
   </style>
 </head>
 <body>
@@ -58,8 +77,31 @@
     </div>
   </div>
   <h1 data-i18n="Users">Users</h1>
-  <input type="text" id="search" placeholder="Search by email or name..." data-i18n-ph="Search by email or name..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(function(){loadUsers(v)},300)">
+  <div class="create-row">
+    <input type="text" id="search" placeholder="Search by email or name..." data-i18n-ph="Search by email or name..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(function(){loadUsers(v)},300)" style="flex:1;margin-bottom:0">
+    <button class="create-btn" onclick="openCreateModal()" data-i18n="Create User">Create User</button>
+  </div>
   <div id="users-table"><p data-i18n="Loading...">Loading...</p></div>
+
+  <div id="create-modal">
+    <div class="modal-box">
+      <h3 data-i18n="Create User">Create User</h3>
+      <label><span data-i18n="Email">Email</span> <input type="email" id="new-user-email"></label>
+      <label><span data-i18n="Display Name">Display Name</span> <input type="text" id="new-user-name"></label>
+      <label><span data-i18n="Password">Password</span> <input type="password" id="new-user-password"></label>
+      <label><span data-i18n="Role">Role</span>
+        <select id="new-user-role">
+          <option value="user" data-i18n="user">user</option>
+          <option value="admin" data-i18n="admin">admin</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="create-btn" onclick="createUser()" data-i18n="Create">Create</button>
+        <button class="action-btn demote" onclick="closeCreateModal()" data-i18n="Cancel">Cancel</button>
+      </div>
+      <div id="create-msg" class="msg"></div>
+    </div>
+  </div>
   <script>
     var t;
     var currentSearch = '';
@@ -121,6 +163,49 @@
       }).then(function(r) {
         if (r.ok) loadUsers();
         else r.json().then(function(e) { alert(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
+
+    function openCreateModal() {
+      document.getElementById('create-modal').classList.add('open');
+      document.getElementById('new-user-email').value = '';
+      document.getElementById('new-user-name').value = '';
+      document.getElementById('new-user-password').value = '';
+      document.getElementById('new-user-role').value = 'user';
+      document.getElementById('create-msg').className = 'msg';
+      document.getElementById('new-user-email').focus();
+    }
+
+    function closeCreateModal() {
+      document.getElementById('create-modal').classList.remove('open');
+    }
+
+    function createUser() {
+      var msg = document.getElementById('create-msg');
+      msg.className = 'msg';
+      var body = {
+        email: document.getElementById('new-user-email').value.trim(),
+        password: document.getElementById('new-user-password').value,
+        display_name: document.getElementById('new-user-name').value.trim(),
+        role: document.getElementById('new-user-role').value,
+      };
+      fetch('/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(function(r) {
+        return r.json().then(function(d) { return { ok: r.ok, data: d }; });
+      }).then(function(res) {
+        if (res.ok) {
+          closeCreateModal();
+          loadUsers();
+        } else {
+          msg.className = 'msg err';
+          msg.textContent = window.t(res.data.detail) || window.t('Failed');
+        }
+      }).catch(function() {
+        msg.className = 'msg err';
+        msg.textContent = window.t('Failed');
       });
     }
 

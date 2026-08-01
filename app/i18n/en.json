@@ -250,5 +250,7 @@
   "Invalid or expired token": "Invalid or expired token",
   "Admin access required": "Admin access required",
   "Language not found": "Language not found",
-  "Job not found": "Job not found"
+  "Job not found": "Job not found",
+  "Create User": "Create User",
+  "Create": "Create"
 }
