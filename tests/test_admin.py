@@ -146,3 +146,15 @@ async def test_admin_create_user_short_password(async_client):
     )
     assert resp.status_code == 422
     assert "8 characters" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user_invalid_email(async_client):
+    token = await _make_admin(async_client, "boss4@example.com")
+    resp = await async_client.post(
+        "/admin/users",
+        json={"email": "not-an-email", "password": "password123"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 422
+    assert "email" in resp.json()["detail"].lower()
