@@ -1384,6 +1384,44 @@ async def admin_set_user_role(
     return {"ok": True, "role": user.role}
 
 
+@app.post("/admin/users")
+async def admin_create_user(
+    body: dict,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    display_name = (body.get("display_name") or "").strip()
+    role = body.get("role") or "user"
+    if role not in ("user", "admin"):
+        raise HTTPException(status_code=422, detail=t_req("Role must be 'admin' or 'user'"))
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail=t_req("Valid email is required"))
+    if len(password) < 8:
+        raise HTTPException(status_code=422, detail=t_req("Password must be at least 8 characters"))
+
+    existing = await db.execute(select(User).where(User.email == email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=422, detail=t_req("Email already registered"))
+
+    user = User(
+        email=email,
+        password_hash=hash_password(password),
+        display_name=display_name or email.split("@")[0],
+        role=role,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "role": user.role,
+    }
+
+
 @app.delete("/admin/users/{user_id}")
 async def admin_delete_user(
     user_id: uuid.UUID,
