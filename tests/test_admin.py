@@ -122,3 +122,15 @@ async def test_admin_create_user(async_client):
     listing = await async_client.get("/admin/users/data", headers={"Authorization": f"Bearer {token}"})
     emails = [u["email"] for u in listing.json()["users"]]
     assert "newbie@example.com" in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user_duplicate_email(async_client):
+    token = await _make_admin(async_client, "boss2@example.com")
+    body = {"email": "dup@example.com", "password": "password123"}
+    headers = {"Authorization": f"Bearer {token}"}
+    first = await async_client.post("/admin/users", json=body, headers=headers)
+    assert first.status_code == 200
+    second = await async_client.post("/admin/users", json=body, headers=headers)
+    assert second.status_code == 422
+    assert "already registered" in second.json()["detail"]
