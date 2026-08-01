@@ -92,3 +92,33 @@ async def test_admin_toggle_user_status(async_client):
     )
     assert resp.status_code == 200
     assert resp.json()["is_active"] is False
+
+
+async def _make_admin(client, email):
+    await client.post("/auth/register", json={"email": email, "password": "password123"})
+    from app.database import async_session
+    from app.models import User
+    async with async_session() as s:
+        u = (await s.execute(__import__("sqlalchemy").select(User).where(User.email == email))).scalar_one()
+        u.role = "admin"
+        await s.commit()
+    login = await client.post("/auth/login", json={"email": email, "password": "password123"})
+    return login.json()["token"]
+
+
+@pytest.mark.asyncio
+async def test_admin_create_user(async_client):
+    token = await _make_admin(async_client, "boss@example.com")
+    resp = await async_client.post(
+        "/admin/users",
+        json={"email": "newbie@example.com", "password": "password123", "display_name": "Newbie"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["email"] == "newbie@example.com"
+    assert data["role"] == "user"
+
+    listing = await async_client.get("/admin/users/data", headers={"Authorization": f"Bearer {token}"})
+    emails = [u["email"] for u in listing.json()["users"]]
+    assert "newbie@example.com" in emails
