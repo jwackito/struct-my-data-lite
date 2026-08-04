@@ -158,6 +158,11 @@ async def api_version():
     return {"version": get_version()}
 
 
+@app.get("/LICENSE")
+async def license_file():
+    return FileResponse("LICENSE", media_type="text/plain")
+
+
 @app.get("/i18n.js")
 async def i18n_js():
     return FileResponse("app/static/i18n.js")
