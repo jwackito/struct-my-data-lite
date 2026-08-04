@@ -113,7 +113,30 @@
   window.t = t;
   window.i18nSetLang = setLang;
 
+  function buildFooter() {
+    if (document.getElementById("site-footer")) return;
+    var footer = document.createElement("footer");
+    footer.id = "site-footer";
+    footer.style.cssText =
+      "text-align:center;font-size:0.75rem;color:#6b7280;padding:1.5rem 1rem;";
+    footer.innerHTML =
+      'Struct My Data <span id="app-version">dev</span> · © <span id="footer-year"></span> Purrfect AI — ' +
+      '<a href="https://purrfectai.com.ar" style="color:#2563eb">purrfectai.com.ar</a> · ' +
+      '<a href="/LICENSE" style="color:#2563eb" data-i18n="MIT License">MIT License</a>';
+    document.body.appendChild(footer);
+    document.getElementById("footer-year").textContent = new Date().getFullYear();
+    fetch("/api/version")
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        document.getElementById("app-version").textContent = data.version || "dev";
+      })
+      .catch(function () {});
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    buildFooter();
     var initial = getCookieLang() || normalize(navigator.language) || DEFAULT_LANG;
     fetchDict(DEFAULT_LANG).then(function (en) {
       enDict = en;
