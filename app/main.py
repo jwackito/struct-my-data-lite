@@ -27,6 +27,7 @@ from sqlalchemy import cast, Date
 from app.providers import list_all_models
 from app.schema_parser import parse_schema
 from app.storage import save_file
+from app.version import get_version
 from app.ws import manager
 from fastapi.templating import Jinja2Templates
 
@@ -150,6 +151,11 @@ async def register_page():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+async def api_version():
+    return {"version": get_version()}
 
 
 @app.get("/i18n.js")
