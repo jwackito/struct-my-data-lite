@@ -6,6 +6,7 @@ venv
 storage
 tests
 *.md
+!CHANGELOG.md
 .gitignore
 docker-compose*.yml
 Dockerfile
