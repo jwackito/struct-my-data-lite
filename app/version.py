@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 CHANGELOG_PATH = Path(__file__).resolve().parent.parent / "CHANGELOG.md"
-_HEADING_RE = re.compile(r"^## (v\S+)\s*$", re.MULTILINE)
+_HEADING_RE = re.compile(r"^## (v\S+)", re.MULTILINE)
 
 
 def get_version(changelog_path: Path | str = CHANGELOG_PATH) -> str:
