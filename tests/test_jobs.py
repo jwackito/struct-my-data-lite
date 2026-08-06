@@ -8,11 +8,17 @@ from app.models import Document, ExtractionJob, JobStatus
 
 
 class TestExtractionJobModel:
-    def test_default_status_is_pending(self):
+    @pytest.mark.asyncio
+    async def test_default_status_is_pending(self, db_session):
+        doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+        db_session.add(doc)
+        await db_session.commit()
         job = ExtractionJob(
-            document_id=uuid.uuid4(),
+            document_id=doc.id,
             pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n    y: str",
         )
+        db_session.add(job)
+        await db_session.commit()
         assert job.status == JobStatus.pending
 
     def test_status_enum_values(self):
@@ -21,11 +27,17 @@ class TestExtractionJobModel:
         assert JobStatus.completed.value == "completed"
         assert JobStatus.failed.value == "failed"
 
-    def test_job_id_is_uuid(self):
+    @pytest.mark.asyncio
+    async def test_job_id_is_uuid(self, db_session):
+        doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+        db_session.add(doc)
+        await db_session.commit()
         job = ExtractionJob(
-            document_id=uuid.uuid4(),
+            document_id=doc.id,
             pydantic_schema="class X: pass",
         )
+        db_session.add(job)
+        await db_session.commit()
         assert isinstance(job.id, uuid.UUID)
 
     def test_job_has_input_tokens_field(self):
@@ -87,6 +99,10 @@ class TestExtractionJobModel:
 
 @pytest.mark.asyncio
 async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     resp = await async_client.get("/ui/jobs")
     assert resp.status_code == 200
     assert "<table>" in resp.text
@@ -95,12 +111,17 @@ async def test_ui_jobs_list_empty(async_client, db_session, patch_async_session)
 
 @pytest.mark.asyncio
 async def test_ui_jobs_list_returns_rows(async_client, db_session, patch_async_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
+    user_id = uuid.UUID(reg.json()["user"]["id"])
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
 
     for i in range(2):
-        j = ExtractionJob(document_id=doc.id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
+        j = ExtractionJob(document_id=doc.id, user_id=user_id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
         db_session.add(j)
     await db_session.commit()
 
@@ -113,12 +134,17 @@ async def test_ui_jobs_list_returns_rows(async_client, db_session, patch_async_s
 
 @pytest.mark.asyncio
 async def test_ui_jobs_pagination(async_client, db_session, patch_async_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
+    user_id = uuid.UUID(reg.json()["user"]["id"])
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
 
     for i in range(25):
-        j = ExtractionJob(document_id=doc.id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
+        j = ExtractionJob(document_id=doc.id, user_id=user_id, pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str")
         db_session.add(j)
     await db_session.commit()
 
@@ -133,14 +159,19 @@ async def test_ui_jobs_pagination(async_client, db_session, patch_async_session)
 
 @pytest.mark.asyncio
 async def test_ui_jobs_shows_retry_for_failed(async_client, db_session, patch_async_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
+    user_id = uuid.UUID(reg.json()["user"]["id"])
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
 
-    failed_job = ExtractionJob(document_id=doc.id, status=JobStatus.failed, pydantic_schema="x", error_message="oops")
+    failed_job = ExtractionJob(document_id=doc.id, user_id=user_id, status=JobStatus.failed, pydantic_schema="x", error_message="oops")
     db_session.add(failed_job)
 
-    ok_job = ExtractionJob(document_id=doc.id, status=JobStatus.completed, pydantic_schema="y", output_data={})
+    ok_job = ExtractionJob(document_id=doc.id, user_id=user_id, status=JobStatus.completed, pydantic_schema="y", output_data={})
     db_session.add(ok_job)
     await db_session.commit()
 
@@ -151,6 +182,10 @@ async def test_ui_jobs_shows_retry_for_failed(async_client, db_session, patch_as
 
 @pytest.mark.asyncio
 async def test_retry_failed_job(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -171,6 +206,10 @@ async def test_retry_failed_job(async_client, db_session, patch_async_session):
 
 @pytest.mark.asyncio
 async def test_retry_completed_job_rejected(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -189,6 +228,10 @@ async def test_retry_completed_job_rejected(async_client, db_session, patch_asyn
 
 @pytest.mark.asyncio
 async def test_retry_missing_job(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     resp = await async_client.post(f"/ui/jobs/{uuid.uuid4()}/retry")
     assert resp.status_code == 200
     assert "not found" in resp.text.lower()
@@ -196,6 +239,10 @@ async def test_retry_missing_job(async_client, db_session, patch_async_session):
 
 @pytest.mark.asyncio
 async def test_retry_triggers_processing(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -211,6 +258,10 @@ async def test_retry_triggers_processing(async_client, db_session, patch_async_s
 
 @pytest.mark.asyncio
 async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -243,6 +294,10 @@ async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_as
 
 @pytest.mark.asyncio
 async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -269,6 +324,10 @@ async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_
 
 @pytest.mark.asyncio
 async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
@@ -288,6 +347,10 @@ async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session
 
 @pytest.mark.asyncio
 async def test_ui_job_retry_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "jobs@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
