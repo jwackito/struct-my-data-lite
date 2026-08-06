@@ -1,28 +1,49 @@
+import time
 import uuid
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from starlette.testclient import TestClient
 
 from app.main import app
+from app.models import Document, ExtractionJob, JobStatus
 from app.ws import ConnectionManager, manager
 
 
-def test_connect_disconnect():
+def _wait_disconnected(job_id: uuid.UUID, timeout: float = 3.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if job_id not in manager.active:
+            return True
+        time.sleep(0.02)
+    return False
+
+
+@pytest.mark.asyncio
+async def test_connect_disconnect(patch_async_session):
     job_id = uuid.uuid4()
     client = TestClient(app)
     with client.websocket_connect(f"/ws/jobs/{job_id}"):
         assert job_id in manager.active
         assert len(manager.active[job_id]) == 1
-    assert job_id not in manager.active
+    assert _wait_disconnected(job_id)
 
 
-def test_unknown_job_receives_status():
+@pytest.mark.asyncio
+async def test_known_job_receives_status(db_session, patch_async_session):
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+    job = ExtractionJob(document_id=doc.id, status=JobStatus.running, pydantic_schema="x")
+    db_session.add(job)
+    await db_session.commit()
+
     client = TestClient(app)
-    with client.websocket_connect("/ws/jobs/00000000-0000-0000-0000-000000000000") as ws:
+    with client.websocket_connect(f"/ws/jobs/{job.id}") as ws:
         data = ws.receive_json()
         assert data["event"] == "status"
-        assert data["status"] == "pending"
+        assert data["status"] == "running"
+    assert _wait_disconnected(job.id)
 
 
 def test_manager_tracks_connections():
