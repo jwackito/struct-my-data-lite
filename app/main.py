@@ -5,6 +5,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Struct My Data", lifespan=lifespan)
+app = FastAPI(title="Struct My Data", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
 
 @app.middleware("http")
@@ -65,6 +66,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": t_req("Internal server error"), "request_id": request_id},
     )
+
+
+@app.get("/docs", include_in_schema=False)
+async def docs(user: User = Depends(get_current_user)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Struct My Data API")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc(user: User = Depends(get_current_user)):
+    return get_redoc_html(openapi_url="/openapi.json", title="Struct My Data API")
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def openapi_schema(user: User = Depends(get_current_user)):
+    return JSONResponse(app.openapi())
 
 
 @app.post("/auth/register")
