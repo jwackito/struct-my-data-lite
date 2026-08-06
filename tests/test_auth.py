@@ -116,3 +116,14 @@ async def test_login_wrong_password(async_client):
 async def test_docs_requires_auth(async_client):
     resp = await async_client.get("/docs")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_docs_ok_with_auth(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "docs@example.com",
+        "password": "password123",
+    })
+    resp = await async_client.get("/docs")
+    assert resp.status_code == 200
+    assert "swagger" in resp.text.lower()
