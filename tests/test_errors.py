@@ -20,8 +20,12 @@ def test_sanitize_filename_preserves_safe_names():
 
 
 @pytest.mark.asyncio
-async def test_extract_missing_document_id(client):
-    response = await client.post(
+async def test_extract_missing_document_id(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "extract1@example.com",
+        "password": "password123",
+    })
+    response = await async_client.post(
         "/extract",
         json={"document_id": str(uuid.uuid4()), "pydantic_schema": "from pydantic import BaseModel\nclass X(BaseModel):\n    y: str"},
     )
@@ -30,15 +34,23 @@ async def test_extract_missing_document_id(client):
 
 
 @pytest.mark.asyncio
-async def test_extract_without_document_id(client):
-    response = await client.post("/extract", json={"pydantic_schema": "..."})
+async def test_extract_without_document_id(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "extract2@example.com",
+        "password": "password123",
+    })
+    response = await async_client.post("/extract", json={"pydantic_schema": "..."})
     assert response.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_extract_oversized_schema(client):
+async def test_extract_oversized_schema(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "extract3@example.com",
+        "password": "password123",
+    })
     big_schema = "x" * 10001
-    response = await client.post(
+    response = await async_client.post(
         "/extract",
         json={"document_id": str(uuid.uuid4()), "pydantic_schema": big_schema},
     )
