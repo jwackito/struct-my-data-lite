@@ -133,3 +133,14 @@ async def test_docs_ok_with_auth(async_client):
 async def test_openapi_requires_auth(async_client):
     resp = await async_client.get("/openapi.json")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_openapi_ok_with_auth(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "openapi@example.com",
+        "password": "password123",
+    })
+    resp = await async_client.get("/openapi.json")
+    assert resp.status_code == 200
+    assert resp.json()["openapi"]
