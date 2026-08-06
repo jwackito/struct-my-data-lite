@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 
@@ -293,7 +294,7 @@ async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_as
 
 
 @pytest.mark.asyncio
-async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_session):
+async def test_ui_job_result_page_shows_tokens(async_client, db_session, patch_async_session):
     await async_client.post("/auth/register", json={
         "email": "jobs@example.com",
         "password": "password123",
@@ -307,6 +308,7 @@ async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_
         status=JobStatus.completed,
         pydantic_schema="x",
         output_data={"name": "test"},
+        completed_at=datetime.now(timezone.utc),
         input_tokens=100,
         output_tokens=20,
         parsing_duration_ms=50,
@@ -316,7 +318,7 @@ async def test_ui_job_detail_shows_tokens(async_client, db_session, patch_async_
     db_session.add(job)
     await db_session.commit()
 
-    resp = await async_client.get(f"/ui/jobs/{job.id}")
+    resp = await async_client.get(f"/ui/jobs/{job.id}/result")
     assert resp.status_code == 200
     assert "100" in resp.text
     assert "20" in resp.text
