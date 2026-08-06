@@ -2,9 +2,15 @@ import re
 
 import pytest
 
+REGISTER = {
+    "email": "schemas@example.com",
+    "password": "password123",
+}
+
 
 @pytest.mark.asyncio
 async def test_list_schemas_empty(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.get("/schemas")
     assert r.status_code == 200
     assert r.json() == []
@@ -12,6 +18,7 @@ async def test_list_schemas_empty(async_client):
 
 @pytest.mark.asyncio
 async def test_create_schema(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.post(
         "/schemas",
         json={"name": "Test Schema", "pydantic_schema": "class Test(BaseModel):\n    x: int"},
@@ -24,18 +31,21 @@ async def test_create_schema(async_client):
 
 @pytest.mark.asyncio
 async def test_create_schema_missing_name(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.post("/schemas", json={"pydantic_schema": "class X(BaseModel): pass"})
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_create_schema_missing_code(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.post("/schemas", json={"name": "X"})
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_get_schema(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     created = await async_client.post(
         "/schemas",
         json={"name": "GetTest", "pydantic_schema": "class A(BaseModel):\n    y: str"},
@@ -50,12 +60,14 @@ async def test_get_schema(async_client):
 
 @pytest.mark.asyncio
 async def test_get_schema_not_found(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.get("/schemas/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_update_schema(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     created = await async_client.post(
         "/schemas",
         json={"name": "Old", "pydantic_schema": "class O(BaseModel):\n    z: float"},
@@ -69,6 +81,7 @@ async def test_update_schema(async_client):
 
 @pytest.mark.asyncio
 async def test_delete_schema(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     created = await async_client.post(
         "/schemas",
         json={"name": "DelMe", "pydantic_schema": "class D(BaseModel):\n    v: int"},
@@ -82,12 +95,14 @@ async def test_delete_schema(async_client):
 
 @pytest.mark.asyncio
 async def test_delete_not_found(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     r = await async_client.delete("/schemas/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_export_schema(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     created = await async_client.post(
         "/schemas",
         json={"name": "ExportTest", "pydantic_schema": "class E(BaseModel):\n    data: str"},
@@ -103,6 +118,7 @@ async def test_export_schema(async_client):
 
 @pytest.mark.asyncio
 async def test_import_schema_py(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     content = b"# name: Imported\nclass I(BaseModel):\n    val: int"
     r = await async_client.post(
         "/schemas/import",
@@ -116,6 +132,7 @@ async def test_import_schema_py(async_client):
 
 @pytest.mark.asyncio
 async def test_import_schema_json(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     content = b'{"name":"JSON Import","pydantic_schema":"class J(BaseModel):\\n    val: int"}'
     r = await async_client.post(
         "/schemas/import",
@@ -127,6 +144,7 @@ async def test_import_schema_json(async_client):
 
 @pytest.mark.asyncio
 async def test_import_schema_too_large(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     content = b"x" * 10001
     r = await async_client.post(
         "/schemas/import",
