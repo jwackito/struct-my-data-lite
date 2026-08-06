@@ -19,9 +19,13 @@ def test_save_file_sanitizes_filename(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_upload_too_large(client):
+async def test_upload_too_large(async_client):
+    await async_client.post("/auth/register", json={
+        "email": "upload@example.com",
+        "password": "password123",
+    })
     max_size = settings.max_upload_size
-    response = await client.post(
+    response = await async_client.post(
         "/upload",
         files={"file": ("big.bin", b"x" * (max_size + 1))},
     )
