@@ -40,6 +40,8 @@ def test_manager_tracks_connections():
     cm = ConnectionManager()
     job_id = uuid.uuid4()
     ws1, ws2 = MagicMock(spec=["accept", "send_json"]), MagicMock(spec=["accept", "send_json"])
+    ws1.accept = AsyncMock()
+    ws2.accept = AsyncMock()
 
     async def connect():
         await cm.connect(job_id, ws1)
@@ -60,6 +62,7 @@ def test_manager_notify():
     cm = ConnectionManager()
     job_id = uuid.uuid4()
     ws = MagicMock(spec=["accept", "send_json"])
+    ws.accept = AsyncMock()
     ws.send_json = AsyncMock()
 
     async def run():
