@@ -127,3 +127,9 @@ async def test_docs_ok_with_auth(async_client):
     resp = await async_client.get("/docs")
     assert resp.status_code == 200
     assert "swagger" in resp.text.lower()
+
+
+@pytest.mark.asyncio
+async def test_openapi_requires_auth(async_client):
+    resp = await async_client.get("/openapi.json")
+    assert resp.status_code == 401
