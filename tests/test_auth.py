@@ -110,3 +110,9 @@ async def test_login_wrong_password(async_client):
     })
     assert resp.status_code == 401
     assert "invalid" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_docs_requires_auth(async_client):
+    resp = await async_client.get("/docs")
+    assert resp.status_code == 401
