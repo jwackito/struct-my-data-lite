@@ -166,6 +166,10 @@ class Person(BaseModel):
 
 @pytest.mark.asyncio
 async def test_extract_without_model_id_uses_default(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json={
+        "email": "extract-default@example.com",
+        "password": "password123",
+    })
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
     await db_session.commit()
