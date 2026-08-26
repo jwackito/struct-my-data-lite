@@ -9,7 +9,7 @@ def _render_default(field_type: str, default: str) -> str:
     if field_type == "str":
         return '"' + _escape(default) + '"'
     if field_type == "bool":
-        return "True" if default == "true" else "False"
+        return "True" if default.strip().lower() in ("true", "1") else "False"
     return default
 
 
