@@ -176,3 +176,17 @@ def test_empty_model_uses_pass():
         """
     )
     assert build_code("Empty", []) == expected
+
+
+def test_bool_default_is_case_insensitive():
+    fields = [
+        {"name": "a", "type": "bool", "default": "true"},
+        {"name": "b", "type": "bool", "default": "True"},
+        {"name": "c", "type": "bool", "default": "false"},
+        {"name": "d", "type": "bool", "default": "FALSE"},
+    ]
+    code = build_code("M", fields)
+    assert "a: bool = True" in code
+    assert "b: bool = True" in code
+    assert "c: bool = False" in code
+    assert "d: bool = False" in code
