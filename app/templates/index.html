@@ -885,7 +885,10 @@
 
       function renderDefault(type, d) {
         if (type === "str") return '"' + escapeCode(d) + '"';
-        if (type === "bool") return d === "true" ? "True" : "False";
+        if (type === "bool") {
+          var v = d.replace(/^\s+|\s+$/g, "").toLowerCase();
+          return (v === "true" || v === "1") ? "True" : "False";
+        }
         return d;
       }
 
