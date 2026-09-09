@@ -7,9 +7,15 @@ from sqlalchemy import select
 
 from app.models import Document, ExtractionJob
 
+REGISTER = {
+    "email": "api@example.com",
+    "password": "password123",
+}
+
 
 @pytest.mark.asyncio
 async def test_upload_creates_document(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     response = await async_client.post(
         "/upload",
         files={"file": ("test.txt", b"hello world")},
@@ -27,6 +33,7 @@ async def test_upload_creates_document(async_client, db_session):
 
 @pytest.mark.asyncio
 async def test_upload_content_hash(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     content = b"unique-content-42"
     resp1 = await async_client.post("/upload", files={"file": ("a.txt", content)})
     resp2 = await async_client.post("/upload", files={"file": ("b.txt", content)})
@@ -37,6 +44,7 @@ async def test_upload_content_hash(async_client, db_session):
 
 @pytest.mark.asyncio
 async def test_extract_creates_job(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
     doc_id = upload_resp.json()["id"]
 
@@ -58,6 +66,7 @@ async def test_extract_creates_job(async_client, db_session):
 
 @pytest.mark.asyncio
 async def test_get_job_status(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
     doc_id = upload_resp.json()["id"]
 
@@ -79,6 +88,7 @@ async def test_get_job_status(async_client, db_session):
 
 @pytest.mark.asyncio
 async def test_get_job_not_found(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     response = await async_client.get(f"/jobs/{uuid.uuid4()}")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
@@ -86,7 +96,16 @@ async def test_get_job_not_found(async_client):
 
 @pytest.mark.asyncio
 @patch("app.main.test_connection")
-async def test_connection_merges_secrets_in_test_endpoint(mock_test_conn, async_client):
+async def test_connection_merges_secrets_in_test_endpoint(mock_test_conn, async_client, db_session):
+    reg = await async_client.post("/auth/register", json=REGISTER)
+    assert reg.status_code == 200
+    from sqlalchemy import select
+    from app.models import User
+    result = await db_session.execute(select(User).where(User.email == REGISTER["email"]))
+    user = result.scalar_one()
+    user.role = "admin"
+    await db_session.commit()
+
     mock_test_conn.return_value = {"ok": True, "models": []}
 
     resp = await async_client.post(
@@ -106,6 +125,7 @@ async def test_connection_merges_secrets_in_test_endpoint(mock_test_conn, async_
 
 @pytest.mark.asyncio
 async def test_models_endpoint_returns_list(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     resp = await async_client.get("/models")
     assert resp.status_code == 200
     data = resp.json()
@@ -115,6 +135,7 @@ async def test_models_endpoint_returns_list(async_client):
 
 @pytest.mark.asyncio
 async def test_extract_accepts_model_id(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
     doc_id = upload_resp.json()["id"]
 
@@ -132,12 +153,13 @@ async def test_extract_accepts_model_id(async_client, db_session):
     from app.models import ExtractionJob
     result = await db_session.execute(select(ExtractionJob).where(ExtractionJob.id == data["id"]))
     job = result.scalar_one()
-    assert job.provider_name == "ollama"
+    assert job.provider_type == "ollama"
     assert job.model_name == "qwen3.6:35b"
 
 
 @pytest.mark.asyncio
 async def test_get_job_has_provider_fields(async_client, db_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"some text")})
     doc_id = upload_resp.json()["id"]
 
@@ -153,14 +175,15 @@ async def test_get_job_has_provider_fields(async_client, db_session):
     response = await async_client.get(f"/jobs/{job_id}")
     assert response.status_code == 200
     data = response.json()
-    assert "provider_name" in data
+    assert "provider_type" in data
     assert "model_name" in data
-    assert data["provider_name"] == "ollama"
-    assert data["model_name"] is None
+    assert data["provider_type"] == "ollama"
+    assert data["model_name"] == "qwen3.6:35b"
 
 
 @pytest.mark.asyncio
 async def test_extract_missing_document(async_client):
+    await async_client.post("/auth/register", json=REGISTER)
     response = await async_client.post(
         "/extract",
         json={

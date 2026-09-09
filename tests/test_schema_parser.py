@@ -165,3 +165,99 @@ class User(BaseModel):
     descs = {f["name"]: f["description"] for f in result["fields"]}
     assert descs["name"] == "Name"
     assert descs["age"] == ""
+
+
+def test_parse_optional_flag():
+    code = """
+from pydantic import BaseModel
+from typing import Optional
+
+class User(BaseModel):
+    name: str
+    nickname: Optional[str] = None
+"""
+    result = parse_schema(code)
+    fields = {f["name"]: f for f in result["fields"]}
+    assert fields["name"]["optional"] is False
+    assert fields["nickname"]["optional"] is True
+    assert fields["nickname"]["default"] == ""
+
+
+def test_parse_scalar_defaults():
+    code = """
+from pydantic import BaseModel
+
+class Config(BaseModel):
+    role: str = "member"
+    count: int = 3
+    rate: float = 1.5
+    flag: bool = True
+    off: bool = False
+"""
+    result = parse_schema(code)
+    fields = {f["name"]: f for f in result["fields"]}
+    assert fields["role"]["default"] == "member"
+    assert fields["count"]["default"] == "3"
+    assert fields["rate"]["default"] == "1.5"
+    assert fields["flag"]["default"] == "true"
+    assert fields["off"]["default"] == "false"
+
+
+def test_parse_default_with_description_field():
+    code = """
+from pydantic import BaseModel, Field
+
+class Config(BaseModel):
+    role: str = Field(default="member", description="User role")
+"""
+    result = parse_schema(code)
+    f = result["fields"][0]
+    assert f["default"] == "member"
+    assert f["description"] == "User role"
+
+
+def test_parse_date_datetime_types():
+    code = """
+from pydantic import BaseModel
+from datetime import date, datetime
+
+class Rec(BaseModel):
+    born: date
+    seen: datetime
+"""
+    result = parse_schema(code)
+    types = {f["name"]: f["type"] for f in result["fields"]}
+    assert types["born"] == "date"
+    assert types["seen"] == "datetime"
+
+
+def test_parse_new_list_variants():
+    code = """
+from pydantic import BaseModel
+from typing import List
+
+class Rec(BaseModel):
+    flags: List[bool]
+    dates: List[date]
+    stamps: List[datetime]
+"""
+    result = parse_schema(code)
+    types = {f["name"]: f["type"] for f in result["fields"]}
+    assert types["flags"] == "List[bool]"
+    assert types["dates"] == "List[date]"
+    assert types["stamps"] == "List[datetime]"
+
+
+def test_parse_optional_list():
+    code = """
+from pydantic import BaseModel
+from typing import List, Optional
+
+class M(BaseModel):
+    xs: Optional[List[int]] = None
+"""
+    result = parse_schema(code)
+    f = result["fields"][0]
+    assert f["type"] == "List[int]"
+    assert f["optional"] is True
+    assert f["default"] == ""

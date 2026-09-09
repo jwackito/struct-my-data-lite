@@ -306,6 +306,87 @@
       background: #dc2626;
     }
     .btn-danger:hover { background: #b91c1c; }
+    .builder-help {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin: 0 0 0.75rem;
+    }
+    .field-header {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+      padding: 0 0 0.25rem;
+      font-size: 0.72rem;
+      color: #6b7280;
+      font-weight: 600;
+    }
+    .field-header .fh-spacer { flex: 0 0 16px; }
+    .field-header .fh-name { flex: 0 0 130px; }
+    .field-header .fh-type { flex: 0 0 105px; }
+    .field-header .fh-opt { flex: 0 0 18px; text-align: center; }
+    .field-header .fh-default { flex: 0 0 80px; }
+    .field-header .fh-desc { flex: 1 1 120px; }
+
+    .field-row .field-name { flex: 0 0 130px; }
+    .field-row .field-type { flex: 0 0 105px; }
+    .field-row .field-optional { flex: 0 0 18px; width: 16px; height: 16px; cursor: pointer; align-self: center; }
+    .field-row .field-default {
+      flex: 0 0 80px;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .field-row .field-desc { flex: 1 1 120px; }
+
+    .field-row-nested .field-name { flex: 0 0 110px; }
+    .field-row-nested .field-type { flex: 0 0 95px; }
+    .field-row-nested .field-default { flex: 0 0 70px; }
+    .field-row-nested .field-desc { flex: 1 1 100px; }
+
+    .advanced-section {
+      margin-top: 0.75rem;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 0.5rem;
+    }
+    .advanced-toggle {
+      background: transparent;
+      color: #6b7280;
+      border: none;
+      padding: 0.25rem 0;
+      font-size: 0.8rem;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .advanced-toggle:hover { color: #1a1a1a; background: transparent; }
+    .advanced-status {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin: 0.25rem 0;
+    }
+    .advanced-status.manual { color: #b45309; }
+    #advanced-panel textarea {
+      font-family: "SF Mono", "Fira Code", "Fira Mono", monospace;
+      font-size: 0.8rem;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .advanced-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+    }
+    .advanced-actions button { font-size: 0.8rem; padding: 0.4rem 0.7rem; }
+
+    [data-theme="dark"] .builder-help, [data-theme="dark"] .field-header, [data-theme="dark"] .advanced-status { color: #9ca3af; }
+    [data-theme="dark"] .advanced-status.manual { color: #fbbf24; }
+    [data-theme="dark"] .field-row .field-default, [data-theme="dark"] #advanced-panel textarea { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .advanced-toggle { color: #9ca3af; }
+    [data-theme="dark"] .advanced-toggle:hover { color: #e5e5e5; }
+
     .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
     [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
     [data-theme="dark"] a { color: #60a5fa; }
@@ -347,35 +428,34 @@
       </label>
     </div>
     <div class="schema-section">
-      <label data-i18n="Pydantic Schema">Pydantic Schema</label>
+      <label data-i18n="Fields to Extract">Fields to Extract</label>
       <div class="tab-bar">
         <button type="button" class="tab active" data-tab="builder" data-i18n="Builder">Builder</button>
-        <button type="button" class="tab" data-tab="code" data-i18n="Code">Code</button>
         <button type="button" class="tab" data-tab="history" hx-get="/ui/jobs" hx-target="#tab-history" hx-trigger="click once" data-i18n="History">History</button>
       </div>
       <div class="tab-panel active" id="tab-builder">
         <div class="builder">
+          <p class="builder-help" data-i18n="Describe the data you want to extract. Add one row per field.">Describe the data you want to extract. Add one row per field.</p>
           <div class="model-name-row">
             <label for="model-name" data-i18n="Model Name">Model Name</label>
             <input type="text" id="model-name" value="ExtractedData">
           </div>
           <div class="field-separator"></div>
+          <div class="field-header">
+            <span class="fh-spacer"></span>
+            <span class="fh-name" data-i18n="Field name">Field name</span>
+            <span class="fh-type" data-i18n="Type">Type</span>
+            <span class="fh-opt" data-i18n="Opt" data-i18n-title="Optional field">Opt</span>
+            <span class="fh-default" data-i18n="Default">Default</span>
+            <span class="fh-desc" data-i18n="Description">Description</span>
+            <span class="fh-spacer"></span>
+          </div>
           <div class="field-list" id="field-list"></div>
           <div class="builder-actions">
             <button type="button" id="add-field" data-i18n="+ Add Field">+ Add Field</button>
-            <button type="button" id="generate-code" class="btn-secondary" data-i18n="Generate Code">Generate Code</button>
-            <button type="button" id="import-code" class="btn-secondary">&#8635; <span data-i18n="Import from Code">Import from Code</span></button>
           </div>
           <div id="builder-error" class="validation-error" style="display:none"></div>
         </div>
-      </div>
-      <div class="tab-panel" id="tab-code">
-        <textarea name="pydantic_schema" rows="10">from pydantic import BaseModel, Field
-from typing import List
-
-class OfficialsList(BaseModel):
-    names: List[str] = Field(description="Full names of all people")
-    positions: List[str] = Field(description="Positions in same order")</textarea>
       </div>
       <div class="schema-templates">
         <label data-i18n="Saved Schemas">Saved Schemas</label>
@@ -388,11 +468,24 @@ class OfficialsList(BaseModel):
           <button type="button" id="template-delete" class="btn-danger">&times;</button>
           <button type="button" id="template-export" class="btn-secondary" data-i18n="Export">Export</button>
         </div>
-        <div class="templates-import-row">
-          <button type="button" id="template-import" class="btn-secondary" data-i18n="Import .py file...">Import .py file...</button>
-          <input type="file" id="template-import-input" accept=".py,.json,.txt" style="display:none">
+      <div class="templates-import-row">
+        <button type="button" id="template-import" class="btn-secondary" data-i18n="Import .py file...">Import .py file...</button>
+        <input type="file" id="template-import-input" accept=".py,.json,.txt" style="display:none">
+      </div>
+      <div class="advanced-section">
+        <button type="button" id="advanced-toggle" class="advanced-toggle">
+          <span id="advanced-caret">&#9656;</span> <span data-i18n="Advanced">Advanced</span>
+        </button>
+        <div id="advanced-panel" style="display:none">
+          <div id="advanced-status" class="advanced-status"></div>
+          <textarea name="pydantic_schema" id="schema-code" rows="10" spellcheck="false"></textarea>
+          <div class="advanced-actions">
+            <button type="button" id="code-from-builder" class="btn-secondary" data-i18n="Refresh from builder">Refresh from builder</button>
+            <button type="button" id="code-to-builder" class="btn-secondary" data-i18n="Import into builder">Import into builder</button>
+          </div>
         </div>
       </div>
+    </div>
     </div>
     <button type="submit">
       <span class="button-label" data-i18n="Extract">Extract</span>
@@ -404,26 +497,19 @@ class OfficialsList(BaseModel):
 
   <script>
     (function () {
-      var TYPE_MAP = {
-        str: "str",
-        int: "int",
-        float: "float",
-        bool: "bool",
-        date: "str",
-        "List[str]": "List[str]",
-        "List[float]": "List[float]",
-        "List[int]": "List[int]",
-      };
-
       var SIMPLE_TYPES = [
         ["str", "string"],
         ["int", "integer"],
         ["float", "number"],
         ["bool", "boolean"],
         ["date", "date"],
+        ["datetime", "datetime"],
         ["List[str]", "list of string"],
-        ["List[float]", "list of number"],
         ["List[int]", "list of integer"],
+        ["List[float]", "list of number"],
+        ["List[bool]", "list of boolean"],
+        ["List[date]", "list of date"],
+        ["List[datetime]", "list of datetime"],
       ];
 
       var OBJECT_TYPES = [
@@ -431,14 +517,18 @@ class OfficialsList(BaseModel):
         ["List[Object]", "List of Object"],
       ];
 
+      var NESTED = { "Object": true, "List[Object]": true };
+
       var fieldList = document.getElementById("field-list");
       var modelNameInput = document.getElementById("model-name");
       var textarea = document.querySelector("textarea[name='pydantic_schema']");
       var builderError = document.getElementById("builder-error");
+      var advancedPanel = document.getElementById("advanced-panel");
 
       var FIELD_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
       var dragState = null;
+      var manualCode = false;
 
       function findAddButton(container) {
         var children = container.children;
@@ -462,9 +552,16 @@ class OfficialsList(BaseModel):
         });
       }
 
+      function advancedPanelOpen() {
+        return advancedPanel && advancedPanel.style.display !== "none";
+      }
+
+      function maybeRefreshPreview() {
+        if (!manualCode && advancedPanelOpen()) refreshPreview();
+      }
+
       function toggleGenerateButton() {
-        var rows = fieldList.querySelectorAll(":scope > .field-row");
-        document.getElementById("generate-code").disabled = rows.length === 0;
+        maybeRefreshPreview();
       }
 
       function validateFieldName(input) {
@@ -474,34 +571,6 @@ class OfficialsList(BaseModel):
         } else {
           input.classList.remove("field-name-invalid");
         }
-      }
-
-      function getDuplicateNames(container) {
-        var names = {};
-        var dupes = {};
-        var rows = container.querySelectorAll(":scope > .field-row");
-        rows.forEach(function (row) {
-          var name = row.querySelector(".field-name").value.trim();
-          if (!name) return;
-          if (names[name]) {
-            dupes[name] = true;
-          } else {
-            names[name] = true;
-          }
-        });
-        return dupes;
-      }
-
-      function highlightDupes(container) {
-        var dupes = getDuplicateNames(container);
-        var rows = container.querySelectorAll(":scope > .field-row");
-        rows.forEach(function (row) {
-          var inp = row.querySelector(".field-name");
-          var name = inp.value.trim();
-          if (name && dupes[name]) {
-            inp.classList.add("field-name-invalid");
-          }
-        });
       }
 
       function makeFieldDraggable(row) {
@@ -590,7 +659,7 @@ class OfficialsList(BaseModel):
         }
       }
 
-      function createFieldRow(name, type, desc, level) {
+      function createFieldRow(name, type, desc, optional, defaultVal, level) {
         level = level || 0;
         var row = document.createElement("div");
         row.className = "field-row" + (level > 0 ? " field-row-nested" : "");
@@ -614,6 +683,18 @@ class OfficialsList(BaseModel):
         typeSelect.className = "field-type";
         createTypeOptions(type, level).forEach(function (opt) { typeSelect.appendChild(opt); });
 
+        var optInput = document.createElement("input");
+        optInput.type = "checkbox";
+        optInput.className = "field-optional";
+        optInput.checked = !!optional;
+        optInput.title = window.t("Optional field");
+
+        var defaultInput = document.createElement("input");
+        defaultInput.type = "text";
+        defaultInput.className = "field-default";
+        defaultInput.placeholder = window.t("default");
+        defaultInput.value = defaultVal || "";
+
         var descInput = document.createElement("input");
         descInput.type = "text";
         descInput.className = "field-desc";
@@ -624,7 +705,7 @@ class OfficialsList(BaseModel):
             e.preventDefault();
             var container = row.parentElement;
             var addBtn = findAddButton(container);
-            var newRow = createFieldRow("", "str", "", level);
+            var newRow = createFieldRow("", "str", "", false, "", level);
             if (addBtn) {
               container.insertBefore(newRow, addBtn);
             } else {
@@ -649,6 +730,8 @@ class OfficialsList(BaseModel):
         row.appendChild(handle);
         row.appendChild(nameInput);
         row.appendChild(typeSelect);
+        row.appendChild(optInput);
+        row.appendChild(defaultInput);
         row.appendChild(descInput);
         row.appendChild(toggleBtn);
         row.appendChild(removeBtn);
@@ -662,27 +745,34 @@ class OfficialsList(BaseModel):
         nestedAddBtn.className = "nested-add-field";
         nestedAddBtn.textContent = window.t("+ Add sub-field");
         nestedAddBtn.addEventListener("click", function () {
-          addField("", "str", "", level + 1, nestedContainer);
+          addField("", "str", "", false, "", level + 1, nestedContainer);
           nestedContainer.style.display = "block";
           toggleBtn.textContent = "\u25bc";
         });
         nestedContainer.appendChild(nestedAddBtn);
         row.appendChild(nestedContainer);
 
+        function syncDefaultVisibility() {
+          defaultInput.style.display = NESTED[typeSelect.value] ? "none" : "";
+        }
+
         typeSelect.addEventListener("change", function () {
           var val = this.value;
-          var isNested = val === "Object" || val === "List[Object]";
+          var isNested = NESTED[val];
           if (isNested) {
+            defaultInput.value = "";
             nestedContainer.style.display = "block";
             toggleBtn.style.display = "";
             var rows = nestedContainer.querySelectorAll(":scope > .field-row");
             if (rows.length === 0) {
-              addField("", "str", "", level + 1, nestedContainer);
+              addField("", "str", "", false, "", level + 1, nestedContainer);
             }
           } else {
             nestedContainer.style.display = "none";
             toggleBtn.style.display = "none";
           }
+          syncDefaultVisibility();
+          maybeRefreshPreview();
         });
 
         toggleBtn.addEventListener("click", function () {
@@ -695,17 +785,19 @@ class OfficialsList(BaseModel):
           var parent = row.parentElement;
           row.remove();
           toggleEmptyState(parent);
+          maybeRefreshPreview();
         });
 
+        syncDefaultVisibility();
         makeFieldDraggable(row);
 
         return row;
       }
 
-      function addField(name, type, desc, level, container) {
+      function addField(name, type, desc, optional, defaultVal, level, container) {
         container = container || fieldList;
         level = level || 0;
-        var row = createFieldRow(name, type || "str", desc || "", level);
+        var row = createFieldRow(name, type || "str", desc || "", optional, defaultVal, level);
         var addBtn = findAddButton(container);
         if (addBtn) {
           container.insertBefore(row, addBtn);
@@ -713,6 +805,30 @@ class OfficialsList(BaseModel):
           container.appendChild(row);
         }
         toggleEmptyState(container);
+        return row;
+      }
+
+      function addFieldFromData(f, level, container) {
+        var row = addField(f.name, f.type, f.description, f.optional, f["default"], level, container);
+        if (row && NESTED[f.type] && f.children && f.children.length) {
+          var nc = row.querySelector(".nested-fields");
+          if (nc) {
+            nc.style.display = "block";
+            var toggle = row.querySelector(".toggle-nested");
+            if (toggle) toggle.style.display = "";
+            f.children.forEach(function (c) { addFieldFromData(c, level + 1, nc); });
+            toggleEmptyState(nc);
+          }
+        }
+        return row;
+      }
+
+      function populateBuilder(modelName, fields) {
+        modelNameInput.value = modelName || "ExtractedData";
+        fieldList.querySelectorAll(".field-row").forEach(function (r) { r.remove(); });
+        toggleEmptyState(fieldList);
+        (fields || []).forEach(function (f) { addFieldFromData(f, 0, fieldList); });
+        maybeRefreshPreview();
       }
 
       function toggleEmptyState(container) {
@@ -744,8 +860,17 @@ class OfficialsList(BaseModel):
           if (!name) return;
           var type = row.querySelector(".field-type").value;
           var desc = row.querySelector(".field-desc").value.trim();
-          var f = { name: name, type: type, desc: desc, children: [] };
-          if (type === "Object" || type === "List[Object]") {
+          var optEl = row.querySelector(".field-optional");
+          var defEl = row.querySelector(".field-default");
+          var f = {
+            name: name,
+            type: type,
+            description: desc,
+            optional: optEl ? optEl.checked : false,
+            "default": (defEl && defEl.style.display !== "none") ? defEl.value.trim() : "",
+            children: []
+          };
+          if (NESTED[type]) {
             var nc = row.querySelector(".nested-fields");
             if (nc) f.children = collectFields(nc);
           }
@@ -754,95 +879,138 @@ class OfficialsList(BaseModel):
         return fields;
       }
 
-      function fieldsHaveList(fields) {
-        for (var i = 0; i < fields.length; i++) {
-          var f = fields[i];
-          if (f.type.indexOf("List") === 0) return true;
-          if (f.children.length > 0 && fieldsHaveList(f.children)) return true;
+      function escapeCode(s) {
+        return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      }
+
+      function renderDefault(type, d) {
+        if (type === "str") return '"' + escapeCode(d) + '"';
+        if (type === "bool") {
+          var v = d.replace(/^\s+|\s+$/g, "").toLowerCase();
+          return (v === "true" || v === "1") ? "True" : "False";
         }
-        return false;
+        return d;
       }
 
-      function collectAllNames(fields) {
-        var names = {};
-        fields.forEach(function (f) {
-          names[f.name] = (names[f.name] || 0) + 1;
-          if (f.children.length > 0) {
-            var childNames = collectAllNames(f.children);
-            for (var k in childNames) {
-              names[k] = (names[k] || 0) + childNames[k];
-            }
-          }
-        });
-        return names;
-      }
-
-      var nestedCounter = 0;
-      var nestedDefs = [];
-
-      function buildModel(modelName, fields) {
-        var lines = [];
-        lines.push("class " + modelName + "(BaseModel):");
-        if (fields.length === 0) {
-          lines.push("    pass");
-        } else {
-          fields.forEach(function (f) {
-            var isNested = f.type === "Object" || f.type === "List[Object]";
-            if (isNested) {
-              nestedCounter++;
-              var nestedName = "NestedModel" + nestedCounter;
-              var prefix = f.type === "List[Object]" ? "List[" : "";
-              var suffix = f.type === "List[Object]" ? "]" : "";
-              lines.push("    " + f.name + ": " + prefix + nestedName + suffix + formatDesc(f.desc));
-              buildModel(nestedName, f.children);
-            } else {
-              var pyType = TYPE_MAP[f.type] || "str";
-              lines.push("    " + f.name + ": " + pyType + formatDesc(f.desc));
-            }
+      function buildSchemaCode(modelName, fields) {
+        var used = { List: false, Optional: false, date: false, datetime: false, Field: false };
+        function scan(flds) {
+          flds.forEach(function (f) {
+            var t = f.type || "str";
+            if (f.description) used.Field = true;
+            if (f.optional) used.Optional = true;
+            if (t.indexOf("List[") === 0) used.List = true;
+            if (t === "date" || t === "List[date]") used.date = true;
+            if (t === "datetime" || t === "List[datetime]") used.datetime = true;
+            if (NESTED[t]) scan(f.children || []);
           });
         }
-        nestedDefs.push(lines.join("\n"));
-      }
-
-      function formatDesc(desc) {
-        if (!desc) return "";
-        return ' = Field(description="' + desc.replace(/"/g, '\\"') + '")';
-      }
-
-      function generateCode() {
-        var fields = collectFields(document.getElementById("field-list"));
-        var modelName = modelNameInput.value.trim() || "ExtractedData";
-
-        var allNames = collectAllNames(fields);
-        var dupes = [];
-        for (var k in allNames) {
-          if (allNames[k] > 1) dupes.push(k);
-        }
-        if (dupes.length > 0) {
-          builderError.textContent = window.t("Duplicate field names: {names} — each name must be unique.", {names: dupes.join(", ")});
-          builderError.style.display = "block";
-          highlightDupes(fieldList);
-          return;
-        }
-        builderError.style.display = "none";
-        document.querySelectorAll(".field-name-invalid").forEach(function (el) {
-          var val = el.value.trim();
-          if (val && FIELD_NAME_RE.test(val)) {
-            el.classList.remove("field-name-invalid");
+        var defs = [];
+        var counter = 0;
+        function gen(cls, flds) {
+          var lines = ["class " + cls + "(BaseModel):"];
+          if (flds.length === 0) {
+            lines.push("    pass");
           }
-        });
+          flds.forEach(function (f) {
+            var t = f.type || "str";
+            var optional = !!f.optional;
+            var d = f["default"] || "";
+            var desc = f.description || "";
+            var ann;
+            if (NESTED[t]) {
+              counter++;
+              var nestedName = "NestedModel" + counter;
+              gen(nestedName, f.children || []);
+              ann = (t === "Object") ? nestedName : ("List[" + nestedName + "]");
+            } else {
+              ann = t;
+            }
+            if (optional) ann = "Optional[" + ann + "]";
+            var line = "    " + f.name + ": " + ann;
+            var hasDefault = d !== "";
+            var rhs = null;
+            if (hasDefault && desc) {
+              rhs = 'Field(default=' + renderDefault(t, d) + ', description="' + escapeCode(desc) + '")';
+            } else if (hasDefault) {
+              rhs = renderDefault(t, d);
+            } else if (optional) {
+              rhs = desc ? ('Field(default=None, description="' + escapeCode(desc) + '")') : "None";
+            } else if (desc) {
+              rhs = 'Field(description="' + escapeCode(desc) + '")';
+            }
+            if (rhs !== null) line += " = " + rhs;
+            lines.push(line);
+          });
+          defs.push(lines.join("\n"));
+        }
+        scan(fields);
+        gen(modelName, fields);
+        var imports = ["from pydantic import BaseModel" + (used.Field ? ", Field" : "")];
+        var typing = [];
+        if (used.List) typing.push("List");
+        if (used.Optional) typing.push("Optional");
+        if (typing.length) imports.push("from typing import " + typing.join(", "));
+        var dt = [];
+        if (used.date) dt.push("date");
+        if (used.datetime) dt.push("datetime");
+        if (dt.length) imports.push("from datetime import " + dt.join(", "));
+        return imports.join("\n") + "\n\n" + defs.join("\n\n");
+      }
 
-        nestedCounter = 0;
-        nestedDefs = [];
+      function validateBuilder(fields) {
+        if (fields.length === 0) {
+          return window.t("Add at least one field before extracting.");
+        }
+        var seen = {};
+        function walk(flds) {
+          for (var i = 0; i < flds.length; i++) {
+            var n = flds[i].name;
+            if (!FIELD_NAME_RE.test(n)) {
+              return window.t('Field name "{name}" is invalid. Use letters, digits, and underscores only.', { name: n });
+            }
+            if (seen[n]) {
+              return window.t("Duplicate field names: {names} — each name must be unique.", { names: n });
+            }
+            seen[n] = true;
+            if (flds[i].children && flds[i].children.length) {
+              var err = walk(flds[i].children);
+              if (err) return err;
+            }
+          }
+          return null;
+        }
+        return walk(fields);
+      }
 
-        buildModel(modelName, fields);
+      function showBuilderError(msg) {
+        builderError.textContent = msg;
+        builderError.style.display = "block";
+      }
 
-        var needsList = fieldsHaveList(fields);
-        var imports = ["from pydantic import BaseModel, Field"];
-        if (needsList) imports.push("from typing import List");
+      function hideBuilderError() {
+        builderError.style.display = "none";
+      }
 
-        textarea.value = imports.join("\n") + "\n\n" + nestedDefs.join("\n\n");
-        switchTab("code");
+      function currentModelName() {
+        return modelNameInput.value.trim() || "ExtractedData";
+      }
+
+      function refreshPreview() {
+        if (manualCode) return;
+        textarea.value = buildSchemaCode(currentModelName(), collectFields(fieldList));
+      }
+
+      function updateAdvancedStatus() {
+        var el = document.getElementById("advanced-status");
+        if (!el) return;
+        if (manualCode) {
+          el.textContent = window.t("Manual code — your edits will be used on submit.");
+          el.className = "advanced-status manual";
+        } else {
+          el.textContent = window.t("Code auto-generated from the builder.");
+          el.className = "advanced-status auto";
+        }
       }
 
       function switchTab(tabId) {
@@ -863,30 +1031,39 @@ class OfficialsList(BaseModel):
       });
 
       document.getElementById("add-field").addEventListener("click", function () {
-        addField("", "str", "");
+        addField("", "str", "", false, "");
+        maybeRefreshPreview();
       });
 
-      document.getElementById("generate-code").addEventListener("click", generateCode);
+      fieldList.addEventListener("input", maybeRefreshPreview);
+      fieldList.addEventListener("change", maybeRefreshPreview);
+      modelNameInput.addEventListener("input", maybeRefreshPreview);
 
-      function populateNested(row, children, level) {
-        var nc = row.querySelector(".nested-fields");
-        var toggle = row.querySelector(".toggle-nested");
-        if (!nc) return;
-        nc.style.display = "block";
-        if (toggle) toggle.style.display = "";
-        nc.querySelectorAll(".field-row").forEach(function (r) { r.remove(); });
-        children.forEach(function (child) {
-          addField(child.name, child.type, child.description, level, nc);
-          var rows = nc.querySelectorAll(":scope > .field-row");
-          var last = rows[rows.length - 1];
-          if (last && child.children) {
-            populateNested(last, child.children, level + 1);
-          }
-        });
-        toggleEmptyState(nc);
-      }
+      document.getElementById("advanced-toggle").addEventListener("click", function () {
+        var caret = document.getElementById("advanced-caret");
+        if (advancedPanelOpen()) {
+          advancedPanel.style.display = "none";
+          caret.innerHTML = "&#9656;";
+        } else {
+          advancedPanel.style.display = "block";
+          caret.innerHTML = "&#9662;";
+          refreshPreview();
+          updateAdvancedStatus();
+        }
+      });
 
-      document.getElementById("import-code").addEventListener("click", function () {
+      textarea.addEventListener("input", function () {
+        manualCode = true;
+        updateAdvancedStatus();
+      });
+
+      document.getElementById("code-from-builder").addEventListener("click", function () {
+        manualCode = false;
+        refreshPreview();
+        updateAdvancedStatus();
+      });
+
+      document.getElementById("code-to-builder").addEventListener("click", function () {
         var code = textarea.value.trim();
         if (!code) return;
         fetch("/schemas/parse", {
@@ -894,22 +1071,15 @@ class OfficialsList(BaseModel):
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pydantic_schema: code }),
         }).then(function (r) {
-          if (!r.ok) { r.json().then(function (e) { builderError.textContent = window.t(e.detail) || window.t("Parse failed"); builderError.style.display = "block"; }); return; }
+          if (!r.ok) { r.json().then(function (e) { showBuilderError(window.t(e.detail) || window.t("Parse failed")); }); return; }
           return r.json();
         }).then(function (data) {
           if (!data) return;
-          builderError.style.display = "none";
-          document.getElementById("model-name").value = data.model_name || "ExtractedData";
-          var fl = document.getElementById("field-list");
-          fl.querySelectorAll(".field-row").forEach(function (r) { r.remove(); });
-          toggleEmptyState(fl);
-          data.fields.forEach(function (f) {
-            addField(f.name, f.type, f.description);
-            var row = fl.querySelector(":scope > .field-row:last-child");
-            if (row && f.children) {
-              populateNested(row, f.children, 1);
-            }
-          });
+          hideBuilderError();
+          populateBuilder(data.model_name, data.fields);
+          manualCode = false;
+          refreshPreview();
+          updateAdvancedStatus();
           switchTab("builder");
         });
       });
@@ -942,8 +1112,11 @@ class OfficialsList(BaseModel):
       }
 
       document.getElementById("template-save").addEventListener("click", function () {
-        var code = textarea.value.trim();
-        if (!code) { alert(window.t("No schema code to save. Build a schema first.")); return; }
+        var fields = collectFields(fieldList);
+        var err = validateBuilder(fields);
+        if (err) { showBuilderError(err); return; }
+        hideBuilderError();
+        var code = buildSchemaCode(currentModelName(), fields);
         var name = prompt(window.t("Name for this schema:"));
         if (!name || !name.trim()) return;
         fetch("/schemas", {
@@ -962,8 +1135,23 @@ class OfficialsList(BaseModel):
         fetch("/schemas/" + id)
           .then(function (r) { return r.json(); })
           .then(function (s) {
-            textarea.value = s.pydantic_schema;
-            switchTab("code");
+            return fetch("/schemas/parse", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pydantic_schema: s.pydantic_schema }),
+            });
+          })
+          .then(function (r) {
+            if (!r.ok) { r.json().then(function (e) { alert(window.t(e.detail) || window.t("Parse failed")); }); return null; }
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data) return;
+            populateBuilder(data.model_name, data.fields);
+            manualCode = false;
+            refreshPreview();
+            updateAdvancedStatus();
+            switchTab("builder");
           });
       });
 
@@ -1045,39 +1233,73 @@ class OfficialsList(BaseModel):
           });
       }
 
-      toggleGenerateButton();
-      addField("names", "List[str]", "Full names of all people");
-      addField("positions", "List[str]", "Positions in same order");
-      modelNameInput.value = "OfficialsList";
-      toggleGenerateButton();
+      function saveBuilderState() {
+        var sel = document.getElementById('model-select');
+        if (sel) sessionStorage.setItem('smd_last_model', sel.value);
+        sessionStorage.setItem('smd_last_builder', JSON.stringify({ model_name: modelNameInput.value, fields: collectFields(fieldList) }));
+      }
+
+      function restoreBuilderState() {
+        var saved = sessionStorage.getItem('smd_last_builder');
+        if (!saved) return false;
+        try {
+          var data = JSON.parse(saved);
+          if (!data || !data.fields) return false;
+          populateBuilder(data.model_name, data.fields);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      if (!restoreBuilderState()) {
+        addField("names", "List[str]", "Full names of all people", false, "");
+        addField("positions", "List[str]", "Positions in same order", false, "");
+        modelNameInput.value = "OfficialsList";
+      }
+      updateAdvancedStatus();
       loadTemplateList();
       loadModels();
 
-      var lastSchema = sessionStorage.getItem('smd_last_schema');
-      if (lastSchema) {
-        var ta = document.querySelector("textarea[name='pydantic_schema']");
-        if (ta) { ta.value = lastSchema; switchTab('code'); }
-      }
+      var form = document.querySelector('form');
+      var pendingConfirm = null;
 
-      document.querySelector('form').addEventListener('htmx:beforeRequest', function() {
-        var sel = document.getElementById('model-select');
-        if (sel) sessionStorage.setItem('smd_last_model', sel.value);
-        var ta = document.querySelector("textarea[name='pydantic_schema']");
-        if (ta) sessionStorage.setItem('smd_last_schema', ta.value);
+      form.addEventListener('htmx:configRequest', function(evt) {
+        if (evt.detail.elt !== form) return;
+        var code;
+        if (manualCode) {
+          code = textarea.value.trim();
+          if (!code) {
+            evt.preventDefault();
+            showBuilderError(window.t("The schema code is empty. Add fields in the builder or write code in the Advanced panel."));
+            return;
+          }
+        } else {
+          var fields = collectFields(fieldList);
+          var err = validateBuilder(fields);
+          if (err) {
+            evt.preventDefault();
+            showBuilderError(err);
+            return;
+          }
+          code = buildSchemaCode(currentModelName(), fields);
+        }
+        hideBuilderError();
+        textarea.value = code;
+        if (evt.detail.parameters) {
+          evt.detail.parameters.pydantic_schema = code;
+        }
+        if (pendingConfirm && !confirm(pendingConfirm)) {
+          evt.preventDefault();
+        }
+      });
+
+      form.addEventListener('htmx:beforeRequest', function() {
+        saveBuilderState();
       });
 
       var fileInput = document.querySelector('input[type="file"][name="file"]');
       if (fileInput) {
-        var form = document.querySelector('form');
-        var pendingConfirm = null;
-
-        form.addEventListener('htmx:configRequest', function(evt) {
-          if (evt.detail.elt !== form) return;
-          if (pendingConfirm && !confirm(pendingConfirm)) {
-            evt.preventDefault();
-          }
-        });
-
         fileInput.addEventListener('change', function() {
           if (this.files && this.files.length > 0) {
             var sizes = [];

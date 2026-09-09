@@ -19,7 +19,7 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     healthcheck:
-      test: curl -f http://localhost:8080/health || exit 1
+      test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
       interval: 30s
       timeout: 10s
       retries: 3
