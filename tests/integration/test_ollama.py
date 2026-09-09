@@ -10,9 +10,15 @@ from tests.conftest import ollama_available
 
 pytestmark = pytest.mark.skipif(not ollama_available(), reason="Ollama not available")
 
+REGISTER = {
+    "email": "ollama@example.com",
+    "password": "password123",
+}
+
 
 @pytest.mark.asyncio
 async def test_real_extraction(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("harry.txt", b"Harry is 11 years old")})
     doc_id = upload_resp.json()["id"]
 
@@ -42,6 +48,7 @@ async def test_real_extraction(async_client, db_session, patch_async_session):
 
 @pytest.mark.asyncio
 async def test_image_extraction_with_ollama(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json=REGISTER)
     import io
     import struct
     import zlib
@@ -89,6 +96,7 @@ async def test_image_extraction_with_ollama(async_client, db_session, patch_asyn
 
 @pytest.mark.asyncio
 async def test_ollama_unreachable(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("doc.txt", b"data")})
     doc_id = upload_resp.json()["id"]
 
