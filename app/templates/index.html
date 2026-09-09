@@ -171,6 +171,7 @@
       user-select: none;
       align-self: center;
       line-height: 1;
+      touch-action: none;
     }
     .field-row .drag-handle:active { cursor: grabbing; }
     .field-row .field-name {
@@ -217,9 +218,6 @@
 
     .field-row.dragging {
       opacity: 0.4;
-    }
-    .field-row.drag-over-target {
-      border-bottom: 2px solid #2563eb;
     }
 
     .field-row-nested {
@@ -584,89 +582,55 @@
       }
 
       function makeFieldDraggable(row) {
-        row.addEventListener("dragstart", function (e) {
-          if (!e.target.classList.contains("drag-handle")) {
-            e.preventDefault();
-            return;
-          }
-          dragState = { element: row, container: row.parentElement };
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", "");
-          row.classList.add("dragging");
-        });
-
-        row.addEventListener("dragend", function () {
-          row.classList.remove("dragging");
-          document.querySelectorAll(".field-row").forEach(function (r) {
-            r.classList.remove("drag-over-target");
-          });
-          dragState = null;
-        });
-
-        row.addEventListener("dragover", function (e) {
-          if (!dragState || dragState.element === row) return;
-          if (row.parentElement !== dragState.container) return;
-          e.preventDefault();
-          var rect = row.getBoundingClientRect();
-          var mid = rect.top + rect.height / 2;
-          if (e.clientY < mid) {
-            dragState.container.insertBefore(dragState.element, row);
-          } else {
-            dragState.container.insertBefore(dragState.element, row.nextSibling);
-          }
-        });
-
-        row.addEventListener("dragenter", function (e) {
-          if (!dragState || dragState.element === row) return;
-          if (row.parentElement !== dragState.container) return;
-          e.preventDefault();
-          row.classList.add("drag-over-target");
-        });
-
-        row.addEventListener("dragleave", function () {
-          row.classList.remove("drag-over-target");
-        });
-
-        row.addEventListener("drop", function (e) {
-          e.preventDefault();
-          row.classList.remove("drag-over-target");
-        });
-
         var handle = row.querySelector(".drag-handle");
-        if (handle) {
-          handle.addEventListener("touchstart", function (e) {
-            var r = this.closest(".field-row");
-            dragState = { element: r, container: r.parentElement };
-            r.style.opacity = "0.5";
-          }, { passive: true });
+        if (!handle) return;
 
-          handle.addEventListener("touchmove", function (e) {
-            if (!dragState) return;
-            e.preventDefault();
-            var touch = e.touches[0];
-            dragState.element.style.display = "none";
-            var target = document.elementFromPoint(touch.clientX, touch.clientY);
-            dragState.element.style.display = "";
-            if (target) {
-              var targetRow = target.closest(".field-row");
-              if (targetRow && targetRow !== dragState.element && targetRow.parentElement === dragState.container) {
-                var rect = targetRow.getBoundingClientRect();
-                var mid = rect.top + rect.height / 2;
-                if (touch.clientY < mid) {
-                  dragState.container.insertBefore(dragState.element, targetRow);
-                } else {
-                  dragState.container.insertBefore(dragState.element, targetRow.nextSibling);
-                }
-              }
+        handle.addEventListener("pointerdown", function (e) {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          var container = row.parentElement;
+          if (!container.classList.contains("field-list") && !container.classList.contains("nested-fields")) return;
+          dragState = { row: row, container: container, started: false };
+          handle.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        });
+
+        handle.addEventListener("pointermove", function (e) {
+          if (!dragState) return;
+          if (!dragState.started) {
+            dragState.started = true;
+            row.classList.add("dragging");
+            document.body.style.userSelect = "none";
+          }
+          var rows = dragState.container.querySelectorAll(":scope > .field-row");
+          var insertBefore = null;
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (r === dragState.row) continue;
+            var rect = r.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) {
+              insertBefore = r;
+              break;
             }
-          }, { passive: false });
+          }
+          if (insertBefore) {
+            if (insertBefore.previousElementSibling !== dragState.row) {
+              dragState.container.insertBefore(dragState.row, insertBefore);
+            }
+          } else if (dragState.row.nextElementSibling) {
+            dragState.container.appendChild(dragState.row);
+          }
+        });
 
-          handle.addEventListener("touchend", function () {
-            if (!dragState) return;
-            dragState.element.style.opacity = "";
-            dragState = null;
-          }, { passive: true });
+        function endDrag() {
+          if (!dragState) return;
+          dragState.row.classList.remove("dragging");
+          document.body.style.userSelect = "";
+          dragState = null;
+          maybeRefreshPreview();
         }
+
+        handle.addEventListener("pointerup", endDrag);
+        handle.addEventListener("pointercancel", endDrag);
       }
 
       function createFieldRow(name, type, desc, optional, defaultVal, level) {
@@ -674,7 +638,6 @@
         var row = document.createElement("div");
         row.className = "field-row" + (level > 0 ? " field-row-nested" : "");
         row.dataset.level = level;
-        row.draggable = true;
 
         var handle = document.createElement("span");
         handle.className = "drag-handle";
