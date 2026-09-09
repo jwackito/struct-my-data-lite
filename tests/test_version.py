@@ -23,14 +23,14 @@ def test_get_version_no_heading(tmp_path):
 
 def test_get_version_default_changelog():
     version = get_version()
-    assert version == "v1.1.1-lite"
+    assert version == "v1.2.0-lite"
 
 
 @pytest.mark.asyncio
 async def test_api_version(client):
     response = await client.get("/api/version")
     assert response.status_code == 200
-    assert response.json() == {"version": "v1.1.1-lite"}
+    assert response.json() == {"version": "v1.2.0-lite"}
 
 
 @pytest.mark.asyncio
