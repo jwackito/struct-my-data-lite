@@ -160,6 +160,8 @@
   "Type": "Tipo",
   "Opt": "Opc",
   "Optional field": "Campo opcional",
+  "Move up": "Mover arriba",
+  "Move down": "Mover abajo",
   "Default": "Valor por defecto",
   "default": "por defecto",
   "Advanced": "Avanzado",
