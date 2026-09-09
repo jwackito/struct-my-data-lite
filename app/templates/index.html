@@ -201,6 +201,21 @@
       color: #b91c1c;
       background: transparent;
     }
+    .field-row .move-field {
+      padding: 0.1rem 0.4rem;
+      background: transparent;
+      color: #6b7280;
+      font-size: 0.8rem;
+      line-height: 1.2;
+      border: 1px solid #d1d5db;
+      border-radius: 3px;
+      cursor: pointer;
+      align-self: center;
+    }
+    .field-row .move-field:hover {
+      background: #f3f4f6;
+      color: #1a1a1a;
+    }
     .field-row .toggle-nested {
       padding: 0.15rem 0.35rem;
       background: transparent;
@@ -695,6 +710,32 @@
         toggleBtn.textContent = "\u25bc";
         toggleBtn.style.display = "none";
 
+        var upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "move-field";
+        upBtn.textContent = "\u2191";
+        upBtn.title = window.t("Move up");
+        upBtn.addEventListener("click", function () {
+          var prev = row.previousElementSibling;
+          if (prev && prev.classList.contains("field-row")) {
+            row.parentElement.insertBefore(row, prev);
+            maybeRefreshPreview();
+          }
+        });
+
+        var downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "move-field";
+        downBtn.textContent = "\u2193";
+        downBtn.title = window.t("Move down");
+        downBtn.addEventListener("click", function () {
+          var next = row.nextElementSibling;
+          if (next && next.classList.contains("field-row")) {
+            row.parentElement.insertBefore(next, row);
+            maybeRefreshPreview();
+          }
+        });
+
         var removeBtn = document.createElement("button");
         removeBtn.type = "button";
         removeBtn.className = "remove-field";
@@ -707,6 +748,8 @@
         row.appendChild(defaultInput);
         row.appendChild(descInput);
         row.appendChild(toggleBtn);
+        row.appendChild(upBtn);
+        row.appendChild(downBtn);
         row.appendChild(removeBtn);
 
         var nestedContainer = document.createElement("div");
