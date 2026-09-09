@@ -160,6 +160,8 @@
   "Type": "Type",
   "Opt": "Opt",
   "Optional field": "Optional field",
+  "Move up": "Move up",
+  "Move down": "Move down",
   "Default": "Default",
   "default": "default",
   "Advanced": "Advanced",
