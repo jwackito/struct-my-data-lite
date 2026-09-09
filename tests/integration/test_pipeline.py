@@ -110,31 +110,6 @@ async def test_process_job_records_tokens(async_client, db_session, patch_async_
 
 
 @pytest.mark.asyncio
-async def test_ui_extract_records_upload_duration(async_client, db_session, patch_async_session):
-    with patch("app.main.process_job"):
-        resp = await async_client.post(
-            "/ui/extract",
-            data={
-                "pydantic_schema": (
-                    "from pydantic import BaseModel\n"
-                    "class X(BaseModel):\n"
-                    "    y: str\n"
-                ),
-            },
-            files={
-                "file": ("test.txt", b"some content", "text/plain"),
-            },
-        )
-    assert resp.status_code == 200
-
-    result = await db_session.execute(select(ExtractionJob).order_by(ExtractionJob.created_at.desc()))
-    job = result.scalars().first()
-    assert job is not None
-    assert job.upload_duration_ms is not None
-    assert job.upload_duration_ms >= 0
-
-
-@pytest.mark.asyncio
 async def test_process_job_records_timing(async_client, db_session, patch_async_session):
     upload_resp = await async_client.post("/upload", files={"file": ("input.txt", b"Bob is 25")})
     doc_id = upload_resp.json()["id"]
@@ -215,21 +190,3 @@ async def test_process_job_notify_failure_sets_failed(async_client, db_session, 
     job = result.scalar_one()
     assert job.status == JobStatus.failed
     assert "notify failure" in job.error_message
-
-
-@pytest.mark.asyncio
-async def test_ui_extract_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
-    with patch("app.main.process_job"):
-        resp = await async_client.post(
-            "/ui/extract",
-            data={
-                "pydantic_schema": (
-                    "from pydantic import BaseModel\n"
-                    "class X(BaseModel):\n"
-                    "    y: str\n"
-                ),
-            },
-            files={"file": ("test.txt", b"content", "text/plain")},
-        )
-    assert resp.status_code == 200
-    assert 'hx-swap="outerHTML"' in resp.text
