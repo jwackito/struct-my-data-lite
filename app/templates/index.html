@@ -1210,10 +1210,12 @@
             var sel = document.getElementById("model-select");
             sel.innerHTML = '<option value="">' + window.t('Select a model...') + '</option>';
             var grouped = {};
+            var defaultId = null;
             data.models.forEach(function (m) {
               var conn = m.connection || "";
               if (!grouped[conn]) grouped[conn] = [];
               grouped[conn].push(m);
+              if (m.is_default) defaultId = m.id;
             });
             var connOrder = Object.keys(grouped).sort(function (a, b) {
               if (a === "ollama") return -1;
@@ -1227,7 +1229,13 @@
                 var opt = document.createElement("option");
                 opt.value = m.id;
                 var caps = (m.capabilities || []).join("/");
-                opt.textContent = m.model + " (" + caps + ")";
+                var label = m.display_name || m.model;
+                if (caps) label += " (" + caps + ")";
+                if (m.price_input_usd != null && m.price_input_usd > 0) {
+                  label += " - $" + m.price_input_usd + "/M in";
+                }
+                opt.textContent = label;
+                if (m.description) opt.title = m.description;
                 grp.appendChild(opt);
               });
               sel.appendChild(grp);
@@ -1244,7 +1252,8 @@
                   }
                 }
               }
-              if (!found) sel.value = data.models[0].id;
+              if (!found && defaultId) sel.value = defaultId;
+              if (!found && !defaultId) sel.value = data.models[0].id;
             }
           });
       }
