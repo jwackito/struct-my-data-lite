@@ -108,19 +108,12 @@ def test_gemini_list_models(mock_urlopen):
 
 @pytest.mark.asyncio
 @patch("app.providers.factory._build_provider")
-@patch("app.providers.factory.get_connection")
-@patch("app.providers.factory.list_connections")
-async def test_list_all_models_filters_embeddings(mock_list_conn, mock_get_conn, mock_build_provider):
+async def test_list_all_models_filters_embeddings(mock_build_provider, async_client, db_session):
+    from app.models import LLMConnection
     from app.providers.base import ModelInfo
 
-    mock_list_conn.return_value = [
-        {"name": "ollama", "provider": "ollama", "config": {"host": "http://test:11434"}, "enabled": True},
-        {"name": "my-openai", "provider": "openai", "config": {"api_key": "****sk-test"}, "enabled": True},
-    ]
-    mock_get_conn.side_effect = [
-        {"name": "ollama", "provider": "ollama", "config": {"host": "http://test:11434"}},
-        {"name": "my-openai", "provider": "openai", "config": {"api_key": "sk-test-secret", "base_url": ""}},
-    ]
+    db_session.add(LLMConnection(name="my-openai", provider="openai", config={}, secrets="{}"))
+    await db_session.commit()
 
     ollama_provider = MagicMock()
     ollama_provider.list_models.return_value = [ModelInfo(id="ollama/qwen3.6:35b", provider="ollama", model_name="qwen3.6:35b", capabilities=["text"])]
@@ -136,7 +129,7 @@ async def test_list_all_models_filters_embeddings(mock_list_conn, mock_get_conn,
         return openai_provider
     mock_build_provider.side_effect = build_side_effect
 
-    result = await list_all_models(AsyncMock())
+    result = await list_all_models(db_session)
     ids = [m["id"] for m in result]
     assert "ollama/ollama/qwen3.6:35b" in ids
     assert "openai/my-openai/gpt-4o-mini" in ids
