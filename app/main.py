@@ -41,6 +41,11 @@ templates.env.globals["t"] = t
 async def lifespan(app: FastAPI):
     if not settings.skip_db_wait:
         await wait_for_db()
+    try:
+        async with async_session() as db:
+            await refresh_pricing(db)
+    except Exception:
+        pass
     yield
 
 
@@ -329,7 +334,7 @@ async def api_batch_estimate(body: dict, user: User = Depends(get_current_user),
     if len(file_sizes) > settings.max_batch_size:
         raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
 
-    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     estimated_tokens = sum(size / 4 for size in file_sizes)
     estimated_cost = calculate_cost(provider_type, model_name, estimated_tokens, estimated_tokens / 4)
 
@@ -364,7 +369,7 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
     await db.commit()
     await db.refresh(batch)
 
-    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job_ids = []
     for doc_id in document_ids:
         doc = await db.get(Document, doc_id)
@@ -790,8 +795,18 @@ async def upload(file: UploadFile, user: User = Depends(get_current_user), db: A
     }
 
 
-def _parse_model_id(model_id: str) -> tuple[str, str, str | None]:
+async def _parse_model_id(model_id: str, db: AsyncSession | None = None) -> tuple[str, str, str | None]:
     if not model_id:
+        if db is not None:
+            result = await db.execute(
+                select(ModelRegistry).where(
+                    ModelRegistry.connection_id.is_(None),
+                    ModelRegistry.is_default.is_(True),
+                )
+            )
+            reg = result.scalar_one_or_none()
+            if reg:
+                return "ollama", "ollama", reg.model_name
         return "ollama", "ollama", settings.ollama_model
     parts = model_id.split("/", 2)
     if len(parts) == 3:
@@ -821,7 +836,7 @@ async def create_extraction(
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
-    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job = ExtractionJob(
         user_id=user.id,
         document_id=document_id,
@@ -922,7 +937,7 @@ async def ui_batch_extract(
     await db.commit()
     await db.refresh(batch)
 
-    provider_type, connection_name, model_name = _parse_model_id(model_id)
+    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job_ids = []
     for up in file:
         content = await up.read()
