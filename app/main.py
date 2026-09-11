@@ -21,11 +21,12 @@ from app.connections import (
 )
 from app.database import get_db, async_session, wait_for_db
 from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
-from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, SavedSchema, User, UserRole
-from app.pricing import calculate_cost
+from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, LLMConnection, ModelRegistry, SavedSchema, User, UserModelAccess, UserRole
+from app.pricing import calculate_cost, refresh_pricing
 from app.processing import process_job
-from sqlalchemy import cast, Date
+from sqlalchemy import cast, Date, update
 from app.providers import list_all_models
+from app.providers.factory import _build_provider, _sync_registry
 from app.schema_parser import parse_schema
 from app.storage import save_file
 from app.version import get_version
@@ -1325,6 +1326,176 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
 @app.get("/admin")
 async def admin_index(admin: User = Depends(get_admin_user)):
     return FileResponse("app/templates/admin.html")
+
+
+@app.get("/admin/models")
+async def admin_models_page(admin: User = Depends(get_admin_user)):
+    return FileResponse("app/templates/admin_models.html")
+
+
+@app.get("/admin/models/data")
+async def admin_models_data(
+    connection: str = "",
+    provider: str = "",
+    search: str = "",
+    include_hidden: int = 0,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    conditions = []
+    if connection:
+        conditions.append(LLMConnection.name == connection)
+    if provider:
+        conditions.append(LLMConnection.provider == provider)
+    if not include_hidden:
+        conditions.append(ModelRegistry.enabled.is_(True))
+    if search:
+        pattern = f"%{search}%"
+        conditions.append(ModelRegistry.model_name.ilike(pattern))
+
+    q = (
+        select(ModelRegistry, LLMConnection)
+        .join(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
+    )
+    for cond in conditions:
+        q = q.where(cond)
+    q = q.order_by(LLMConnection.name, ModelRegistry.sort_order, ModelRegistry.model_name)
+
+    result = await db.execute(q)
+    rows = []
+    for reg, conn in result.all():
+        rows.append({
+            "id": str(reg.id),
+            "connection": conn.name,
+            "provider": conn.provider,
+            "model_name": reg.model_name,
+            "display_name": reg.display_name,
+            "description": reg.description,
+            "capabilities": reg.capabilities,
+            "context_window": reg.context_window,
+            "price_input_usd": reg.price_input_usd,
+            "price_output_usd": reg.price_output_usd,
+            "enabled": reg.enabled,
+            "admin_only": reg.admin_only,
+            "is_default": reg.is_default,
+            "sort_order": reg.sort_order,
+            "last_seen_at": reg.last_seen_at.isoformat() if reg.last_seen_at else None,
+        })
+    return {"models": rows}
+
+
+@app.post("/admin/models/refresh")
+async def admin_models_refresh(admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    from app.connections import get_connection as get_conn
+
+    for conn in await list_connections(db):
+        if not conn["enabled"]:
+            continue
+        full = await get_conn(conn["name"], db)
+        if not full:
+            continue
+        try:
+            provider = _build_provider(full["provider"], full["config"])
+        except Exception:
+            continue
+        await _sync_registry(db, conn, provider, provider.list_models())
+    await db.commit()
+    await refresh_pricing(db)
+    return {"ok": True}
+
+
+@app.patch("/admin/models/{model_id}")
+async def admin_models_patch(
+    model_id: uuid.UUID,
+    body: dict,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    reg = await db.get(ModelRegistry, model_id)
+    if not reg:
+        raise HTTPException(status_code=404, detail=t_req("Model not found"))
+
+    allowed = {
+        "display_name", "description", "capabilities", "context_window",
+        "price_input_usd", "price_output_usd", "enabled", "admin_only",
+        "is_default", "sort_order",
+    }
+    for key, value in body.items():
+        if key not in allowed:
+            raise HTTPException(status_code=422, detail=t_req("Unknown field: {key}", key=key))
+        setattr(reg, key, value)
+
+    if body.get("is_default"):
+        await db.execute(
+            update(ModelRegistry)
+            .where(ModelRegistry.connection_id == reg.connection_id, ModelRegistry.is_default.is_(True))
+            .where(ModelRegistry.id != reg.id)
+            .values(is_default=False)
+        )
+
+    await db.commit()
+    await db.refresh(reg)
+    await refresh_pricing(db)
+    return {"ok": True}
+
+
+@app.get("/admin/users/{user_id}/models")
+async def admin_user_models(
+    user_id: uuid.UUID,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail=t_req("User not found"))
+    result = await db.execute(
+        select(UserModelAccess, ModelRegistry)
+        .join(ModelRegistry, UserModelAccess.model_id == ModelRegistry.id)
+        .where(UserModelAccess.user_id == user_id)
+    )
+    grants = [{"model_id": str(a.model_id), "model_name": reg.model_name, "access": a.access} for a, reg in result.all()]
+    return {"grants": grants}
+
+
+@app.put("/admin/users/{user_id}/models")
+async def admin_user_models_put(
+    user_id: uuid.UUID,
+    body: dict,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail=t_req("User not found"))
+
+    grants = body.get("grants", [])
+    for g in grants:
+        model_id = g.get("model_id")
+        access = g.get("access")
+        if access not in ("allow", "deny", "default"):
+            raise HTTPException(status_code=422, detail=t_req("Invalid access: {access}", access=access))
+        try:
+            model_uuid = uuid.UUID(str(model_id))
+        except ValueError:
+            raise HTTPException(status_code=422, detail=t_req("Invalid model_id"))
+        if not await db.get(ModelRegistry, model_uuid):
+            raise HTTPException(status_code=404, detail=t_req("Model not found"))
+        result = await db.execute(
+            select(UserModelAccess).where(
+                UserModelAccess.user_id == user_id,
+                UserModelAccess.model_id == model_uuid,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if access == "default":
+            if row:
+                await db.delete(row)
+        elif row:
+            row.access = access
+        else:
+            db.add(UserModelAccess(user_id=user_id, model_id=model_uuid, access=access))
+    await db.commit()
+    return {"ok": True}
 
 
 @app.get("/admin/users")

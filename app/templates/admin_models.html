@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="Models — Admin — Struct My Data">Models — Admin — Struct My Data</title>
+  <script src="/i18n.js"></script>
+  <style>
+    body { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    .filters { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filters input, .filters select { padding: 0.4rem 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+    .filters input[type="text"] { flex: 1; min-width: 180px; }
+    .filters label { font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem; }
+    .refresh-btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; background: #2563eb; color: #fff; }
+    .refresh-btn:hover { background: #1d4ed8; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+    th, td { border: 1px solid #ddd; padding: 0.4rem; text-align: left; vertical-align: middle; }
+    th { background: #f5f5f5; font-weight: 600; }
+    td input, td select { padding: 0.25rem 0.4rem; border: 1px solid #ccc; border-radius: 3px; font-size: 0.8rem; box-sizing: border-box; width: 100%; }
+    td input.price { width: 70px; }
+    td input.order { width: 44px; }
+    .badge { font-size: 0.7rem; padding: 0.12rem 0.35rem; border-radius: 4px; white-space: nowrap; }
+    .badge.on { background: #d1fae5; color: #065f46; }
+    .badge.off { background: #fee2e2; color: #991b1b; }
+    .badge.admin { background: #dbeafe; color: #1e40af; }
+    .badge.def { background: #fef3c7; color: #92400e; }
+    .action-btn { font-size: 0.75rem; padding: 0.22rem 0.45rem; border: none; border-radius: 4px; cursor: pointer; margin: 0.05rem; white-space: nowrap; }
+    .action-btn.toggle { background: #f59e0b; color: #fff; }
+    .action-btn.admin-only { background: #8b5cf6; color: #fff; }
+    .action-btn.default { background: #f59e0b; color: #fff; }
+    .action-btn.save { background: #2563eb; color: #fff; }
+    .action-btn:hover { opacity: 0.85; }
+    .msg { font-size: 0.85rem; margin-top: 0.5rem; padding: 0.35rem 0.6rem; border-radius: 4px; display: none; }
+    .msg.err { display: block; background: #fee2e2; color: #991b1b; }
+    .msg.ok { display: block; background: #d1fae5; color: #065f46; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] .filters input, [data-theme="dark"] .filters select { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+    [data-theme="dark"] td input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
+    [data-theme="dark"] .badge.on { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .badge.off { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .badge.admin { background: #1e3a5f; color: #93c5fd; }
+    [data-theme="dark"] .badge.def { background: #78350f; color: #fcd34d; }
+    [data-theme="dark"] .refresh-btn:hover { background: #3b82f6; }
+    [data-theme="dark"] .msg.err { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .msg.ok { background: #064e3b; color: #6ee7b7; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:1rem;align-items:center">
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/admin/usage" data-i18n="Usage">Usage</a>
+      <a href="/admin/users" data-i18n="Users">Users</a>
+      <a href="/admin" data-i18n="Admin">Admin</a>
+      <a href="/admin/models" style="font-weight:600" data-i18n="Models">Models</a>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
+    </div>
+  </div>
+  <h1 data-i18n="Models">Models</h1>
+  <div class="filters">
+    <input type="text" id="search" placeholder="Search models..." data-i18n-ph="Search models..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(loadModels,300)">
+    <select id="filter-provider" onchange="loadModels()">
+      <option value="" data-i18n="All providers">All providers</option>
+      <option value="ollama">ollama</option>
+      <option value="openai">openai</option>
+      <option value="gemini">gemini</option>
+    </select>
+    <label><input type="checkbox" id="include-hidden" onchange="loadModels()"> <span data-i18n="Show hidden">Show hidden</span></label>
+    <button class="refresh-btn" onclick="refreshModels()" data-i18n="Refresh from providers">Refresh from providers</button>
+  </div>
+  <div id="models-table"><p data-i18n="Loading...">Loading...</p></div>
+  <div id="msg" class="msg"></div>
+  <script>
+    var t;
+
+    function loadModels() {
+      var el = document.getElementById('models-table');
+      el.innerHTML = '<p>' + window.t('Loading...') + '</p>';
+      var url = '/admin/models/data?include_hidden=' + (document.getElementById('include-hidden').checked ? 1 : 0);
+      var search = document.getElementById('search').value.trim();
+      if (search) url += '&search=' + encodeURIComponent(search);
+      var provider = document.getElementById('filter-provider').value;
+      if (provider) url += '&provider=' + encodeURIComponent(provider);
+
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.models.length) {
+          el.innerHTML = '<p style="color:#9ca3af">' + window.t('No models found.') + '</p>';
+          return;
+        }
+        var html = '<table><thead><tr>'
+          + '<th>' + window.t('Connection') + '</th>'
+          + '<th>' + window.t('Model') + '</th>'
+          + '<th>' + window.t('Display name') + '</th>'
+          + '<th>' + window.t('Description') + '</th>'
+          + '<th>' + window.t('Caps') + '</th>'
+          + '<th>' + window.t('Context') + '</th>'
+          + '<th>' + window.t('Price in') + '</th>'
+          + '<th>' + window.t('Price out') + '</th>'
+          + '<th>' + window.t('Order') + '</th>'
+          + '<th>' + window.t('Status') + '</th>'
+          + '<th>' + window.t('Actions') + '</th>'
+          + '</tr></thead><tbody>';
+        data.models.forEach(function(m) {
+          var status = m.enabled
+            ? '<span class="badge on">' + window.t('enabled') + '</span>'
+            : '<span class="badge off">' + window.t('disabled') + '</span>';
+          var extra = '';
+          if (m.admin_only) extra += ' <span class="badge admin" title="' + window.t('Admin only') + '">' + window.t('admin') + '</span>';
+          if (m.is_default) extra += ' <span class="badge def" title="' + window.t('Default for connection') + '">' + window.t('default') + '</span>';
+          html += '<tr>'
+            + '<td>' + m.connection + '</td>'
+            + '<td style="font-family:monospace">' + m.model_name + '</td>'
+            + '<td><input type="text" id="display-' + m.id + '" value="' + (m.display_name || '') + '" placeholder="' + window.t('default') + '"></td>'
+            + '<td><input type="text" id="desc-' + m.id + '" value="' + (m.description || '') + '"></td>'
+            + '<td>' + (m.capabilities || []).join('/') + '</td>'
+            + '<td><input type="number" id="ctx-' + m.id + '" value="' + (m.context_window || '') + '"></td>'
+            + '<td><input type="number" step="0.001" class="price" id="pin-' + m.id + '" value="' + (m.price_input_usd != null ? m.price_input_usd : '') + '"></td>'
+            + '<td><input type="number" step="0.001" class="price" id="pout-' + m.id + '" value="' + (m.price_output_usd != null ? m.price_output_usd : '') + '"></td>'
+            + '<td><input type="number" class="order" id="order-' + m.id + '" value="' + (m.sort_order || 0) + '"></td>'
+            + '<td>' + status + extra + '</td>'
+            + '<td>'
+            + '<button class="action-btn toggle" onclick="patch(\'' + m.id + '\', {enabled: ' + !m.enabled + '})">' + (m.enabled ? window.t('Disable') : window.t('Enable')) + '</button> '
+            + '<button class="action-btn admin-only" onclick="patch(\'' + m.id + '\', {admin_only: ' + !m.admin_only + '})">' + (m.admin_only ? window.t('Unrestrict') : window.t('Admin only')) + '</button> '
+            + '<button class="action-btn default" onclick="patch(\'' + m.id + '\', {is_default: ' + !m.is_default + '})">' + (m.is_default ? window.t('Unpin') : window.t('Pin default')) + '</button> '
+            + '<button class="action-btn save" onclick="save(\'' + m.id + '\')">' + window.t('Save') + '</button>'
+            + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+      });
+    }
+
+    function patch(id, body) {
+      fetch('/admin/models/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(function(r) {
+        if (r.ok) { showMsg('', true); loadModels(); }
+        else r.json().then(function(e) { showMsg(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
+
+    function save(id) {
+      var body = {
+        display_name: document.getElementById('display-' + id).value.trim() || null,
+        description: document.getElementById('desc-' + id).value.trim() || null,
+        context_window: parseInt(document.getElementById('ctx-' + id).value, 10) || null,
+        price_input_usd: parseFloat(document.getElementById('pin-' + id).value) || null,
+        price_output_usd: parseFloat(document.getElementById('pout-' + id).value) || null,
+        sort_order: parseInt(document.getElementById('order-' + id).value, 10) || 0,
+      };
+      fetch('/admin/models/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(function(r) {
+        if (r.ok) { showMsg('', true); loadModels(); }
+        else r.json().then(function(e) { showMsg(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
+
+    function refreshModels() {
+      fetch('/admin/models/refresh', { method: 'POST' }).then(function(r) {
+        if (r.ok) { showMsg('', true); loadModels(); }
+        else r.json().then(function(e) { showMsg(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
+
+    function showMsg(text, ok) {
+      var el = document.getElementById('msg');
+      el.className = ok ? 'msg ok' : 'msg err';
+      el.textContent = ok ? (window.t('Done') || 'OK') : text;
+      if (ok) setTimeout(function() { el.className = 'msg'; }, 2000);
+    }
+
+    loadModels();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -48,6 +48,7 @@ async def test_admin_models_page_served(async_client, db_session):
 async def test_admin_models_data_lists_models(async_client, db_session):
     await _admin(async_client, db_session)
     conn = _conn(db_session)
+    await db_session.flush()
     await _reg(db_session, conn, "alpha", enabled=True)
     await db_session.commit()
 
@@ -63,6 +64,7 @@ async def test_admin_models_data_lists_models(async_client, db_session):
 async def test_admin_models_data_hides_disabled_by_default(async_client, db_session):
     await _admin(async_client, db_session)
     conn = _conn(db_session)
+    await db_session.flush()
     await _reg(db_session, conn, "on", enabled=True)
     await _reg(db_session, conn, "off", enabled=False)
     await db_session.commit()
@@ -94,7 +96,7 @@ async def test_admin_models_requires_auth(async_client):
 async def test_admin_models_refresh_syncs_registry(async_client, db_session):
     await _admin(async_client, db_session)
     fake = type("Fake", (), {"list_models": lambda self: [ModelInfo(id="ollama/x", provider="ollama", model_name="x", capabilities=["text"])]})()
-    with patch("app.providers.factory._build_provider", return_value=fake):
+    with patch("app.main._build_provider", return_value=fake):
         resp = await async_client.post("/admin/models/refresh")
     assert resp.status_code == 200
     regs = (await db_session.execute(select(ModelRegistry))).scalars().all()
@@ -105,6 +107,7 @@ async def test_admin_models_refresh_syncs_registry(async_client, db_session):
 async def test_admin_models_patch_updates_and_sets_default(async_client, db_session):
     await _admin(async_client, db_session)
     conn = _conn(db_session)
+    await db_session.flush()
     a = await _reg(db_session, conn, "a")
     b = await _reg(db_session, conn, "b")
     await db_session.commit()
@@ -129,11 +132,12 @@ async def test_admin_models_patch_updates_and_sets_default(async_client, db_sess
 
 @pytest.mark.asyncio
 async def test_admin_user_models_grants(async_client, db_session):
-    await _admin(async_client, db_session)
     await _user(async_client, db_session)
+    await _admin(async_client, db_session)
     result = await db_session.execute(select(User).where(User.email == "plain@example.com"))
     target = result.scalar_one()
     conn = _conn(db_session)
+    await db_session.flush()
     a = await _reg(db_session, conn, "a")
     b = await _reg(db_session, conn, "b")
     await db_session.commit()
