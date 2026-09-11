@@ -24,6 +24,7 @@ async def test_refresh_pricing_collapses_registry(async_client, db_session):
 
     first = ModelRegistry(connection_id=conn.id, model_name="gpt-4o", enabled=True,
                           price_input_usd=1.0, price_output_usd=2.0)
+    db_session.add(first)
     second_conn = LLMConnection(name="c2", provider="openai")
     db_session.add(second_conn)
     await db_session.flush()
