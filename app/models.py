@@ -125,7 +125,7 @@ class ModelRegistry(Base):
     __tablename__ = "model_registry"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    connection_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("llm_connections.id", ondelete="CASCADE"))
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("llm_connections.id", ondelete="CASCADE"), nullable=True)
     model_name: Mapped[str] = mapped_column(String(255))
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

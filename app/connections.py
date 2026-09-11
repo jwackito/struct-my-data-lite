@@ -40,6 +40,7 @@ async def list_connections(db: AsyncSession, user: User | None = None) -> list[d
     for row in rows:
         secrets = decrypt_secrets(row.secrets)
         named.append({
+            "id": str(row.id) if row.id else None,
             "name": row.name,
             "provider": row.provider,
             "config": _mask_config(row.provider, row.config, secrets),

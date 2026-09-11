@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.create_table('model_registry',
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('connection_id', sa.Uuid(), nullable=False),
+    sa.Column('connection_id', sa.Uuid(), nullable=True),
     sa.Column('model_name', sa.String(length=255), nullable=False),
     sa.Column('display_name', sa.String(length=255), nullable=True),
     sa.Column('description', sa.Text(), nullable=True),
