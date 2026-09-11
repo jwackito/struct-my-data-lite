@@ -105,6 +105,8 @@ async def test_admin_models_refresh_syncs_registry(async_client, db_session):
 
 @pytest.mark.asyncio
 async def test_admin_models_patch_updates_and_sets_default(async_client, db_session):
+    from app.pricing import CUSTOM_PRICING
+
     await _admin(async_client, db_session)
     conn = _conn(db_session)
     await db_session.flush()
@@ -112,22 +114,25 @@ async def test_admin_models_patch_updates_and_sets_default(async_client, db_sess
     b = await _reg(db_session, conn, "b")
     await db_session.commit()
 
-    resp = await async_client.patch(
-        f"/admin/models/{a.id}",
-        json={"display_name": "Alpha", "price_input_usd": 1.0, "is_default": True},
-    )
-    assert resp.status_code == 200
-    await db_session.refresh(a)
-    assert a.display_name == "Alpha"
-    assert a.price_input_usd == 1.0
-    assert a.is_default is True
+    try:
+        resp = await async_client.patch(
+            f"/admin/models/{a.id}",
+            json={"display_name": "Alpha", "price_input_usd": 1.0, "is_default": True},
+        )
+        assert resp.status_code == 200
+        await db_session.refresh(a)
+        assert a.display_name == "Alpha"
+        assert a.price_input_usd == 1.0
+        assert a.is_default is True
 
-    resp = await async_client.patch(f"/admin/models/{b.id}", json={"is_default": True})
-    assert resp.status_code == 200
-    await db_session.refresh(a)
-    await db_session.refresh(b)
-    assert b.is_default is True
-    assert a.is_default is False
+        resp = await async_client.patch(f"/admin/models/{b.id}", json={"is_default": True})
+        assert resp.status_code == 200
+        await db_session.refresh(a)
+        await db_session.refresh(b)
+        assert b.is_default is True
+        assert a.is_default is False
+    finally:
+        CUSTOM_PRICING.clear()
 
 
 @pytest.mark.asyncio
