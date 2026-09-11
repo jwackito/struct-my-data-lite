@@ -26,6 +26,7 @@
     .action-btn.promote { background: #8b5cf6; color: #fff; }
     .action-btn.demote { background: #6b7280; color: #fff; }
     .action-btn.delete { background: #dc2626; color: #fff; }
+    .action-btn.models { background: #0ea5e9; color: #fff; }
     .action-btn:hover { opacity: 0.85; }
     .pagination { margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
     .pagination button { padding: 0.3rem 0.6rem; border: 1px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; }
@@ -35,6 +36,8 @@
     .create-btn:hover { background: #1d4ed8; }
     #create-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; }
     #create-modal.open { display: flex; }
+    #models-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; }
+    #models-modal.open { display: flex; }
     .modal-box { background: #fff; border-radius: 8px; padding: 1.5rem; max-width: 420px; width: 90%; }
     .modal-box h3 { margin: 0 0 0.75rem 0; }
     .modal-box label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.6rem; }
@@ -102,11 +105,72 @@
       <div id="create-msg" class="msg"></div>
     </div>
   </div>
+  <div id="models-modal">
+    <div class="modal-box" style="max-width:640px;max-height:80vh;display:flex;flex-direction:column">
+      <h3 data-i18n="Model access">Model access</h3>
+      <div id="models-list" style="overflow-y:auto;flex:1"></div>
+      <div class="modal-actions">
+        <button class="create-btn" onclick="saveModelsModal()" data-i18n="Save">Save</button>
+        <button class="action-btn demote" onclick="closeModelsModal()" data-i18n="Cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
   <script>
     var t;
     var currentSearch = '';
     var currentOffset = 0;
     var pageSize = 20;
+    var modelSelections = {};
+    var modelModalUserId = null;
+
+    function openModelsModal(userId) {
+      modelModalUserId = userId;
+      modelSelections = {};
+      var el = document.getElementById('models-list');
+      el.innerHTML = '<p>' + window.t('Loading...') + '</p>';
+      document.getElementById('models-modal').classList.add('open');
+      Promise.all([
+        fetch('/admin/models/data?include_hidden=1').then(function(r) { return r.json(); }),
+        fetch('/admin/users/' + userId + '/models').then(function(r) { return r.json(); }),
+      ]).then(function(results) {
+        var models = results[0].models;
+        var grants = {};
+        results[1].grants.forEach(function(g) { grants[g.model_id] = g.access; });
+        var html = '';
+        models.forEach(function(m) {
+          var val = grants[m.id] || 'default';
+          modelSelections[m.id] = val;
+          html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;border-bottom:1px solid #eee">'
+            + '<span style="font-family:monospace;font-size:0.8rem;flex:1">' + m.model_name + '</span>'
+            + '<span style="font-size:0.75rem;color:#6b7280">' + m.connection + '</span>'
+            + '<select onchange="modelSelections[\'' + m.id + '\']=this.value">'
+            + '<option value="default"' + (val === 'default' ? ' selected' : '') + '>' + window.t('Default') + '</option>'
+            + '<option value="allow"' + (val === 'allow' ? ' selected' : '') + '>' + window.t('Allow') + '</option>'
+            + '<option value="deny"' + (val === 'deny' ? ' selected' : '') + '>' + window.t('Deny') + '</option>'
+            + '</select></div>';
+        });
+        el.innerHTML = html || '<p>' + window.t('No models found.') + '</p>';
+      });
+    }
+
+    function closeModelsModal() {
+      document.getElementById('models-modal').classList.remove('open');
+    }
+
+    function saveModelsModal() {
+      var grants = [];
+      for (var id in modelSelections) {
+        grants.push({ model_id: id, access: modelSelections[id] });
+      }
+      fetch('/admin/users/' + modelModalUserId + '/models', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grants: grants }),
+      }).then(function(r) {
+        if (r.ok) closeModelsModal();
+        else r.json().then(function(e) { alert(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
 
     function loadUsers(search, offset) {
       currentSearch = (search !== undefined) ? search : currentSearch;
@@ -136,6 +200,7 @@
             + '<td>'
             + '<button class="action-btn toggle" onclick="toggleStatus(\'' + u.id + '\', ' + !u.is_active + ')">' + toggleLabel + '</button> '
             + roleAction + ' '
+            + '<button class="action-btn models" onclick="openModelsModal(\'' + u.id + '\')">' + window.t('Models') + '</button> '
             + '<button class="action-btn delete" onclick="deleteUser(\'' + u.id + '\')">' + window.t('Delete') + '</button>'
             + '</td></tr>';
         });

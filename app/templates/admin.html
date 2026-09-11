@@ -33,7 +33,8 @@
     <div style="display:flex;gap:1rem;align-items:center">
       <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
       <a href="/admin/usage" data-i18n="Usage">Usage</a>
-      <a href="/admin/users" style="font-weight:600" data-i18n="Users">Users</a>
+      <a href="/admin/users" data-i18n="Users">Users</a>
+      <a href="/admin/models" data-i18n="Models">Models</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
       <div id="lang-switcher"></div>
@@ -49,6 +50,7 @@
   </div>
   <div class="actions">
     <a href="/admin/users" data-i18n="Manage Users">Manage Users</a>
+    <a href="/admin/models" data-i18n="Manage Models">Manage Models</a>
   </div>
   <script>
     fetch('/admin/users/data?limit=1').then(function(r) { return r.json(); }).then(function(data) {
