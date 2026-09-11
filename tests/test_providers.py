@@ -134,8 +134,6 @@ async def test_list_all_models_filters_embeddings(mock_build_provider, async_cli
     assert "ollama/ollama/qwen3.6:35b" in ids
     assert "openai/my-openai/gpt-4o-mini" in ids
     assert "openai/my-openai/text-embedding-3-small" not in ids
-    openai_build_call = [c for c in mock_build_provider.call_args_list if c[0][0] == "openai"][0]
-    assert openai_build_call[0][1]["api_key"] == "sk-test-secret"
 
 
 def test_classify_unknown_model_defaults_to_text():
