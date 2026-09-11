@@ -25,8 +25,32 @@ PRICING: dict[str, dict[str, tuple[float, float]]] = {
 }
 
 
+CUSTOM_PRICING: dict[str, dict[str, tuple[float, float]]] = {}
+
+
+async def refresh_pricing(db) -> None:
+    from sqlalchemy import select
+
+    from app.models import LLMConnection, ModelRegistry
+
+    result = await db.execute(
+        select(ModelRegistry, LLMConnection)
+        .join(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
+        .where(ModelRegistry.enabled.is_(True), ModelRegistry.price_input_usd.isnot(None))
+        .order_by(ModelRegistry.created_at, LLMConnection.name)
+    )
+    merged: dict[str, dict[str, tuple[float, float]]] = {}
+    for reg, conn in result.all():
+        table = merged.setdefault(conn.provider, {})
+        if reg.model_name not in table:
+            table[reg.model_name] = (reg.price_input_usd, reg.price_output_usd)
+    CUSTOM_PRICING.clear()
+    CUSTOM_PRICING.update(merged)
+
+
 def calculate_cost(provider: str, model: str, input_tokens: int, output_tokens: int) -> float:
-    pricing = PRICING.get(provider, {})
+    pricing = dict(PRICING.get(provider, {}))
+    pricing.update(CUSTOM_PRICING.get(provider, {}))
     if model in pricing:
         input_price, output_price = pricing[model]
     else:
