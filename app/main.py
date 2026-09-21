@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
@@ -172,6 +172,16 @@ async def register_page(request: Request):
 
 @app.get("/health")
 async def health():
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    try:
+        async with async_session() as session:
+            await session.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "unavailable"})
     return {"status": "ok"}
 
 
