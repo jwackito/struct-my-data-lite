@@ -153,6 +153,17 @@ async def test_import_schema_too_large(async_client):
     assert r.status_code == 422
 
 
+@pytest.mark.asyncio
+async def test_create_schema_duplicate_name_per_user(async_client):
+    reg = await async_client.post("/auth/register", json={"email": "dup@example.com", "password": "password123"})
+    headers = {"Authorization": f"Bearer {reg.json()['token']}"}
+    body = {"name": "Dup", "pydantic_schema": "class D(BaseModel):\n    x: int"}
+    first = await async_client.post("/schemas", json=body, headers=headers)
+    assert first.status_code == 200
+    second = await async_client.post("/schemas", json=body, headers=headers)
+    assert second.status_code == 409
+
+
 def test_schema_ui_elements():
     with open("app/templates/index.html") as f:
         html = f.read()
