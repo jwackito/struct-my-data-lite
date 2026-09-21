@@ -190,6 +190,11 @@ async def i18n_js():
     return FileResponse("app/static/i18n.js")
 
 
+@app.get("/app.css")
+async def app_css():
+    return FileResponse("app/static/app.css", media_type="text/css")
+
+
 @app.get("/i18n/{lang}.json")
 async def i18n_json(lang: str):
     if lang not in SUPPORTED_LANGS:
