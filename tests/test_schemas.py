@@ -227,6 +227,41 @@ async def test_shared_schemas_visible_and_readonly(async_client, db_session):
     assert [s["name"] for s in mine.json()] == []
 
 
+@pytest.mark.asyncio
+async def test_duplicate_shared_schema(async_client, db_session):
+    from sqlalchemy import select as sa_select
+    from app.models import User
+
+    a = await async_client.post("/auth/register", json={"email": "fork-a@example.com", "password": "password123"})
+    b = await async_client.post("/auth/register", json={"email": "fork-b@example.com", "password": "password123"})
+    ha = {"Authorization": f"Bearer {a.json()['token']}"}
+    hb = {"Authorization": f"Bearer {b.json()['token']}"}
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "Escritura", "pydantic_schema": "class E(BaseModel):\n    x: int"},
+        headers=ha,
+    )
+    sid = created.json()["id"]
+
+    owner = (await db_session.execute(sa_select(User).where(User.email == "fork-a@example.com"))).scalar_one()
+    owner.role = "admin"
+    await db_session.commit()
+    await async_client.put(f"/schemas/{sid}", json={"is_public": True}, headers=ha)
+
+    dup = await async_client.post(f"/schemas/{sid}/duplicate", headers=hb)
+    assert dup.status_code == 200
+    new_id = dup.json()["id"]
+    assert new_id != sid
+    assert dup.json()["name"] == "Escritura"
+
+    copied = await async_client.get(f"/schemas/{new_id}", headers=hb)
+    assert copied.status_code == 200
+    assert copied.json()["is_public"] is False
+
+    again = await async_client.post(f"/schemas/{sid}/duplicate", headers=hb)
+    assert again.status_code == 409
+
+
 def test_schema_ui_elements():
     with open("app/templates/index.html") as f:
         html = f.read()
