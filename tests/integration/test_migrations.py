@@ -1,11 +1,19 @@
 import asyncio
+import os
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-MIGRATION_DB_URL = "postgresql+asyncpg://postgres:postgres@test-db:5432/structmydata_test_migrations"
+MIGRATION_DB_URL = os.getenv(
+    "MIGRATION_DB_URL",
+    "postgresql+asyncpg://postgres:postgres@test-db:5432/structmydata_test_migrations",
+)
+_ADMIN_DB_URL = os.getenv(
+    "MIGRATION_ADMIN_DB_URL",
+    "postgresql+asyncpg://postgres:postgres@test-db:5432/postgres",
+)
 
 
 @pytest_asyncio.fixture
@@ -16,7 +24,7 @@ async def migration_engine():
             await conn.execute(text("SELECT 1"))
     except Exception:
         admin_engine = create_async_engine(
-            "postgresql+asyncpg://postgres:postgres@test-db:5432/postgres",
+            _ADMIN_DB_URL,
             isolation_level="AUTOCOMMIT",
         )
         async with admin_engine.connect() as conn:

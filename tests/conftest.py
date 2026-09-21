@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -12,7 +14,10 @@ from app.models import Base
 
 settings.skip_db_wait = True
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@test-db:5432/structmydata_test"
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@test-db:5432/structmydata_test",
+)
 
 
 @pytest_asyncio.fixture
