@@ -190,6 +190,43 @@ async def test_schema_ownership_enforced(async_client):
     assert (await async_client.get(f"/schemas/{sid}/export", headers=hb)).status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_shared_schemas_visible_and_readonly(async_client, db_session):
+    from sqlalchemy import select as sa_select
+    from app.models import User
+
+    a = await async_client.post("/auth/register", json={"email": "share-a@example.com", "password": "password123"})
+    b = await async_client.post("/auth/register", json={"email": "share-b@example.com", "password": "password123"})
+    ha = {"Authorization": f"Bearer {a.json()['token']}"}
+    hb = {"Authorization": f"Bearer {b.json()['token']}"}
+    created = await async_client.post(
+        "/schemas",
+        json={"name": "Escritura", "pydantic_schema": "class E(BaseModel):\n    x: int"},
+        headers=ha,
+    )
+    sid = created.json()["id"]
+
+    owner = (await db_session.execute(sa_select(User).where(User.email == "share-a@example.com"))).scalar_one()
+    owner.role = "admin"
+    await db_session.commit()
+
+    assert (await async_client.put(f"/schemas/{sid}", json={"is_public": True}, headers=ha)).status_code == 200
+
+    shared = await async_client.get("/schemas/shared", headers=hb)
+    assert shared.status_code == 200
+    rows = shared.json()
+    assert len(rows) == 1
+    assert rows[0]["name"] == "Escritura"
+    assert rows[0]["owner_name"] == "share-a"
+
+    assert (await async_client.get(f"/schemas/{sid}", headers=hb)).status_code == 200
+    assert (await async_client.put(f"/schemas/{sid}", json={"name": "Hijack"}, headers=hb)).status_code == 404
+    assert (await async_client.delete(f"/schemas/{sid}", headers=hb)).status_code == 404
+
+    mine = await async_client.get("/schemas", headers=hb)
+    assert [s["name"] for s in mine.json()] == []
+
+
 def test_schema_ui_elements():
     with open("app/templates/index.html") as f:
         html = f.read()
