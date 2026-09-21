@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: ghcr.io/jwackito/struct-my-data:${IMAGE_TAG:-latest}
     env_file:
       - .env
     environment:
