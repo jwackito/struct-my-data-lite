@@ -1207,6 +1207,26 @@ async def list_schemas(user: User = Depends(get_current_user), db: AsyncSession 
     ]
 
 
+@app.get("/schemas/shared")
+async def list_shared_schemas(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SavedSchema, User)
+        .join(User, SavedSchema.user_id == User.id)
+        .where(SavedSchema.is_public.is_(True), SavedSchema.user_id != user.id)
+        .order_by(SavedSchema.name)
+    )
+    return [
+        {
+            "id": str(s.id),
+            "name": s.name,
+            "pydantic_schema": s.pydantic_schema,
+            "owner_name": u.display_name or u.email,
+            "updated_at": s.updated_at.isoformat(),
+        }
+        for s, u in result.all()
+    ]
+
+
 @app.post("/schemas")
 async def create_schema(body: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     name = body.get("name", "").strip()
@@ -1244,6 +1264,30 @@ async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user
         "created_at": schema.created_at.isoformat(),
         "updated_at": schema.updated_at.isoformat(),
     }
+
+
+@app.post("/schemas/{schema_id}/duplicate")
+async def duplicate_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    schema = await db.get(SavedSchema, schema_id)
+    if not schema or not (user.role == "admin" or schema.user_id == user.id or schema.is_public):
+        raise HTTPException(status_code=404, detail=t_req("Schema not found"))
+
+    existing = await db.execute(
+        select(SavedSchema).where(SavedSchema.user_id == user.id, SavedSchema.name == schema.name)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail=t_req("You already have a schema named {name}", name=schema.name))
+
+    copy = SavedSchema(
+        user_id=user.id,
+        name=schema.name,
+        pydantic_schema=schema.pydantic_schema,
+        is_public=False,
+    )
+    db.add(copy)
+    await db.commit()
+    await db.refresh(copy)
+    return {"id": str(copy.id), "name": copy.name}
 
 
 @app.put("/schemas/{schema_id}")
