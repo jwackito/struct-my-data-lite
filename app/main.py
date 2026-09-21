@@ -1418,8 +1418,8 @@ async def admin_index(admin: User = Depends(get_admin_user)):
 
 
 @app.get("/admin/models")
-async def admin_models_page(admin: User = Depends(get_admin_user)):
-    return FileResponse("app/templates/admin_models.html")
+async def admin_models_page(request: Request, admin: User = Depends(get_admin_user)):
+    return templates.TemplateResponse(request, "admin_models.html", {"user": admin, "active": "admin_models", "lang": resolve_lang(request)})
 
 
 @app.get("/admin/schemas")

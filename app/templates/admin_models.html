@@ -1,17 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="Models — Admin — Struct My Data">Models — Admin — Struct My Data</title>
-  <script src="/i18n.js"></script>
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Models — Admin — Struct My Data">Models — Admin — Struct My Data</title>{% endblock %}
+{% block head %}
   <style>
-    body { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
-    h1 { font-size: 1.5rem; }
-    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
-    .nav a:hover { text-decoration: underline; }
-    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    body { max-width: 1200px; }
     .filters { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
     .filters input, .filters select { padding: 0.4rem 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
     .filters input[type="text"] { flex: 1; min-width: 180px; }
@@ -38,9 +29,6 @@
     .msg { font-size: 0.85rem; margin-top: 0.5rem; padding: 0.35rem 0.6rem; border-radius: 4px; display: none; }
     .msg.err { display: block; background: #fee2e2; color: #991b1b; }
     .msg.ok { display: block; background: #d1fae5; color: #065f46; }
-    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
-    [data-theme="dark"] .nav a { color: #60a5fa; }
-    [data-theme="dark"] .theme-btn { border-color: #555; }
     [data-theme="dark"] .filters input, [data-theme="dark"] .filters select { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
     [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
     [data-theme="dark"] th { background: #2d2d2d; }
@@ -53,23 +41,8 @@
     [data-theme="dark"] .msg.err { background: #7f1d1d; color: #fca5a5; }
     [data-theme="dark"] .msg.ok { background: #064e3b; color: #6ee7b7; }
   </style>
-</head>
-<body>
-  <div class="nav">
-    <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
-      <a href="/admin/usage" data-i18n="Usage">Usage</a>
-      <a href="/admin/users" data-i18n="Users">Users</a>
-      <a href="/admin" data-i18n="Admin">Admin</a>
-      <a href="/admin/models" style="font-weight:600" data-i18n="Models">Models</a>
-      <a href="/admin/schemas" data-i18n="Schemas">Schemas</a>
-    </div>
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <div id="lang-switcher"></div>
-      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
-    </div>
-  </div>
+{% endblock %}
+{% block content %}
   <h1 data-i18n="Models">Models</h1>
   <div class="filters">
     <input type="text" id="search" placeholder="Search models..." data-i18n-ph="Search models..." onkeyup="var v=this.value;clearTimeout(t);t=setTimeout(loadModels,300)">
@@ -84,6 +57,8 @@
   </div>
   <div id="models-table"><p data-i18n="Loading...">Loading...</p></div>
   <div id="msg" class="msg"></div>
+{% endblock %}
+{% block scripts %}
   <script>
     var t;
 
@@ -190,21 +165,4 @@
 
     loadModels();
   </script>
-  <script>
-    (function() {
-      var theme = localStorage.getItem('theme') || 'light';
-      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      var btn = document.getElementById('theme-btn');
-      if (btn) {
-        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        btn.addEventListener('click', function() {
-          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('theme', next);
-          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        });
-      }
-    })();
-  </script>
-</body>
-</html>
+{% endblock %}
