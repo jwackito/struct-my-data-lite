@@ -159,15 +159,15 @@ async def auth_me(user: User = Depends(get_current_user)):
 
 
 @app.get("/login")
-async def login_page():
-    return FileResponse("app/templates/login.html")
+async def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"user": None, "lang": resolve_lang(request)})
 
 
 @app.get("/register")
-async def register_page():
+async def register_page(request: Request):
     if not settings.allow_registration:
         return HTMLResponse(f'<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>{t_req("Registration is closed")}</h1><p><a href="/login">{t_req("Back to login")}</a></p></body></html>', status_code=403)
-    return FileResponse("app/templates/register.html")
+    return templates.TemplateResponse(request, "register.html", {"user": None, "lang": resolve_lang(request)})
 
 
 @app.get("/health")
