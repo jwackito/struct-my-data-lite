@@ -1417,6 +1417,33 @@ async def admin_models_page(admin: User = Depends(get_admin_user)):
     return FileResponse("app/templates/admin_models.html")
 
 
+@app.get("/admin/schemas")
+async def admin_schemas_page(admin: User = Depends(get_admin_user)):
+    return FileResponse("app/templates/admin_schemas.html")
+
+
+@app.get("/admin/schemas/data")
+async def admin_schemas_data(admin: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(SavedSchema, User)
+        .join(User, SavedSchema.user_id == User.id)
+        .order_by(SavedSchema.name)
+    )
+    return {
+        "schemas": [
+            {
+                "id": str(s.id),
+                "name": s.name,
+                "owner_name": u.display_name or u.email,
+                "owner_email": u.email,
+                "is_public": s.is_public,
+                "updated_at": s.updated_at.isoformat(),
+            }
+            for s, u in result.all()
+        ]
+    }
+
+
 @app.get("/admin/models/data")
 async def admin_models_data(
     connection: str = "",
