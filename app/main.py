@@ -1413,8 +1413,8 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
 
 
 @app.get("/admin")
-async def admin_index(admin: User = Depends(get_admin_user)):
-    return FileResponse("app/templates/admin.html")
+async def admin_index(request: Request, admin: User = Depends(get_admin_user)):
+    return templates.TemplateResponse(request, "admin.html", {"user": admin, "active": "admin", "lang": resolve_lang(request)})
 
 
 @app.get("/admin/models")

@@ -1,17 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="Admin — Struct My Data">Admin — Struct My Data</title>
-  <script src="/i18n.js"></script>
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Admin — Struct My Data">Admin — Struct My Data</title>{% endblock %}
+{% block head %}
   <style>
-    body { max-width: 720px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
-    h1 { font-size: 1.5rem; }
-    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
-    .nav a:hover { text-decoration: underline; }
-    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    body { max-width: 720px; }
     .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; background: #fafafa; }
     .card h3 { margin: 0 0 0.25rem; font-size: 0.85rem; color: #6b7280; }
@@ -19,30 +10,13 @@
     .actions { display: flex; flex-direction: column; gap: 0.5rem; }
     .actions a { display: block; padding: 0.6rem 1.2rem; background: #2563eb; color: #fff; border-radius: 4px; text-decoration: none; text-align: center; }
     .actions a:hover { background: #1d4ed8; }
-    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
-    [data-theme="dark"] .nav a { color: #60a5fa; }
-    [data-theme="dark"] .theme-btn { border-color: #555; }
     [data-theme="dark"] .card { background: #2d2d2d; border-color: #404040; }
     [data-theme="dark"] .card .value { color: #e5e5e5; }
     [data-theme="dark"] .card h3 { color: #9ca3af; }
     [data-theme="dark"] .actions a:hover { background: #3b82f6; }
   </style>
-</head>
-<body>
-  <div class="nav">
-    <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
-      <a href="/admin/usage" data-i18n="Usage">Usage</a>
-      <a href="/admin/users" data-i18n="Users">Users</a>
-      <a href="/admin/models" data-i18n="Models">Models</a>
-      <a href="/admin/schemas" data-i18n="Schemas">Schemas</a>
-    </div>
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <div id="lang-switcher"></div>
-      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
-    </div>
-  </div>
+{% endblock %}
+{% block content %}
   <h1 data-i18n="Admin">Admin</h1>
   <div class="cards" id="summary">
     <div class="card"><h3 data-i18n="Users">Users</h3><div class="value" id="total-users">-</div></div>
@@ -54,6 +28,8 @@
     <a href="/admin/models" data-i18n="Manage Models">Manage Models</a>
     <a href="/admin/schemas" data-i18n="Manage Schemas">Manage Schemas</a>
   </div>
+{% endblock %}
+{% block scripts %}
   <script>
     fetch('/admin/users/data?limit=1').then(function(r) { return r.json(); }).then(function(data) {
       document.getElementById('total-users').textContent = data.total;
@@ -63,21 +39,4 @@
     });
     document.getElementById('total-jobs').textContent = '\u2026';
   </script>
-  <script>
-    (function() {
-      var theme = localStorage.getItem('theme') || 'light';
-      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      var btn = document.getElementById('theme-btn');
-      if (btn) {
-        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        btn.addEventListener('click', function() {
-          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('theme', next);
-          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        });
-      }
-    })();
-  </script>
-</body>
-</html>
+{% endblock %}
