@@ -903,8 +903,8 @@ async def ui_settings(user: User = Depends(get_current_user)):
 
 
 @app.get("/usage")
-async def usage_page(user: User = Depends(get_current_user)):
-    return FileResponse("app/templates/usage.html")
+async def usage_page(request: Request, user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request, "usage.html", {"user": user, "active": "usage", "lang": resolve_lang(request)})
 
 
 @app.get("/ui/batches")
