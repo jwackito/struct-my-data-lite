@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
@@ -1358,10 +1358,17 @@ async def admin_models_data(
     db: AsyncSession = Depends(get_db),
 ):
     conditions = []
+    implicit = ModelRegistry.connection_id.is_(None)
     if connection:
-        conditions.append(LLMConnection.name == connection)
+        conditions.append(or_(
+            LLMConnection.name == connection,
+            and_(connection == "ollama", implicit),
+        ))
     if provider:
-        conditions.append(LLMConnection.provider == provider)
+        conditions.append(or_(
+            LLMConnection.provider == provider,
+            and_(provider == "ollama", implicit),
+        ))
     if not include_hidden:
         conditions.append(ModelRegistry.enabled.is_(True))
     if search:
@@ -1370,19 +1377,19 @@ async def admin_models_data(
 
     q = (
         select(ModelRegistry, LLMConnection)
-        .join(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
+        .outerjoin(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
     )
     for cond in conditions:
         q = q.where(cond)
-    q = q.order_by(LLMConnection.name, ModelRegistry.sort_order, ModelRegistry.model_name)
+    q = q.order_by(func.coalesce(LLMConnection.name, "ollama"), ModelRegistry.sort_order, ModelRegistry.model_name)
 
     result = await db.execute(q)
     rows = []
     for reg, conn in result.all():
         rows.append({
             "id": str(reg.id),
-            "connection": conn.name,
-            "provider": conn.provider,
+            "connection": conn.name if conn else "ollama",
+            "provider": conn.provider if conn else "ollama",
             "model_name": reg.model_name,
             "display_name": reg.display_name,
             "description": reg.description,
