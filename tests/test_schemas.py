@@ -269,10 +269,13 @@ def test_schema_ui_elements():
     assert 'id="template-save"' in html
     assert 'id="template-load"' in html
     assert 'id="template-delete"' in html
+    assert 'id="template-copy"' in html
     assert 'id="template-export"' in html
     assert 'id="template-import"' in html
     assert 'id="template-import-input"' in html
     script_match = re.search(r"<script>(.*?)</script>", html, re.DOTALL)
     assert script_match
     assert "loadTemplateList" in script_match.group(1)
+    assert "/schemas/shared" in script_match.group(1)
+    assert "/duplicate" in script_match.group(1)
     assert "/schemas/import" in script_match.group(1)
