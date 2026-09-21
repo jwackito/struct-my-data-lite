@@ -898,8 +898,8 @@ async def index(request: Request):
 
 
 @app.get("/ui/settings")
-async def ui_settings(user: User = Depends(get_current_user)):
-    return FileResponse("app/templates/settings.html")
+async def ui_settings(request: Request, user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request, "settings.html", {"user": user, "active": "settings", "lang": resolve_lang(request)})
 
 
 @app.get("/usage")
