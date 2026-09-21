@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="Schemas — Admin — Struct My Data">Schemas — Admin — Struct My Data</title>
+  <script src="/i18n.js"></script>
+  <style>
+    body { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
+    h1 { font-size: 1.5rem; }
+    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+    .nav a:hover { text-decoration: underline; }
+    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    th, td { border: 1px solid #ddd; padding: 0.45rem; text-align: left; vertical-align: middle; }
+    th { background: #f5f5f5; font-weight: 600; }
+    .badge { font-size: 0.72rem; padding: 0.12rem 0.4rem; border-radius: 4px; white-space: nowrap; }
+    .badge.on { background: #d1fae5; color: #065f46; }
+    .badge.off { background: #fee2e2; color: #991b1b; }
+    .action-btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; margin: 0.05rem; }
+    .action-btn.pub { background: #2563eb; color: #fff; }
+    .action-btn.unpub { background: #f59e0b; color: #fff; }
+    .action-btn.del { background: #dc2626; color: #fff; }
+    .action-btn:hover { opacity: 0.85; }
+    .msg { font-size: 0.85rem; margin-top: 0.5rem; padding: 0.35rem 0.6rem; border-radius: 4px; display: none; }
+    .msg.err { display: block; background: #fee2e2; color: #991b1b; }
+    .msg.ok { display: block; background: #d1fae5; color: #065f46; }
+    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
+    [data-theme="dark"] .nav a { color: #60a5fa; }
+    [data-theme="dark"] .theme-btn { border-color: #555; }
+    [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
+    [data-theme="dark"] th { background: #2d2d2d; }
+    [data-theme="dark"] .badge.on { background: #064e3b; color: #6ee7b7; }
+    [data-theme="dark"] .badge.off { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .msg.err { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .msg.ok { background: #064e3b; color: #6ee7b7; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div style="display:flex;gap:1rem;align-items:center">
+      <a href="/">&larr; <span data-i18n="Extraction">Extraction</span></a>
+      <a href="/admin/usage" data-i18n="Usage">Usage</a>
+      <a href="/admin/users" data-i18n="Users">Users</a>
+      <a href="/admin" data-i18n="Admin">Admin</a>
+      <a href="/admin/models" data-i18n="Models">Models</a>
+      <a href="/admin/schemas" style="font-weight:600" data-i18n="Schemas">Schemas</a>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <div id="lang-switcher"></div>
+      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
+    </div>
+  </div>
+  <h1 data-i18n="Schemas">Schemas</h1>
+  <div id="schemas-table"><p data-i18n="Loading...">Loading...</p></div>
+  <div id="msg" class="msg"></div>
+  <script>
+    function loadSchemas() {
+      var el = document.getElementById('schemas-table');
+      el.innerHTML = '<p>' + window.t('Loading...') + '</p>';
+      fetch('/admin/schemas/data').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.schemas.length) {
+          el.innerHTML = '<p style="color:#9ca3af">' + window.t('No schemas found.') + '</p>';
+          return;
+        }
+        var html = '<table><thead><tr>'
+          + '<th>' + window.t('Schema') + '</th>'
+          + '<th>' + window.t('Owner') + '</th>'
+          + '<th>' + window.t('Visibility') + '</th>'
+          + '<th>' + window.t('Updated') + '</th>'
+          + '<th>' + window.t('Actions') + '</th>'
+          + '</tr></thead><tbody>';
+        data.schemas.forEach(function(s) {
+          var badge = s.is_public
+            ? '<span class="badge on">' + window.t('public') + '</span>'
+            : '<span class="badge off">' + window.t('private') + '</span>';
+          var toggle = s.is_public
+            ? '<button class="action-btn unpub" onclick="publish(\'' + s.id + '\', false)">' + window.t('Unpublish') + '</button>'
+            : '<button class="action-btn pub" onclick="publish(\'' + s.id + '\', true)">' + window.t('Publish') + '</button>';
+          html += '<tr>'
+            + '<td style="font-family:monospace">' + s.name + '</td>'
+            + '<td>' + s.owner_name + '</td>'
+            + '<td>' + badge + '</td>'
+            + '<td>' + (s.updated_at || '') + '</td>'
+            + '<td>' + toggle + ' '
+            + '<button class="action-btn del" onclick="removeSchema(\'' + s.id + '\')">' + window.t('Delete') + '</button>'
+            + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+      });
+    }
+
+    function publish(id, value) {
+      fetch('/schemas/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: value }),
+      }).then(function(r) {
+        if (r.ok) { showMsg('', true); loadSchemas(); }
+        else r.json().then(function(e) { showMsg(window.t(e.detail) || window.t('Failed')); });
+      });
+    }
+
+    function removeSchema(id) {
+      if (!confirm(window.t('Delete this schema?'))) return;
+      fetch('/schemas/' + id, { method: 'DELETE' }).then(function(r) {
+        if (r.ok) { showMsg('', true); loadSchemas(); }
+        else showMsg(window.t('Failed'));
+      });
+    }
+
+    function showMsg(text, ok) {
+      var el = document.getElementById('msg');
+      el.className = ok ? 'msg ok' : 'msg err';
+      el.textContent = ok ? (window.t('Done') || 'OK') : text;
+      if (ok) setTimeout(function() { el.className = 'msg'; }, 2000);
+    }
+
+    loadSchemas();
+  </script>
+  <script>
+    (function() {
+      var theme = localStorage.getItem('theme') || 'light';
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      var btn = document.getElementById('theme-btn');
+      if (btn) {
+        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        btn.addEventListener('click', function() {
+          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('theme', next);
+          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
