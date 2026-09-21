@@ -1622,8 +1622,8 @@ async def admin_user_models_put(
 
 
 @app.get("/admin/users")
-async def admin_users_page(admin: User = Depends(get_admin_user)):
-    return FileResponse("app/templates/admin_users.html")
+async def admin_users_page(request: Request, admin: User = Depends(get_admin_user)):
+    return templates.TemplateResponse(request, "admin_users.html", {"user": admin, "active": "admin_users", "lang": resolve_lang(request)})
 
 
 @app.get("/admin/users/data")
