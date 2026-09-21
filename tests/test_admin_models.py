@@ -61,6 +61,21 @@ async def test_admin_models_data_lists_models(async_client, db_session):
 
 
 @pytest.mark.asyncio
+async def test_admin_models_data_includes_implicit_ollama(async_client, db_session):
+    await _admin(async_client, db_session)
+    db_session.add(ModelRegistry(connection_id=None, model_name="implicit-model", enabled=True))
+    await db_session.commit()
+
+    resp = await async_client.get("/admin/models/data")
+    assert resp.status_code == 200
+    rows = resp.json()["models"]
+    match = [r for r in rows if r["model_name"] == "implicit-model"]
+    assert len(match) == 1
+    assert match[0]["connection"] == "ollama"
+    assert match[0]["provider"] == "ollama"
+
+
+@pytest.mark.asyncio
 async def test_admin_models_data_hides_disabled_by_default(async_client, db_session):
     await _admin(async_client, db_session)
     conn = _conn(db_session)
