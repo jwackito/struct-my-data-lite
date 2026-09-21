@@ -624,8 +624,8 @@ async def api_usage(
 
 
 @app.get("/admin/usage")
-async def admin_usage_page(admin: User = Depends(get_admin_user)):
-    return FileResponse("app/templates/admin_usage.html")
+async def admin_usage_page(request: Request, admin: User = Depends(get_admin_user)):
+    return templates.TemplateResponse(request, "admin_usage.html", {"user": admin, "active": "admin_usage", "lang": resolve_lang(request)})
 
 
 @app.get("/admin/usage/data")
