@@ -262,19 +262,35 @@ OLLAMA_HOST=0.0.0.0:11434 ollama serve
 
 ## Production
 
+Production runs a **published image** (built in CI, pushed to GHCR) rather than
+building on the host. Deploys are health-gated and reversible — see
+`specs/14-deploy-hardening.md`.
+
 ```bash
 cp .env.example .env        # fill in real values (never commit .env)
 mkdir caddy                 # place your Caddyfile (domains, TLS) here
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml exec app python -m alembic upgrade head
+echo "IMAGE_TAG=v1.2.1-lite" >> .env
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
+Migrations are applied through the advisory-locked runner (never bare alembic):
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm app python -m scripts.migrate
+```
+
+Operationally, `deploy.sh` (private, on the host) wraps: preflight → database
+snapshot → migrate → start by digest → wait for `/health/ready` →
+auto-rollback on failure.
+
 Differences from development:
-- Multi-stage Dockerfile — smaller image, no build tools in runtime
+- Image is built once in CI, pulled from GHCR and pinned by tag/digest
+- Dependencies are hash-pinned (`requirements.txt`, regenerate with `tools/lock.sh`)
 - No volume mounts — code is baked into the image (migrations included)
 - `restart: unless-stopped` — auto-restart on failure or host reboot
 - No `--reload` flag
-- Healthchecks on app, database, and Caddy services
+- Healthchecks on app, database, and Caddy services; `/health/ready` checks the DB
 - Secrets and config come from `.env` (`secrets.env` is deprecated)
 - Caddy terminates TLS in front of the app; app and database are not exposed on the host
 - Uploaded documents persist in the `storage` volume
