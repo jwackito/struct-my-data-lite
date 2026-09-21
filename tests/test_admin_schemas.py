@@ -21,6 +21,14 @@ async def test_admin_schemas_data_requires_admin(async_client):
 
 
 @pytest.mark.asyncio
+async def test_admin_schemas_page_served(async_client, db_session):
+    headers = await _admin(async_client, db_session)
+    resp = await async_client.get("/admin/schemas", headers=headers)
+    assert resp.status_code == 200
+    assert "schemas-table" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_admin_schemas_data_lists_and_controls(async_client, db_session):
     a = await async_client.post("/auth/register", json={"email": "owner-sch@example.com", "password": "password123"})
     ha = {"Authorization": f"Bearer {a.json()['token']}"}
