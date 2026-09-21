@@ -164,6 +164,17 @@ async def test_create_schema_duplicate_name_per_user(async_client):
     assert second.status_code == 409
 
 
+@pytest.mark.asyncio
+async def test_create_schema_same_name_different_users(async_client):
+    body = {"name": "Shared Name", "pydantic_schema": "class S(BaseModel):\n    x: int"}
+    a = await async_client.post("/auth/register", json={"email": "same-a@example.com", "password": "password123"})
+    b = await async_client.post("/auth/register", json={"email": "same-b@example.com", "password": "password123"})
+    ra = await async_client.post("/schemas", json=body, headers={"Authorization": f"Bearer {a.json()['token']}"})
+    rb = await async_client.post("/schemas", json=body, headers={"Authorization": f"Bearer {b.json()['token']}"})
+    assert ra.status_code == 200
+    assert rb.status_code == 200
+
+
 def test_schema_ui_elements():
     with open("app/templates/index.html") as f:
         html = f.read()
