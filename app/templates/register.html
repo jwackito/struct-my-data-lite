@@ -1,10 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="Register — Struct My Data">Register — Struct My Data</title>
-  <script src="/i18n.js"></script>
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Register — Struct My Data">Register — Struct My Data</title>{% endblock %}
+{% block head %}
   <style>
     body { max-width: 400px; margin: 4rem auto; padding: 0 1rem; font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #1a1a1a; }
     h1 { font-size: 1.5rem; text-align: center; }
@@ -21,9 +17,8 @@
     [data-theme="dark"] .info { color: #9ca3af; }
     [data-theme="dark"] button:hover { background: #3b82f6; }
   </style>
-</head>
-<body>
-  <div id="lang-switcher" style="text-align:right"></div>
+{% endblock %}
+{% block content %}
   <h1 data-i18n="Create an Account">Create an Account</h1>
   <div id="error" class="error" style="display:none"></div>
   <form id="register-form">
@@ -34,6 +29,8 @@
     <button type="submit" data-i18n="Register">Register</button>
   </form>
   <div class="info"><a href="/login" style="color:#2563eb" data-i18n="Already have an account? Log in">Already have an account? Log in</a></div>
+{% endblock %}
+{% block scripts %}
   <script>
     document.getElementById('register-form').addEventListener('submit', function(e) {
       e.preventDefault();
@@ -67,11 +64,4 @@
       });
     });
   </script>
-  <script>
-    (function() {
-      var theme = localStorage.getItem('theme') || 'light';
-      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-    })();
-  </script>
-</body>
-</html>
+{% endblock %}
