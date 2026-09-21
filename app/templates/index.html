@@ -1,24 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Struct My Data</title>
-  <script src="/i18n.js"></script>
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Struct My Data">Struct My Data</title>{% endblock %}
+{% block head %}
   <script src="https://unpkg.com/htmx.org@2"></script>
   <style>
     body {
       max-width: 720px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      color: #1a1a1a;
     }
     @media (min-width: 1024px) {
       body { max-width: 1200px; }
     }
-    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+    h1 { margin-bottom: 1.5rem; }
     form {
       display: flex;
       flex-direction: column;
@@ -410,10 +401,7 @@
     [data-theme="dark"] .advanced-toggle { color: #9ca3af; }
     [data-theme="dark"] .advanced-toggle:hover { color: #e5e5e5; }
 
-    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
-    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
     [data-theme="dark"] a { color: #60a5fa; }
-    [data-theme="dark"] .theme-btn { border-color: #555; }
     [data-theme="dark"] input[type="file"], [data-theme="dark"] textarea, [data-theme="dark"] select#model-select, [data-theme="dark"] .field-row input, [data-theme="dark"] .templates-row input { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
     [data-theme="dark"] .tab-bar { border-bottom-color: #404040; }
     [data-theme="dark"] .tab { background: #2d2d2d; border-color: #404040; color: #9ca3af; }
@@ -426,19 +414,9 @@
     [data-theme="dark"] .validation-error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
     [data-theme="dark"] .schema-templates .templates-row button { background: #2d2d2d; color: #e5e5e5; border-color: #555; }
   </style>
-</head>
-<body>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-    <h1 style="margin:0">Struct My Data</h1>
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <div id="lang-switcher"></div>
-      <a id="admin-link" href="/admin" style="display:none;font-size:0.85rem;text-decoration:none" data-i18n="Admin">Admin</a>
-      <a id="usage-link" href="/usage" style="font-size:0.85rem;text-decoration:none" data-i18n="Usage">Usage</a>
-      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
-      <a href="/ui/settings" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings" data-i18n-title="Settings">&#9881;</a>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
-    </div>
-  </div>
+{% endblock %}
+{% block content %}
+  <h1>Struct My Data</h1>
   <form hx-post="/ui/batch-extract" hx-target="#result" enctype="multipart/form-data">
     <div>
       <label><span data-i18n="Document">Document</span> <input type="file" name="file" multiple required></label>
@@ -518,7 +496,8 @@
   </form>
   <div id="result"></div>
   <div class="tab-panel" id="tab-history"></div>
-
+{% endblock %}
+{% block scripts %}
   <script>
     (function () {
       var SIMPLE_TYPES = [
@@ -1377,29 +1356,4 @@
       }
     })();
   </script>
-  <script>
-    (function() {
-      var theme = localStorage.getItem('theme') || 'light';
-      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      var btn = document.getElementById('theme-btn');
-      if (btn) {
-        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        btn.addEventListener('click', function() {
-          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('theme', next);
-          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        });
-      }
-    })();
-  </script>
-  <script>
-    fetch('/auth/me').then(function(r) { return r.json(); }).then(function(u) {
-      if (u.role === 'admin') {
-        document.getElementById('admin-link').style.display = 'inline';
-        document.getElementById('usage-link').href = '/admin/usage';
-      }
-    });
-  </script>
-</body>
-</html>
+{% endblock %}

@@ -890,11 +890,15 @@ async def get_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db:
 
 
 @app.get("/")
-async def index(request: Request):
+async def index(request: Request, db: AsyncSession = Depends(get_db)):
     token = request.cookies.get("token")
-    if not token or not decode_jwt(token):
+    payload = decode_jwt(token) if token else None
+    if not payload:
         return RedirectResponse(url="/login")
-    return FileResponse("app/templates/index.html")
+    user = await db.get(User, payload.get("sub"))
+    if not user:
+        return RedirectResponse(url="/login")
+    return templates.TemplateResponse(request, "index.html", {"user": user, "active": "extraction", "lang": resolve_lang(request)})
 
 
 @app.get("/ui/settings")
