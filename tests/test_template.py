@@ -57,3 +57,12 @@ def test_js_codegen_emits_parity_constructs():
     assert "from datetime import" in script, "codegen must import date/datetime"
     assert "Field(default=" in script, "codegen must emit Field(default=...) for default+description"
     assert '"date"' in script and '"datetime"' in script, "type set must include date and datetime"
+
+
+def test_logged_in_user_name_injected():
+    with open("app/static/i18n.js") as f:
+        js = f.read()
+    assert "buildUserBadge" in js, "user badge builder missing from i18n.js"
+    assert 'fetch("/auth/me")' in js, "user badge must fetch /auth/me"
+    assert "u.display_name || u.email" in js, "user badge must fall back to email"
+    assert "/auth/logout" in js, "user badge must target the logout link"
