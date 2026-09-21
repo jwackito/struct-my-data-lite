@@ -1218,6 +1218,12 @@ async def create_schema(body: dict = Body(...), user: User = Depends(get_current
     if len(pydantic_schema) > 10000:
         raise HTTPException(status_code=422, detail=t_req("Schema code too long"))
 
+    existing = await db.execute(
+        select(SavedSchema).where(SavedSchema.user_id == user.id, SavedSchema.name == name)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail=t_req("You already have a schema named {name}", name=name))
+
     schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
     await db.commit()
@@ -1228,12 +1234,13 @@ async def create_schema(body: dict = Body(...), user: User = Depends(get_current
 @app.get("/schemas/{schema_id}")
 async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
-    if not schema:
+    if not schema or not (user.role == "admin" or schema.user_id == user.id or schema.is_public):
         raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     return {
         "id": str(schema.id),
         "name": schema.name,
         "pydantic_schema": schema.pydantic_schema,
+        "is_public": schema.is_public,
         "created_at": schema.created_at.isoformat(),
         "updated_at": schema.updated_at.isoformat(),
     }
@@ -1242,12 +1249,22 @@ async def get_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user
 @app.put("/schemas/{schema_id}")
 async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
-    if not schema:
+    if not schema or not (user.role == "admin" or schema.user_id == user.id):
         raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     if "name" in body:
         name = body["name"].strip()
         if not name:
             raise HTTPException(status_code=422, detail=t_req("Name is required"))
+        if name != schema.name and schema.user_id is not None:
+            dup = await db.execute(
+                select(SavedSchema).where(
+                    SavedSchema.user_id == schema.user_id,
+                    SavedSchema.name == name,
+                    SavedSchema.id != schema.id,
+                )
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=409, detail=t_req("You already have a schema named {name}", name=name))
         schema.name = name
     if "pydantic_schema" in body:
         pydantic_schema = body["pydantic_schema"].strip()
@@ -1256,15 +1273,17 @@ async def update_schema(schema_id: uuid.UUID, body: dict = Body(...), user: User
         if len(pydantic_schema) > 10000:
             raise HTTPException(status_code=422, detail=t_req("Schema code too long"))
         schema.pydantic_schema = pydantic_schema
+    if "is_public" in body:
+        schema.is_public = bool(body["is_public"])
     await db.commit()
     await db.refresh(schema)
-    return {"id": str(schema.id), "name": schema.name}
+    return {"id": str(schema.id), "name": schema.name, "is_public": schema.is_public}
 
 
 @app.delete("/schemas/{schema_id}")
 async def delete_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
-    if not schema:
+    if not schema or not (user.role == "admin" or schema.user_id == user.id):
         raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     await db.delete(schema)
     await db.commit()
@@ -1274,7 +1293,7 @@ async def delete_schema(schema_id: uuid.UUID, user: User = Depends(get_current_u
 @app.get("/schemas/{schema_id}/export")
 async def export_schema(schema_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     schema = await db.get(SavedSchema, schema_id)
-    if not schema:
+    if not schema or not (user.role == "admin" or schema.user_id == user.id or schema.is_public):
         raise HTTPException(status_code=404, detail=t_req("Schema not found"))
     content = (
         f"# name: {schema.name}\n"
@@ -1330,6 +1349,12 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
         name = "Imported Schema"
     if not pydantic_schema:
         raise HTTPException(status_code=422, detail=t_req("No schema code found in file"))
+
+    existing = await db.execute(
+        select(SavedSchema).where(SavedSchema.user_id == user.id, SavedSchema.name == name)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail=t_req("You already have a schema named {name}", name=name))
 
     schema = SavedSchema(user_id=user.id, name=name, pydantic_schema=pydantic_schema)
     db.add(schema)
