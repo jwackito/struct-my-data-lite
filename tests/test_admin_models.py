@@ -76,6 +76,26 @@ async def test_admin_models_data_includes_implicit_ollama(async_client, db_sessi
 
 
 @pytest.mark.asyncio
+async def test_admin_models_data_filters_implicit_ollama(async_client, db_session):
+    await _admin(async_client, db_session)
+    conn = _conn(db_session, name="conn-openai", provider="openai")
+    await db_session.flush()
+    await _reg(db_session, conn, "named-model")
+    db_session.add(ModelRegistry(connection_id=None, model_name="implicit-model", enabled=True))
+    await db_session.commit()
+
+    resp = await async_client.get("/admin/models/data?provider=ollama")
+    names = [r["model_name"] for r in resp.json()["models"]]
+    assert "implicit-model" in names
+    assert "named-model" not in names
+
+    resp2 = await async_client.get("/admin/models/data?connection=ollama")
+    names2 = [r["model_name"] for r in resp2.json()["models"]]
+    assert "implicit-model" in names2
+    assert "named-model" not in names2
+
+
+@pytest.mark.asyncio
 async def test_admin_models_data_hides_disabled_by_default(async_client, db_session):
     await _admin(async_client, db_session)
     conn = _conn(db_session)
