@@ -1,5 +1,6 @@
 import asyncio
 import os
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -14,6 +15,8 @@ _ADMIN_DB_URL = os.getenv(
     "MIGRATION_ADMIN_DB_URL",
     "postgresql+asyncpg://postgres:postgres@test-db:5432/postgres",
 )
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest_asyncio.fixture
@@ -48,7 +51,7 @@ async def migration_engine():
 async def test_alembic_upgrade_head(migration_engine):
     proc = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
-        cwd="/app",
+        cwd=str(_REPO_ROOT),
     )
     await proc.wait()
     assert proc.returncode == 0, f"upgrade failed (exit {proc.returncode})"
@@ -66,21 +69,21 @@ async def test_alembic_upgrade_head(migration_engine):
 async def test_alembic_downgrade_and_reupgrade(migration_engine):
     proc_up = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
-        cwd="/app",
+        cwd=str(_REPO_ROOT),
     )
     await proc_up.wait()
     assert proc_up.returncode == 0
 
     proc_down = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic downgrade -1",
-        cwd="/app",
+        cwd=str(_REPO_ROOT),
     )
     await proc_down.wait()
     assert proc_down.returncode == 0, f"downgrade failed (exit {proc_down.returncode})"
 
     proc_up2 = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
-        cwd="/app",
+        cwd=str(_REPO_ROOT),
     )
     await proc_up2.wait()
     assert proc_up2.returncode == 0
