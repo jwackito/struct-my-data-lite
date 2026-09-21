@@ -908,16 +908,16 @@ async def usage_page(request: Request, user: User = Depends(get_current_user)):
 
 
 @app.get("/ui/batches")
-async def ui_batches_page(user: User = Depends(get_current_user)):
-    return FileResponse("app/templates/batches.html")
+async def ui_batches_page(request: Request, user: User = Depends(get_current_user)):
+    return templates.TemplateResponse(request, "batches.html", {"user": user, "active": "batches", "lang": resolve_lang(request)})
 
 
 @app.get("/ui/batches/{batch_id}")
-async def ui_batch_page(batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def ui_batch_page(request: Request, batch_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     batch = await db.get(Batch, batch_id)
     if not batch or batch.user_id != user.id:
         raise HTTPException(status_code=404, detail=t_req("Batch not found"))
-    return FileResponse("app/templates/batch.html")
+    return templates.TemplateResponse(request, "batch.html", {"user": user, "active": "batches", "lang": resolve_lang(request)})
 
 
 @app.post("/ui/batch-extract")
