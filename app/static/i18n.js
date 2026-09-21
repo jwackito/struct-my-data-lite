@@ -135,8 +135,29 @@
       .catch(function () {});
   }
 
+  function buildUserBadge() {
+    var logout = document.querySelector('a[onclick*="/auth/logout"]');
+    if (!logout) return;
+    fetch("/auth/me")
+      .then(function (r) {
+        return r.ok ? r.json() : null;
+      })
+      .then(function (u) {
+        if (!u) return;
+        var name = u.display_name || u.email;
+        if (!name) return;
+        var span = document.createElement("span");
+        span.id = "user-name";
+        span.textContent = name;
+        span.style.cssText = "font-size:0.85rem;color:#6b7280;";
+        logout.parentNode.insertBefore(span, logout);
+      })
+      .catch(function () {});
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     buildFooter();
+    buildUserBadge();
     var initial = getCookieLang() || normalize(navigator.language) || DEFAULT_LANG;
     fetchDict(DEFAULT_LANG).then(function (en) {
       enDict = en;
