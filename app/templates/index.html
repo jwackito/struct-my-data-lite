@@ -488,6 +488,7 @@
           </select>
           <button type="button" id="template-load" data-i18n="Load">Load</button>
           <button type="button" id="template-save" class="btn-secondary" data-i18n="Save">Save</button>
+          <button type="button" id="template-copy" class="btn-secondary" data-i18n="Copy">Copy</button>
           <button type="button" id="template-delete" class="btn-danger">&times;</button>
           <button type="button" id="template-export" class="btn-secondary" data-i18n="Export">Export</button>
         </div>
@@ -1101,18 +1102,37 @@
       });
 
       function loadTemplateList() {
-        fetch("/schemas")
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            var sel = document.getElementById("template-select");
-            sel.innerHTML = '<option value="">' + window.t('Select a saved schema...') + '</option>';
-            data.forEach(function (s) {
+        Promise.all([
+          fetch("/schemas").then(function (r) { return r.json(); }),
+          fetch("/schemas/shared").then(function (r) { return r.ok ? r.json() : []; }),
+        ]).then(function (res) {
+          var mine = res[0];
+          var shared = res[1];
+          var sel = document.getElementById("template-select");
+          sel.innerHTML = '<option value="">' + window.t('Select a saved schema...') + '</option>';
+          if (mine.length) {
+            var g1 = document.createElement("optgroup");
+            g1.label = window.t('Mine');
+            mine.forEach(function (s) {
               var opt = document.createElement("option");
               opt.value = s.id;
               opt.textContent = s.name;
-              sel.appendChild(opt);
+              g1.appendChild(opt);
             });
-          });
+            sel.appendChild(g1);
+          }
+          if (shared.length) {
+            var g2 = document.createElement("optgroup");
+            g2.label = window.t('Shared');
+            shared.forEach(function (s) {
+              var opt = document.createElement("option");
+              opt.value = s.id;
+              opt.textContent = s.name + ' \u2014 ' + s.owner_name;
+              g2.appendChild(opt);
+            });
+            sel.appendChild(g2);
+          }
+        });
       }
 
       function getSelectedTemplateId() {
@@ -1168,6 +1188,16 @@
             refreshPreview();
             updateAdvancedStatus();
             switchTab("builder");
+          });
+      });
+
+      document.getElementById("template-copy").addEventListener("click", function () {
+        var id = getSelectedTemplateId();
+        if (!id) { alert(window.t("Select a schema first.")); return; }
+        fetch("/schemas/" + id + "/duplicate", { method: "POST" })
+          .then(function (r) {
+            if (!r.ok) { r.json().then(function (e) { alert(window.t(e.detail)); }); return; }
+            loadTemplateList();
           });
       });
 
