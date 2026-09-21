@@ -175,6 +175,21 @@ async def test_create_schema_same_name_different_users(async_client):
     assert rb.status_code == 200
 
 
+@pytest.mark.asyncio
+async def test_schema_ownership_enforced(async_client):
+    body = {"name": "Private", "pydantic_schema": "class P(BaseModel):\n    x: int"}
+    a = await async_client.post("/auth/register", json={"email": "own-a@example.com", "password": "password123"})
+    b = await async_client.post("/auth/register", json={"email": "own-b@example.com", "password": "password123"})
+    ha = {"Authorization": f"Bearer {a.json()['token']}"}
+    hb = {"Authorization": f"Bearer {b.json()['token']}"}
+    created = await async_client.post("/schemas", json=body, headers=ha)
+    sid = created.json()["id"]
+    assert (await async_client.get(f"/schemas/{sid}", headers=hb)).status_code == 404
+    assert (await async_client.put(f"/schemas/{sid}", json={"name": "X"}, headers=hb)).status_code == 404
+    assert (await async_client.delete(f"/schemas/{sid}", headers=hb)).status_code == 404
+    assert (await async_client.get(f"/schemas/{sid}/export", headers=hb)).status_code == 404
+
+
 def test_schema_ui_elements():
     with open("app/templates/index.html") as f:
         html = f.read()
