@@ -1,0 +1,22 @@
+<div class="nav">
+  <div style="display:flex;gap:1rem;align-items:center">
+    <a href="/" class="{{ 'active' if active == 'extraction' else '' }}"><span data-i18n="Extraction">Extraction</span></a>
+    <a href="/ui/batches" class="{{ 'active' if active == 'batches' else '' }}" data-i18n="Batches">Batches</a>
+    {% if user.role == 'admin' %}
+    <a href="/admin/usage" class="{{ 'active' if active == 'admin_usage' else '' }}" data-i18n="Usage">Usage</a>
+    <a href="/admin" class="{{ 'active' if active == 'admin' else '' }}" data-i18n="Admin">Admin</a>
+    <a href="/admin/users" class="{{ 'active' if active == 'admin_users' else '' }}" data-i18n="Users">Users</a>
+    <a href="/admin/models" class="{{ 'active' if active == 'admin_models' else '' }}" data-i18n="Models">Models</a>
+    <a href="/admin/schemas" class="{{ 'active' if active == 'admin_schemas' else '' }}" data-i18n="Schemas">Schemas</a>
+    {% else %}
+    <a href="/usage" class="{{ 'active' if active == 'usage' else '' }}" data-i18n="Usage">Usage</a>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    <div id="lang-switcher"></div>
+    <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
+    <a href="/ui/settings" class="{{ 'active' if active == 'settings' else '' }}" style="font-size:1.3rem;text-decoration:none;color:#6b7280" title="Settings" data-i18n-title="Settings">&#9881;</a>
+    <span id="user-name" class="nav-user">{{ user.display_name or user.email }}</span>
+    <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
+  </div>
+</div>
