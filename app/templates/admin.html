@@ -35,6 +35,7 @@
       <a href="/admin/usage" data-i18n="Usage">Usage</a>
       <a href="/admin/users" data-i18n="Users">Users</a>
       <a href="/admin/models" data-i18n="Models">Models</a>
+      <a href="/admin/schemas" data-i18n="Schemas">Schemas</a>
     </div>
     <div style="display:flex;gap:0.5rem;align-items:center">
       <div id="lang-switcher"></div>
@@ -51,6 +52,7 @@
   <div class="actions">
     <a href="/admin/users" data-i18n="Manage Users">Manage Users</a>
     <a href="/admin/models" data-i18n="Manage Models">Manage Models</a>
+    <a href="/admin/schemas" data-i18n="Manage Schemas">Manage Schemas</a>
   </div>
   <script>
     fetch('/admin/users/data?limit=1').then(function(r) { return r.json(); }).then(function(data) {
