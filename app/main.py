@@ -1116,6 +1116,8 @@ async def ui_job_result_page(job_id: uuid.UUID, request: Request, user: User = D
         "output_html": output_html,
         "stats_html": stats_html,
         "error_message": job.error_message or "",
+        "user": user,
+        "active": "",
         "lang": resolve_lang(request),
     })
 

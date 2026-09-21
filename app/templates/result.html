@@ -1,73 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="Extraction Result — Struct My Data">Extraction Result — Struct My Data</title>
-  <script src="/i18n.js"></script>
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Extraction Result — Struct My Data">Extraction Result — Struct My Data</title>{% endblock %}
+{% block head %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github.min.css">
   <style>
-    body {
-      max-width: 720px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
-      color: #1a1a1a;
-    }
-    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; }
-    .nav { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .nav a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
-    .nav a:hover { text-decoration: underline; }
-    .theme-btn { background: none; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; padding: 0.25rem 0.5rem; font-size: 1rem; line-height: 1; }
-    .stats {
-      font-size: 0.85rem;
-      color: #666;
-      margin-bottom: 0.5rem;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 1rem;
-      font-size: 0.875rem;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 0.5rem;
-      text-align: left;
-      vertical-align: top;
-    }
+    body { max-width: 720px; }
+    .stats { font-size: 0.85rem; color: #666; margin-bottom: 0.5rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; font-size: 0.875rem; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
     th { background: #f5f5f5; font-weight: 600; }
     td pre { margin: 0; font-size: 0.8rem; }
-    .error {
-      color: #b91c1c;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      padding: 0.75rem;
-      border-radius: 4px;
-    }
+    .error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 4px; }
     .error pre { margin: 0.5rem 0 0; white-space: pre-wrap; }
-    .output pre {
-      background: #f5f5f5;
-      padding: 0.75rem;
-      border-radius: 4px;
-      overflow-x: auto;
-      font-family: "SF Mono", "Fira Code", monospace;
-      font-size: 0.8rem;
-      line-height: 1.4;
-    }
+    .output pre { background: #f5f5f5; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-family: "SF Mono", "Fira Code", monospace; font-size: 0.8rem; line-height: 1.4; }
     .actions { margin-top: 1rem; }
-    .btn {
-      display: inline-block;
-      padding: 0.6rem 1.2rem;
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      text-decoration: none;
-    }
+    .btn { display: inline-block; padding: 0.6rem 1.2rem; background: #2563eb; color: #fff; border: none; border-radius: 4px; font-size: 0.9rem; cursor: pointer; text-decoration: none; }
     .btn:hover { background: #1d4ed8; }
     pre { font-size: 0.8rem; }
     .stats-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
@@ -75,9 +21,6 @@
     .stat-label { color: #6b7280; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem; }
     .stat-value { font-weight: 600; color: #1a1a1a; }
     .stat-info { cursor: help; margin-left: 0.15rem; font-size: 0.7rem; }
-    [data-theme="dark"] body { background: #1a1a1a; color: #e5e5e5; }
-    [data-theme="dark"] .nav a { color: #60a5fa; }
-    [data-theme="dark"] .theme-btn { border-color: #555; }
     [data-theme="dark"] .stats { color: #9ca3af; }
     [data-theme="dark"] th, [data-theme="dark"] td { border-color: #404040; }
     [data-theme="dark"] th { background: #2d2d2d; }
@@ -88,19 +31,8 @@
     [data-theme="dark"] .stat-value { color: #e5e5e5; }
     [data-theme="dark"] .btn:hover { background: #3b82f6; }
   </style>
-</head>
-<body>
-  <div class="nav">
-    <div style="display:flex;gap:1rem;align-items:center">
-      <a href="/">&larr; <span data-i18n="Back to extraction">Back to extraction</span></a>
-      <a href="/usage" data-i18n="Usage">Usage</a>
-    </div>
-    <div style="display:flex;gap:0.5rem;align-items:center">
-      <div id="lang-switcher"></div>
-      <button id="theme-btn" class="theme-btn" title="Toggle theme" data-i18n-title="Toggle theme">&#x1F319;</button>
-      <a href="#" onclick="fetch('/auth/logout',{method:'POST'}).then(function(){window.location.href='/login'});return false" style="font-size:0.85rem;text-decoration:none" data-i18n="Logout">Logout</a>
-    </div>
-  </div>
+{% endblock %}
+{% block content %}
   <h1 data-i18n="Extraction Result">Extraction Result</h1>
   {% if status == "completed" %}
     <div class="stats">{{ stats_html | safe }}</div>
@@ -120,35 +52,22 @@
     <p>&#x23F3; {{ t(status, lang) | capitalize }}...</p>
     <script>setTimeout(function() { location.reload(); }, 2000);</script>
   {% endif %}
+{% endblock %}
+{% block scripts %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/highlight.min.js"></script>
   <script>
     (function() {
-      var theme = localStorage.getItem('theme') || 'light';
-      if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-      var btn = document.getElementById('theme-btn');
-      if (btn) {
-        btn.textContent = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-        btn.addEventListener('click', function() {
-          var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('theme', next);
-          btn.textContent = next === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
-          var hl = document.querySelector('link[href*="highlight"][href*="github"]');
-          if (hl) {
-            hl.href = next === 'dark'
-              ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github-dark.min.css'
-              : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github.min.css';
-          }
-        });
-      }
-      if (theme === 'dark') {
+      function applyHlTheme(theme) {
         var hl = document.querySelector('link[href*="highlight"][href*="github"]');
-        if (hl && hl.href.indexOf('dark') === -1)
-          hl.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github-dark.min.css';
+        if (hl) {
+          hl.href = theme === 'dark'
+            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github-dark.min.css'
+            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/github.min.css';
+        }
       }
+      document.addEventListener('themechange', function(e) { applyHlTheme(e.detail.theme); });
       var el = document.querySelector('.output pre');
-      if (el) hljs.highlightElement(el);
+      if (el && window.hljs) hljs.highlightElement(el);
     })();
   </script>
-</body>
-</html>
+{% endblock %}
