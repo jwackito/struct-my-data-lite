@@ -21,16 +21,20 @@ def test_get_version_no_heading(tmp_path):
     assert get_version(changelog) == "dev"
 
 
-def test_get_version_default_changelog():
-    version = get_version()
-    assert version == "v1.2.0-lite"
+def test_get_version_matches_changelog_heading():
+    import re
+    from pathlib import Path
+
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+    expected = re.search(r"^## (v\S+)", text, re.MULTILINE).group(1)
+    assert get_version() == expected
 
 
 @pytest.mark.asyncio
 async def test_api_version(client):
     response = await client.get("/api/version")
     assert response.status_code == 200
-    assert response.json() == {"version": "v1.2.0-lite"}
+    assert response.json() == {"version": get_version()}
 
 
 @pytest.mark.asyncio
