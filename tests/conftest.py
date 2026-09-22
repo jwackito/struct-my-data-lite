@@ -20,6 +20,22 @@ TEST_DATABASE_URL = os.getenv(
 )
 
 
+@pytest.fixture(autouse=True)
+def _disable_rate_limits(monkeypatch):
+    import app.main as main_mod
+    from app.ratelimit import TokenBucket
+
+    monkeypatch.setattr(
+        main_mod,
+        "_rate_limiters",
+        {
+            "auth": TokenBucket(10**9, 60),
+            "extract": TokenBucket(10**9, 60),
+            "batch": TokenBucket(10**9, 60),
+        },
+    )
+
+
 @pytest_asyncio.fixture
 async def client():
     transport = ASGITransport(app=app)
