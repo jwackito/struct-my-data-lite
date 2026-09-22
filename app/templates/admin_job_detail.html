@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}<title data-i18n="Job detail — Admin — Struct My Data">Job detail — Admin — Struct My Data</title>{% endblock %}
+{% block head %}
+  <style>
+    body { max-width: 860px; }
+    .back { font-size: 0.85rem; }
+    .badge { font-size: 0.75rem; padding: 0.15rem 0.45rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .badge.failed { background: #fee2e2; color: #991b1b; }
+    .badge.completed { background: #d1fae5; color: #065f46; }
+    .badge.running, .badge.pending { background: #fef3c7; color: #92400e; }
+    table.meta { border-collapse: collapse; width: 100%; font-size: 0.85rem; margin: 1rem 0; }
+    table.meta th, table.meta td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
+    table.meta th { background: #f5f5f5; font-weight: 600; width: 180px; }
+    h2 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+    pre { background: #f5f5f5; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.8rem; white-space: pre-wrap; }
+    .error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 4px; }
+    .error pre { background: #fff; margin: 0.5rem 0 0; }
+    .btn { display: inline-block; padding: 0.4rem 0.9rem; background: #2563eb; color: #fff; border: none; border-radius: 4px; font-size: 0.85rem; cursor: pointer; text-decoration: none; }
+    .btn:hover { background: #1d4ed8; }
+    .stats-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .stat-card { background: #f5f5f5; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+    .stat-label { color: #6b7280; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem; }
+    .stat-value { font-weight: 600; color: #1a1a1a; }
+    .stat-info { cursor: help; margin-left: 0.15rem; font-size: 0.7rem; }
+    [data-theme="dark"] table.meta th, [data-theme="dark"] table.meta td { border-color: #404040; }
+    [data-theme="dark"] table.meta th { background: #2d2d2d; }
+    [data-theme="dark"] pre { background: #2d2d2d; }
+    [data-theme="dark"] .error { color: #fca5a5; background: #3b1a1a; border-color: #7f1d1d; }
+    [data-theme="dark"] .error pre { background: #2d2d2d; }
+    [data-theme="dark"] .stat-card { background: #2d2d2d; border-color: #404040; }
+    [data-theme="dark"] .stat-label { color: #9ca3af; }
+    [data-theme="dark"] .stat-value { color: #e5e5e5; }
+    [data-theme="dark"] .badge.failed { background: #7f1d1d; color: #fca5a5; }
+    [data-theme="dark"] .badge.completed { background: #064e3b; color: #6ee7b7; }
+  </style>
+{% endblock %}
+{% block content %}
+  <p class="back"><a href="/admin/failures">&larr; <span data-i18n="Failures">Failures</span></a></p>
+  <h1 data-i18n="Job detail">Job detail</h1>
+  <p><span class="badge {{ status }}">{{ status }}</span></p>
+
+  {% if stats_html %}<div class="stats-bar">{{ stats_html | safe }}</div>{% endif %}
+
+  <table class="meta">
+    <tr><th data-i18n="Job ID">Job ID</th><td>{{ job.id }}</td></tr>
+    <tr><th data-i18n="User">User</th><td>{{ owner.email if owner else "—" }}</td></tr>
+    <tr>
+      <th data-i18n="Document">Document</th>
+      <td>
+        {% if document %}
+          {{ document.filename }}<br>
+          <span style="color:#6b7280">{{ document.content_type }} · {{ document.file_size }} B · {{ document.created_at }}</span><br>
+          <a class="btn" style="margin-top:0.4rem" href="/admin/jobs/{{ job.id }}/document" data-i18n="Download document">Download document</a>
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    <tr><th data-i18n="Model">Model</th><td>{{ job.model_name or "—" }}</td></tr>
+    <tr><th data-i18n="Connection">Connection</th><td>{{ job.connection_name or "—" }}</td></tr>
+    <tr><th data-i18n="Provider">Provider</th><td>{{ job.provider_type or "—" }}</td></tr>
+    <tr><th data-i18n="Created">Created</th><td>{{ job.created_at }}</td></tr>
+    <tr><th data-i18n="Completed">Completed</th><td>{{ job.completed_at or "—" }}</td></tr>
+  </table>
+
+  <h2 data-i18n="Schema">Schema</h2>
+  <pre>{{ job.pydantic_schema }}</pre>
+
+  {% if status == "failed" %}
+    <h2 data-i18n="Error">Error</h2>
+    <div class="error">
+      <pre>{{ job.error_message or "" }}</pre>
+      {% if job.error_detail %}<pre>{{ job.error_detail }}</pre>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if output_html %}
+    <h2 data-i18n="Output">Output</h2>
+    <div class="output">{{ output_html | safe }}</div>
+  {% endif %}
+{% endblock %}

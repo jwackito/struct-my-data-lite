@@ -1796,6 +1796,34 @@ async def admin_failures_data(
     return {"jobs": jobs, "total": total}
 
 
+@app.get("/admin/jobs/{job_id}")
+async def admin_job_detail(
+    job_id: uuid.UUID,
+    request: Request,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t_req("Job not found"))
+    doc = await db.get(Document, job.document_id) if job.document_id else None
+    owner = await db.get(User, job.user_id) if job.user_id else None
+    st = job.status.value if hasattr(job.status, "value") else job.status
+    lang = resolve_lang(request)
+
+    return templates.TemplateResponse(request, "admin_job_detail.html", {
+        "user": admin,
+        "active": "admin_failures",
+        "lang": lang,
+        "job": job,
+        "status": st,
+        "document": doc,
+        "owner": owner,
+        "stats_html": _job_stats_html(job, lang) if job.completed_at else "",
+        "output_html": _render_output(job.output_data) if job.output_data else "",
+    })
+
+
 @app.post("/admin/users/{user_id}/toggle-status")
 async def admin_toggle_user_status(
     user_id: uuid.UUID,
