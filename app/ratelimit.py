@@ -53,6 +53,27 @@ def get_limiter() -> TokenBucket:
     return _limiter
 
 
+def make_limiters() -> dict[str, TokenBucket]:
+    from app.config import settings
+
+    return {
+        "auth": TokenBucket(settings.rate_limit_auth, 60),
+        "extract": TokenBucket(settings.rate_limit_extract, 60),
+        "batch": TokenBucket(settings.rate_limit_batch, 60),
+    }
+
+
+def bucket_for(path: str, method: str) -> str | None:
+    """Return the limiter bucket name for a request, or None if unthrottled."""
+    if path in ("/auth/login", "/auth/register"):
+        return "auth"
+    if path in ("/upload", "/extract", "/ui/extract"):
+        return "extract"
+    if path in ("/api/batches", "/ui/batch-extract"):
+        return "batch"
+    return None
+
+
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
