@@ -1735,6 +1735,11 @@ async def admin_users(
     return {"users": users, "total": total}
 
 
+@app.get("/admin/failures")
+async def admin_failures_page(request: Request, admin: User = Depends(get_admin_user)):
+    return templates.TemplateResponse(request, "admin_failures.html", {"user": admin, "active": "admin_failures", "lang": resolve_lang(request)})
+
+
 @app.get("/admin/failures/data")
 async def admin_failures_data(
     offset: int = 0,
