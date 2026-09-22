@@ -1734,6 +1734,68 @@ async def admin_users(
     return {"users": users, "total": total}
 
 
+@app.get("/admin/failures/data")
+async def admin_failures_data(
+    offset: int = 0,
+    limit: int = 20,
+    user: str = "",
+    model: str = "",
+    connection: str = "",
+    content_type: str = "",
+    since: str = "",
+    until: str = "",
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    conditions = [ExtractionJob.status == JobStatus.failed]
+    if model:
+        conditions.append(ExtractionJob.model_name == model)
+    if connection:
+        conditions.append(ExtractionJob.connection_name == connection)
+    if content_type:
+        conditions.append(Document.content_type == content_type)
+    if user:
+        pattern = f"%{user}%"
+        conditions.append(or_(User.email.ilike(pattern), User.display_name.ilike(pattern)))
+    if since:
+        conditions.append(ExtractionJob.created_at >= datetime.fromisoformat(since))
+    if until:
+        conditions.append(ExtractionJob.created_at <= datetime.fromisoformat(until))
+
+    base = (
+        select(ExtractionJob, Document, User)
+        .join(Document, ExtractionJob.document_id == Document.id)
+        .outerjoin(User, ExtractionJob.user_id == User.id)
+    )
+    total_q = (
+        select(func.count())
+        .select_from(ExtractionJob)
+        .join(Document, ExtractionJob.document_id == Document.id)
+        .outerjoin(User, ExtractionJob.user_id == User.id)
+    )
+    for c in conditions:
+        base = base.where(c)
+        total_q = total_q.where(c)
+
+    total = (await db.execute(total_q)).scalar()
+    rows = (await db.execute(base.order_by(ExtractionJob.created_at.desc()).offset(offset).limit(limit))).all()
+
+    jobs = []
+    for job, doc, owner in rows:
+        jobs.append({
+            "id": str(job.id),
+            "created_at": job.created_at.isoformat(),
+            "user_email": owner.email if owner else None,
+            "filename": doc.filename if doc else None,
+            "content_type": doc.content_type if doc else None,
+            "model_name": job.model_name,
+            "connection_name": job.connection_name,
+            "provider_type": job.provider_type,
+            "error_message": job.error_message,
+        })
+    return {"jobs": jobs, "total": total}
+
+
 @app.post("/admin/users/{user_id}/toggle-status")
 async def admin_toggle_user_status(
     user_id: uuid.UUID,
