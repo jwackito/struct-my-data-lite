@@ -66,6 +66,24 @@ async def test_alembic_upgrade_head(migration_engine):
 
 
 @pytest.mark.asyncio
+async def test_extraction_jobs_has_error_detail(migration_engine):
+    proc = await asyncio.create_subprocess_shell(
+        f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
+        cwd=str(_REPO_ROOT),
+    )
+    await proc.wait()
+    assert proc.returncode == 0, f"upgrade failed (exit {proc.returncode})"
+
+    async with migration_engine.begin() as conn:
+        result = await conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'extraction_jobs' AND column_name = 'error_detail'"
+        ))
+        columns = [r[0] for r in result.fetchall()]
+    assert columns == ["error_detail"]
+
+
+@pytest.mark.asyncio
 async def test_alembic_downgrade_and_reupgrade(migration_engine):
     proc_up = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
