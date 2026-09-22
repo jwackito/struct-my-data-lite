@@ -15,6 +15,39 @@ REGISTER = {
 
 
 @pytest.mark.asyncio
+async def test_failed_job_records_error_detail(async_client, db_session, patch_async_session):
+    await async_client.post("/auth/register", json=REGISTER)
+    upload_resp = await async_client.post(
+        "/upload",
+        files={"file": ("archive.zip", b"not a supported document", "application/zip")},
+    )
+    doc_id = upload_resp.json()["id"]
+
+    extract_resp = await async_client.post(
+        "/extract",
+        json={
+            "document_id": doc_id,
+            "pydantic_schema": (
+                "from pydantic import BaseModel\n"
+                "class Person(BaseModel):\n"
+                "    name: str\n"
+            ),
+        },
+    )
+    job_id = extract_resp.json()["id"]
+
+    await process_job(uuid.UUID(job_id))
+
+    result = await db_session.execute(select(ExtractionJob).where(ExtractionJob.id == uuid.UUID(job_id)))
+    job = result.scalar_one()
+    assert job.status == JobStatus.failed
+    assert "Unsupported content type" in job.error_message
+    assert job.error_detail is not None
+    assert "ValueError" in job.error_detail
+    assert "Unsupported content type" in job.error_detail
+
+
+@pytest.mark.asyncio
 async def test_pipeline_invalid_schema(async_client, db_session, patch_async_session):
     await async_client.post("/auth/register", json=REGISTER)
     upload_resp = await async_client.post("/upload", files={"file": ("input.txt", b"some data")})
