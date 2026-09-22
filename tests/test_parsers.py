@@ -184,3 +184,24 @@ def test_word_parser_unsupported_signature(tmp_path):
 
     with pytest.raises(ValueError, match="Unsupported Word"):
         WordParser().parse(str(path))
+
+
+def test_factory_routes_word_types():
+    from app.parsers.word import WordParser
+
+    for ct in (
+        "application/msword",
+        "application/vnd.ms-word",
+        "application/x-msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ):
+        assert isinstance(get_parser(ct), WordParser)
+
+
+def test_factory_octet_stream_extension_fallback():
+    from app.parsers.pdf import PDFParser
+    from app.parsers.word import WordParser
+
+    assert isinstance(get_parser("application/octet-stream", "report.doc"), WordParser)
+    assert isinstance(get_parser("application/octet-stream", "report.docx"), WordParser)
+    assert isinstance(get_parser("application/octet-stream", "report.pdf"), PDFParser)
