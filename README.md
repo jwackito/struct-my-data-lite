@@ -16,6 +16,8 @@ Upload documents (PDF, DOCX, TXT, CSV, image), define a Pydantic schema via a vi
 ## Quick Start
 
 ```bash
+mkdir -p etc && chmod 700 etc
+cp .env.example etc/.env      # optional for defaults; add secrets for providers
 docker compose up -d --build
 docker compose exec app python -m alembic upgrade head
 docker compose exec app python -m app.seed --email admin@example.com --password <password> --role admin
@@ -267,9 +269,12 @@ building on the host. Deploys are health-gated and reversible — see
 `specs/14-deploy-hardening.md`.
 
 ```bash
-cp .env.example .env        # fill in real values (never commit .env)
+mkdir -p etc && chmod 700 etc
+cp .env.example etc/.env            # fill in real values (etc/ is gitignored)
+cp deploy/ghcr.env.example etc/ghcr.env     # IMAGE_REPO, GHCR_USER, PAT
+cp deploy/backup.env.example etc/backup.env # backup destination
 mkdir caddy                 # place your Caddyfile (domains, TLS) here
-echo "IMAGE_TAG=v1.2.1-lite" >> .env
+# set IMAGE_TAG=vX.Y.Z-lite in etc/.env or the shell
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
@@ -280,9 +285,9 @@ Migrations are applied through the advisory-locked runner (never bare alembic):
 docker compose -f docker-compose.prod.yml run --rm app python -m scripts.migrate
 ```
 
-Operationally, `deploy.sh` (private, on the host) wraps: preflight → database
-snapshot → migrate → start by digest → wait for `/health/ready` →
-auto-rollback on failure.
+Operationally, `deploy/deploy.sh` wraps: preflight → database snapshot → migrate
+→ start by digest → wait for `/health/ready` → auto-rollback on failure. See
+`deploy/README.md`.
 
 Differences from development:
 - Image is built once in CI, pulled from GHCR and pinned by tag/digest
@@ -291,7 +296,7 @@ Differences from development:
 - `restart: unless-stopped` — auto-restart on failure or host reboot
 - No `--reload` flag
 - Healthchecks on app, database, and Caddy services; `/health/ready` checks the DB
-- Secrets and config come from `.env` (`secrets.env` is deprecated)
+- Secrets and config come from `etc/.env` (gitignored)
 - Caddy terminates TLS in front of the app; app and database are not exposed on the host
 - Uploaded documents persist in the `storage` volume
 
