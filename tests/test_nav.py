@@ -36,6 +36,7 @@ async def test_nav_admin_links(async_client, db_session):
     assert 'href="/admin/users"' in html
     assert 'href="/admin/models"' in html
     assert 'href="/admin/schemas"' in html
+    assert 'href="/admin/failures"' in html
 
 
 @pytest.mark.asyncio
