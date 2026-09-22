@@ -22,6 +22,7 @@ TEST_DATABASE_URL = os.getenv(
 
 @pytest.fixture(autouse=True)
 def _disable_rate_limits(monkeypatch):
+    import app.processing as proc_mod
     import app.main as main_mod
     from app.ratelimit import TokenBucket
 
@@ -34,6 +35,7 @@ def _disable_rate_limits(monkeypatch):
             "batch": TokenBucket(10**9, 60),
         },
     )
+    monkeypatch.setattr(proc_mod, "_queue", proc_mod.JobQueue(10**6, 10**6))
 
 
 @pytest_asyncio.fixture
