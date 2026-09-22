@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -40,6 +41,7 @@ templates.env.globals["t"] = t
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
     if not settings.skip_db_wait:
         await wait_for_db()
     try:
