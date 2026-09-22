@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 import uuid
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -30,7 +31,7 @@ from app.providers import list_all_models
 from app.providers.factory import _build_provider, _sync_registry
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.schema_parser import parse_schema
-from app.storage import save_file
+from app.storage import sanitize_filename, save_file
 from app.version import get_version
 from app.ws import manager
 from fastapi.templating import Jinja2Templates
@@ -1822,6 +1823,25 @@ async def admin_job_detail(
         "stats_html": _job_stats_html(job, lang) if job.completed_at else "",
         "output_html": _render_output(job.output_data) if job.output_data else "",
     })
+
+
+@app.get("/admin/jobs/{job_id}/document")
+async def admin_job_document(
+    job_id: uuid.UUID,
+    admin: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    job = await db.get(ExtractionJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t_req("Job not found"))
+    doc = await db.get(Document, job.document_id) if job.document_id else None
+    if not doc or not os.path.exists(doc.storage_path):
+        raise HTTPException(status_code=404, detail=t_req("Document not found"))
+    return FileResponse(
+        doc.storage_path,
+        media_type=doc.content_type,
+        filename=sanitize_filename(doc.filename),
+    )
 
 
 @app.post("/admin/users/{user_id}/toggle-status")
