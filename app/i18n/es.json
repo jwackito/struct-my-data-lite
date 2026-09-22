@@ -309,5 +309,7 @@
   "Unpublish": "Despublicar",
   "No schemas found.": "No se encontraron esquemas.",
   "You already have a schema named {name}": "Ya tenés un esquema llamado {name}",
+  "Too many requests, please slow down": "Demasiadas solicitudes, por favor esperá un momento",
+  "Server is busy, try again shortly": "El servidor está ocupado, intentá de nuevo en breve",
   "MIT License": "Licencia MIT"
 }
