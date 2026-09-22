@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     rate_limit_extract: int = 30
     rate_limit_batch: int = 5
     skip_db_wait: bool = False
+    log_level: str = "INFO"
 
     class Config:
         env_file = "etc/.env"
