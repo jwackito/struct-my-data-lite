@@ -60,6 +60,7 @@ class ExtractionJob(Base):
     pydantic_schema: Mapped[str] = mapped_column(Text)
     output_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     input_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     upload_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
