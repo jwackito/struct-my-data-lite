@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${IMAGE_REPO:-ghcr.io/OWNER/struct-my-data}:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REF:-${IMAGE_REPO:-ghcr.io/OWNER/struct-my-data}:${IMAGE_TAG:-latest}}
     env_file:
       - ./etc/.env
     environment:
