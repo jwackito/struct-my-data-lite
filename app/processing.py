@@ -17,7 +17,44 @@ from app.ws import manager
 
 logger = logging.getLogger(__name__)
 
-_process_semaphore = asyncio.Semaphore(settings.batch_concurrency)
+
+class JobQueue:
+    """Bounded in-flight job limiter.
+
+    `concurrency` jobs run at once; up to `max_waiting` more may be reserved
+    before new submissions are rejected. Per-process and in-memory.
+    """
+
+    def __init__(self, concurrency: int, max_waiting: int):
+        self.concurrency = max(1, concurrency)
+        self.max_waiting = max(0, max_waiting)
+        self._slots = asyncio.Semaphore(self.concurrency)
+        self._reserved = 0
+        self._cap = self.concurrency + self.max_waiting
+
+    def try_reserve(self) -> bool:
+        if self._reserved >= self._cap:
+            return False
+        self._reserved += 1
+        return True
+
+    def release(self) -> None:
+        if self._reserved > 0:
+            self._reserved -= 1
+
+    async def run(self, coro):
+        async with self._slots:
+            try:
+                return await coro
+            finally:
+                self.release()
+
+
+_queue = JobQueue(settings.batch_concurrency, settings.job_queue_max)
+
+
+def try_reserve_slot() -> bool:
+    return _queue.try_reserve()
 
 
 def _job_payload(job: ExtractionJob) -> dict:
@@ -39,8 +76,7 @@ def _job_payload(job: ExtractionJob) -> dict:
 
 
 async def process_job(job_id: uuid.UUID):
-    async with _process_semaphore:
-        await _run_job(job_id)
+    await _queue.run(_run_job(job_id))
 
 
 async def _run_job(job_id: uuid.UUID):
