@@ -55,7 +55,7 @@ def bucket_for(path: str, method: str) -> str | None:
     """Return the limiter bucket name for a request, or None if unthrottled."""
     if path in ("/auth/login", "/auth/register"):
         return "auth"
-    if path in ("/upload", "/extract", "/ui/extract"):
+    if path in ("/upload", "/extract"):
         return "extract"
     if path in ("/api/batches", "/ui/batch-extract"):
         return "batch"
