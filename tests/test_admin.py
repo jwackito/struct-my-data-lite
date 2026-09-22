@@ -245,3 +245,28 @@ async def test_admin_failures_rejects_non_admin(async_client):
     token = login.json()["token"]
     resp = await async_client.get("/admin/failures/data", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_job_detail(async_client):
+    token = await _make_admin(async_client, "detail@example.com")
+    job_id = await _seed_failed_job("detail@example.com")
+
+    resp = await async_client.get(f"/admin/jobs/{job_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    html = resp.text
+    assert "bad.doc" in html
+    assert "gemma4:31b" in html
+    assert "class X(BaseModel): pass" in html
+    assert "ValueError" in html
+
+
+@pytest.mark.asyncio
+async def test_admin_job_detail_rejects_non_admin(async_client):
+    await async_client.post("/auth/register", json={"email": "plain2@example.com", "password": "password123"})
+    login = await async_client.post("/auth/login", json={"email": "plain2@example.com", "password": "password123"})
+    token = login.json()["token"]
+    import uuid as _uuid
+
+    resp = await async_client.get(f"/admin/jobs/{_uuid.uuid4()}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 403
