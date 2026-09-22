@@ -309,5 +309,7 @@
   "Unpublish": "Unpublish",
   "No schemas found.": "No schemas found.",
   "You already have a schema named {name}": "You already have a schema named {name}",
+  "Too many requests, please slow down": "Too many requests, please slow down",
+  "Server is busy, try again shortly": "Server is busy, try again shortly",
   "MIT License": "MIT License"
 }
