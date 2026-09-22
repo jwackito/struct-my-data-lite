@@ -108,3 +108,79 @@ def test_parser_abc():
 
     with pytest.raises(TypeError):
         BadParser()  # abstract method not implemented
+
+
+def test_word_parser_ooxml_uses_python_docx(tmp_path):
+    from docx import Document
+
+    from app.parsers.word import WordParser
+
+    path = tmp_path / "sample.docx"
+    doc = Document()
+    doc.add_paragraph("Hello from docx")
+    doc.save(str(path))
+
+    assert "Hello from docx" in WordParser().parse(str(path))
+
+
+def test_word_parser_ole_uses_antiword(tmp_path, monkeypatch):
+    import subprocess
+
+    from app.parsers.word import WordParser
+
+    path = tmp_path / "legacy.doc"
+    path.write_bytes(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 32)
+
+    calls = {}
+
+    def fake_run(cmd, **kwargs):
+        calls["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout=b"legacy text", stderr=b"")
+
+    monkeypatch.setattr("app.parsers.word.subprocess.run", fake_run)
+
+    assert WordParser().parse(str(path)) == "legacy text"
+    assert calls["cmd"][0] == "antiword"
+    assert "-w" in calls["cmd"]
+
+
+def test_word_parser_antiword_missing(tmp_path, monkeypatch):
+    from app.parsers.word import WordParser
+
+    path = tmp_path / "legacy.doc"
+    path.write_bytes(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 32)
+
+    def fake_run(cmd, **kwargs):
+        raise FileNotFoundError("antiword")
+
+    monkeypatch.setattr("app.parsers.word.subprocess.run", fake_run)
+
+    with pytest.raises(ValueError, match="antiword"):
+        WordParser().parse(str(path))
+
+
+def test_word_parser_antiword_failure(tmp_path, monkeypatch):
+    import subprocess
+
+    from app.parsers.word import WordParser
+
+    path = tmp_path / "legacy.doc"
+    path.write_bytes(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 32)
+
+    def fake_run(cmd, **kwargs):
+        return subprocess.CompletedProcess(cmd, 1, stdout=b"", stderr=b"not a word file")
+
+    monkeypatch.setattr("app.parsers.word.subprocess.run", fake_run)
+
+    with pytest.raises(ValueError, match="antiword"):
+        WordParser().parse(str(path))
+
+
+def test_word_parser_unsupported_signature(tmp_path):
+    from app.parsers.word import WordParser
+
+    path = tmp_path / "garbage.doc"
+    path.write_bytes(b"not a word document")
+
+    with pytest.raises(ValueError, match="Unsupported Word"):
+        WordParser().parse(str(path))
