@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     allow_registration: bool = True
     batch_concurrency: int = 2
     max_batch_size: int = 50
+    job_queue_max: int = 4
+    rate_limit_auth: int = 10
+    rate_limit_extract: int = 30
+    rate_limit_batch: int = 5
     skip_db_wait: bool = False
 
     class Config:
