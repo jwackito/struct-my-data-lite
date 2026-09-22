@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import traceback
 import uuid
 from datetime import datetime, timezone
 
@@ -142,7 +143,9 @@ async def _run_job(job_id: uuid.UUID):
             job.status = JobStatus.completed
         except Exception as e:
             job.error_message = str(e)
+            job.error_detail = traceback.format_exc()[:8192]
             job.status = JobStatus.failed
+            logger.exception("job %s failed", job_id)
         finally:
             job.completed_at = datetime.now(timezone.utc)
             try:
