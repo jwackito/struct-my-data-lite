@@ -200,3 +200,54 @@ async def test_process_job_notify_failure_sets_failed(async_client, db_session, 
     job = result.scalar_one()
     assert job.status == JobStatus.failed
     assert "notify failure" in job.error_message
+
+
+@pytest.mark.asyncio
+async def test_pipeline_parses_octet_stream_docx_by_extension(async_client, db_session, patch_async_session):
+    import io
+
+    from docx import Document
+
+    buf = io.BytesIO()
+    doc = Document()
+    doc.add_paragraph("Alice is 30 years old")
+    doc.save(buf)
+    docx_bytes = buf.getvalue()
+
+    await async_client.post("/auth/register", json=REGISTER)
+    upload_resp = await async_client.post(
+        "/upload",
+        files={"file": ("report.docx", docx_bytes, "application/octet-stream")},
+    )
+    doc_id = upload_resp.json()["id"]
+
+    extract_resp = await async_client.post(
+        "/extract",
+        json={
+            "document_id": doc_id,
+            "pydantic_schema": (
+                "from pydantic import BaseModel\n"
+                "class Person(BaseModel):\n"
+                "    name: str\n"
+                "    age: int\n"
+            ),
+        },
+    )
+    job_id = extract_resp.json()["id"]
+
+    mock_result = MagicMock()
+    mock_result.model_dump.return_value = {"name": "Alice", "age": 30}
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_result
+
+    with patch("app.processing.get_provider") as mock_get_provider:
+        mock_provider = MagicMock()
+        mock_provider.get_client.return_value = mock_client
+        mock_provider.model = "test-model"
+        mock_get_provider.return_value = mock_provider
+        await process_job(uuid.UUID(job_id))
+
+    result = await db_session.execute(select(ExtractionJob).where(ExtractionJob.id == uuid.UUID(job_id)))
+    job = result.scalar_one()
+    assert job.status == JobStatus.completed
+    assert job.output_data == {"name": "Alice", "age": 30}
