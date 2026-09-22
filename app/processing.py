@@ -95,7 +95,7 @@ async def _run_job(job_id: uuid.UUID):
                 raise ValueError("Document not found")
 
             t0 = time.monotonic_ns()
-            parser = get_doc_parser(doc.content_type)
+            parser = get_doc_parser(doc.content_type, doc.filename)
             text = await asyncio.to_thread(parser.parse, doc.storage_path)
             job.parsing_duration_ms = (time.monotonic_ns() - t0) // 1_000_000
 
