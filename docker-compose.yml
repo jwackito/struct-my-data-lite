@@ -7,7 +7,7 @@ services:
       - .:/app
       - pip-cache:/root/.cache/pip
     env_file:
-      - .env
+      - ./etc/.env
     environment:
       PORT: 8080
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/structmydata

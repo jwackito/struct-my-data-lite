@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     skip_db_wait: bool = False
 
     class Config:
-        env_file = ".env"
+        env_file = "etc/.env"
 
 
 settings = Settings()

@@ -2,7 +2,7 @@ services:
   app:
     image: ghcr.io/jwackito/struct-my-data:${IMAGE_TAG:-latest}
     env_file:
-      - .env
+      - ./etc/.env
     environment:
       PORT: 8080
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/structmydata
