@@ -270,3 +270,55 @@ async def test_admin_job_detail_rejects_non_admin(async_client):
 
     resp = await async_client.get(f"/admin/jobs/{_uuid.uuid4()}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_download_document(async_client, tmp_path):
+    token = await _make_admin(async_client, "download@example.com")
+
+    from app.database import async_session
+    from app.models import Document, ExtractionJob, JobStatus, User
+    from sqlalchemy import select
+
+    raw = b"legacy doc bytes"
+    file_path = tmp_path / "original.doc"
+    file_path.write_bytes(raw)
+
+    async with async_session() as s:
+        u = (await s.execute(select(User).where(User.email == "download@example.com"))).scalar_one()
+        doc = Document(
+            user_id=u.id,
+            filename="original.doc",
+            content_type="application/msword",
+            file_size=len(raw),
+            storage_path=str(file_path),
+        )
+        s.add(doc)
+        await s.flush()
+        job = ExtractionJob(
+            user_id=u.id,
+            document_id=doc.id,
+            status=JobStatus.failed,
+            pydantic_schema="class X: pass",
+            error_message="x",
+        )
+        s.add(job)
+        await s.commit()
+        job_id = str(job.id)
+
+    resp = await async_client.get(f"/admin/jobs/{job_id}/document", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.content == raw
+    assert "application/msword" in resp.headers["content-type"]
+    assert "original.doc" in resp.headers["content-disposition"]
+
+
+@pytest.mark.asyncio
+async def test_admin_download_document_rejects_non_admin(async_client):
+    await async_client.post("/auth/register", json={"email": "plain3@example.com", "password": "password123"})
+    login = await async_client.post("/auth/login", json={"email": "plain3@example.com", "password": "password123"})
+    token = login.json()["token"]
+    import uuid as _uuid
+
+    resp = await async_client.get(f"/admin/jobs/{_uuid.uuid4()}/document", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 403
