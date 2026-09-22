@@ -322,3 +322,11 @@ async def test_admin_download_document_rejects_non_admin(async_client):
 
     resp = await async_client.get(f"/admin/jobs/{_uuid.uuid4()}/document", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_failures_page(async_client):
+    token = await _make_admin(async_client, "failpage@example.com")
+    resp = await async_client.get("/admin/failures", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert "/admin/failures/data" in resp.text
