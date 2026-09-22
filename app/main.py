@@ -27,6 +27,7 @@ from app.processing import process_job
 from sqlalchemy import cast, Date, update
 from app.providers import list_all_models
 from app.providers.factory import _build_provider, _sync_registry
+from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.schema_parser import parse_schema
 from app.storage import save_file
 from app.version import get_version
@@ -72,6 +73,40 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": t_req("Internal server error"), "request_id": request_id},
     )
+
+
+_rate_limiters = make_limiters()
+
+
+class _RateLimitUser:
+    __slots__ = ("id",)
+
+    def __init__(self, user_id: str):
+        self.id = user_id
+
+
+def _rate_limit_user(request: Request):
+    token = request.headers.get("Authorization", "")
+    token = token[7:] if token.startswith("Bearer ") else request.cookies.get("token")
+    if not token:
+        return None
+    payload = decode_jwt(token)
+    if not payload or not payload.get("sub"):
+        return None
+    return _RateLimitUser(payload["sub"])
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    name = bucket_for(request.url.path, request.method)
+    if name:
+        user = getattr(request.state, "user", None)
+        if user is None:
+            user = _rate_limit_user(request)
+        blocked = apply_rate_limit(request, _rate_limiters[name], user)
+        if blocked is not None:
+            return blocked
+    return await call_next(request)
 
 
 @app.get("/docs", include_in_schema=False)
