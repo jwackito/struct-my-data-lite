@@ -37,7 +37,7 @@ services:
       - storage:/app/storage
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -60,7 +60,7 @@ services:
       retries: 5
 
   caddy:
-    image: caddy:2
+    image: caddy:2@sha256:14a9c00d4e833ebc2b65d36515b37bde3b73f0b323a2663aaafc88953d8c4e3f
     ports:
       - "80:80"
       - "${HTTPS_PORT:-443}:${HTTPS_PORT:-443}"
