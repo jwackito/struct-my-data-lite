@@ -311,5 +311,22 @@
   "You already have a schema named {name}": "Ya tenés un esquema llamado {name}",
   "Too many requests, please slow down": "Demasiadas solicitudes, por favor esperá un momento",
   "Server is busy, try again shortly": "El servidor está ocupado, intentá de nuevo en breve",
-  "MIT License": "Licencia MIT"
+  "MIT License": "Licencia MIT",
+  "Failures": "Fallos",
+  "Failures — Admin — Struct My Data": "Fallos — Admin — Struct My Data",
+  "Job detail": "Detalle del trabajo",
+  "Job detail — Admin — Struct My Data": "Detalle del trabajo — Admin — Struct My Data",
+  "Job ID": "ID del trabajo",
+  "Failed jobs": "Trabajos fallidos",
+  "User email or name": "Email o nombre del usuario",
+  "Content type": "Tipo de contenido",
+  "Filter": "Filtrar",
+  "Time": "Fecha",
+  "No failed jobs": "No hay trabajos fallidos",
+  "User": "Usuario",
+  "Connection": "Conexión",
+  "Schema": "Esquema",
+  "Download document": "Descargar documento",
+  "Completed": "Completado",
+  "Output": "Salida"
 }
