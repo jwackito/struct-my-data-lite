@@ -1,11 +1,11 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim@sha256:2f17fc044b579bab302c2e8054d3a686e2cb9a83de48e70534b94cd8ebbe06a9 AS builder
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
-FROM python:3.12-slim AS runtime
+FROM python:3.12-slim@sha256:2f17fc044b579bab302c2e8054d3a686e2cb9a83de48e70534b94cd8ebbe06a9 AS runtime
 
 RUN groupadd --gid 10001 app \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin app
