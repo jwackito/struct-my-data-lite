@@ -171,3 +171,77 @@ async def test_admin_create_user_rejects_non_admin(async_client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 403
+
+
+async def _seed_failed_job(email, *, model="gemma4:31b", connection="ollama", content_type="application/msword", error="Unsupported content type: application/msword"):
+    from app.database import async_session
+    from app.models import Document, ExtractionJob, JobStatus, User
+    from sqlalchemy import select
+
+    async with async_session() as s:
+        u = (await s.execute(select(User).where(User.email == email))).scalar_one()
+        doc = Document(
+            user_id=u.id,
+            filename="bad.doc",
+            content_type=content_type,
+            file_size=12,
+            storage_path="storage/bad.doc",
+        )
+        s.add(doc)
+        await s.flush()
+        job = ExtractionJob(
+            user_id=u.id,
+            document_id=doc.id,
+            status=JobStatus.failed,
+            pydantic_schema="class X(BaseModel): pass",
+            error_message=error,
+            error_detail="Traceback (most recent call last):\nValueError: " + error,
+            model_name=model,
+            connection_name=connection,
+        )
+        s.add(job)
+        await s.commit()
+        return str(job.id)
+
+
+@pytest.mark.asyncio
+async def test_admin_failures_list(async_client):
+    token = await _make_admin(async_client, "fail-list@example.com")
+    job_id = await _seed_failed_job("fail-list@example.com")
+
+    resp = await async_client.get("/admin/failures/data", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 1
+    row = data["jobs"][0]
+    assert row["id"] == job_id
+    assert row["filename"] == "bad.doc"
+    assert row["content_type"] == "application/msword"
+    assert row["model_name"] == "gemma4:31b"
+    assert "Unsupported content type" in row["error_message"]
+
+
+@pytest.mark.asyncio
+async def test_admin_failures_list_filters(async_client):
+    token = await _make_admin(async_client, "fail-filter@example.com")
+    await _seed_failed_job("fail-filter@example.com", model="gemma4:31b")
+    await _seed_failed_job("fail-filter@example.com", model="qwen3.6:35b", connection="other")
+
+    all_jobs = await async_client.get("/admin/failures/data", headers={"Authorization": f"Bearer {token}"})
+    assert all_jobs.json()["total"] == 2
+
+    filtered = await async_client.get(
+        "/admin/failures/data?model=qwen3.6:35b",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert filtered.json()["total"] == 1
+    assert filtered.json()["jobs"][0]["model_name"] == "qwen3.6:35b"
+
+
+@pytest.mark.asyncio
+async def test_admin_failures_rejects_non_admin(async_client):
+    await async_client.post("/auth/register", json={"email": "plain@example.com", "password": "password123"})
+    login = await async_client.post("/auth/login", json={"email": "plain@example.com", "password": "password123"})
+    token = login.json()["token"]
+    resp = await async_client.get("/admin/failures/data", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 403
