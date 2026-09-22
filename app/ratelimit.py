@@ -41,18 +41,6 @@ class TokenBucket:
         return max(1, int(seconds + 0.999))
 
 
-_limiter = None
-
-
-def get_limiter() -> TokenBucket:
-    global _limiter
-    if _limiter is None:
-        from app.config import settings
-
-        _limiter = TokenBucket(settings.rate_limit_extract, 60)
-    return _limiter
-
-
 def make_limiters() -> dict[str, TokenBucket]:
     from app.config import settings
 
