@@ -328,7 +328,7 @@ async def test_ui_job_result_page_shows_tokens(async_client, db_session, patch_a
 
 @pytest.mark.asyncio
 async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
-    await async_client.post("/auth/register", json={
+    reg = await async_client.post("/auth/register", json={
         "email": "jobs@example.com",
         "password": "password123",
     })
@@ -338,6 +338,7 @@ async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session
 
     job = ExtractionJob(
         document_id=doc.id,
+        user_id=uuid.UUID(reg.json()["user"]["id"]),
         status=JobStatus.pending,
         pydantic_schema="from pydantic import BaseModel\nclass X(BaseModel):\n  y: str",
     )
