@@ -182,12 +182,16 @@ async def test_batch_size_limit_rejects_51_files(async_client):
 
 
 @pytest.mark.asyncio
-async def test_batch_estimate(async_client):
+async def test_batch_estimate(async_client, db_session):
+    from app.models import LLMConnection
+
     reg = await async_client.post("/auth/register", json={
         "email": "batch-estimate@example.com",
         "password": "password123",
     })
     token = reg.json()["token"]
+    db_session.add(LLMConnection(name="openai", provider="openai", user_id=None, config={}, secrets="{}"))
+    await db_session.commit()
 
     resp = await async_client.post("/api/batches/estimate", json={
         "file_sizes": [4000, 4000],
