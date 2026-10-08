@@ -75,3 +75,13 @@ async def test_authorize_model_admin_bypasses_admin_only(db_session):
 
     result = await authorize_model(db_session, admin, "ollama/ollama/secret")
     assert result == ("ollama", "ollama", "secret")
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_allows_missing_registry_row(db_session):
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+
+    result = await authorize_model(db_session, user, "ollama/ollama/never-synced")
+    assert result == ("ollama", "ollama", "never-synced")
