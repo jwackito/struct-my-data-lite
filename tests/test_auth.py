@@ -24,6 +24,17 @@ def test_decode_invalid_jwt():
     assert decode_jwt("not-a-valid-token") is None
 
 
+def test_jwt_secret_required_outside_dev(monkeypatch):
+    import app.auth as auth
+
+    monkeypatch.setattr(auth.settings, "env", "prod")
+    monkeypatch.setattr(auth.settings, "jwt_secret", "")
+    monkeypatch.setattr(auth, "_jwt_secret_cache", None)
+
+    with pytest.raises(RuntimeError):
+        auth._jwt_secret()
+
+
 @pytest.mark.asyncio
 async def test_get_current_user_no_token():
     from app.auth import get_current_user
