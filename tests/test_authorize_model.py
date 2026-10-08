@@ -1,4 +1,5 @@
 import pytest
+from fastapi import HTTPException
 
 from app.models import ModelRegistry, User
 from app.providers.factory import authorize_model
@@ -14,3 +15,16 @@ async def test_authorize_model_allows_valid_global_model(db_session):
 
     result = await authorize_model(db_session, user, "ollama/ollama/qwen-test")
     assert result == ("ollama", "ollama", "qwen-test")
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_rejects_admin_only_for_user(db_session):
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+    db_session.add(ModelRegistry(connection_id=None, model_name="secret", enabled=True, admin_only=True))
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_model(db_session, user, "ollama/ollama/secret")
+    assert exc.value.status_code == 403
