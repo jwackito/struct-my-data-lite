@@ -187,3 +187,35 @@ async def test_get_job_hides_foreign_job(async_client, db_session, patch_async_s
         headers={"Authorization": f"Bearer {attacker.json()['token']}"},
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_ui_job_result_hides_foreign_job(async_client, db_session, patch_async_session):
+    from app.models import ExtractionJob
+
+    owner = await async_client.post("/auth/register", json={
+        "email": "uiowner@example.com",
+        "password": "password123",
+    })
+    attacker = await async_client.post("/auth/register", json={
+        "email": "uiattacker@example.com",
+        "password": "password123",
+    })
+    doc = Document(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    job = ExtractionJob(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        document_id=doc.id, pydantic_schema=SCHEMA, output_data={"x": 1},
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get(
+        f"/ui/jobs/{job.id}/result",
+        headers={"Authorization": f"Bearer {attacker.json()['token']}"},
+    )
+    assert resp.status_code == 404
