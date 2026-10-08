@@ -1,0 +1,20 @@
+import pytest
+
+from app.schema_sandbox import safe_exec, validate_schema
+
+
+def test_valid_model_is_accepted():
+    code = (
+        "from pydantic import BaseModel, Field\n"
+        "from typing import List, Optional\n"
+        "from datetime import date\n\n"
+        "class Person(BaseModel):\n"
+        '    name: str = Field(description="Full name")\n'
+        "    age: int = 0\n"
+        "    nickname: Optional[str] = None\n"
+        "    born: date\n"
+        "    tags: List[str]\n"
+    )
+    validate_schema(code)
+    ns = safe_exec(code)
+    assert "Person" in ns
