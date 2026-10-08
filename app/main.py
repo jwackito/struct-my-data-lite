@@ -28,7 +28,8 @@ from app.pricing import calculate_cost, refresh_pricing
 from app.processing import process_job, try_reserve_slot
 from sqlalchemy import cast, Date, update
 from app.providers import list_all_models
-from app.providers.factory import _build_provider, _parse_model_id, _sync_registry
+from app.providers.factory import _build_provider, _parse_model_id, _sync_registry, authorize_model
+from app.quotas import enforce_job_quota
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.schema_parser import parse_schema
 from app.storage import sanitize_filename, save_file
@@ -889,7 +890,8 @@ async def create_extraction(
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
-    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
+    provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
+    await enforce_job_quota(db, user, 1)
     job = ExtractionJob(
         user_id=user.id,
         document_id=document_id,
