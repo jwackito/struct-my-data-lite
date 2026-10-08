@@ -20,6 +20,27 @@ def test_ws_rejects_without_token(patch_async_session):
 
 
 @pytest.mark.asyncio
+async def test_ws_rejects_foreign_job(db_session, patch_async_session):
+    owner = User(email="wsowner@example.com", password_hash="x", display_name="o", role="user")
+    attacker = User(email="wsattacker@example.com", password_hash="x", display_name="a", role="user")
+    db_session.add_all([owner, attacker])
+    await db_session.commit()
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.flush()
+    job = ExtractionJob(user_id=owner.id, document_id=doc.id, status=JobStatus.running, pydantic_schema="x")
+    db_session.add(job)
+    await db_session.commit()
+    token = create_jwt(str(attacker.id), attacker.role)
+
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with client.websocket_connect(f"/ws/jobs/{job.id}", cookies={"token": token}):
+            pass
+    assert exc.value.code == 4403
+
+
+@pytest.mark.asyncio
 async def test_connect_tracks_connection(db_session, patch_async_session):
     user = User(email="ws@example.com", password_hash="x", display_name="w", role="user")
     db_session.add(user)
