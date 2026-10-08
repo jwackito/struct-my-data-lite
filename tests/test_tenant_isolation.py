@@ -219,3 +219,29 @@ async def test_ui_job_result_hides_foreign_job(async_client, db_session, patch_a
         headers={"Authorization": f"Bearer {attacker.json()['token']}"},
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_foreign_document(async_client, db_session, patch_async_session):
+    owner = await async_client.post("/auth/register", json={
+        "email": "batchowner@example.com",
+        "password": "password123",
+    })
+    attacker = await async_client.post("/auth/register", json={
+        "email": "batchattacker@example.com",
+        "password": "password123",
+    })
+    doc = Document(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(
+            "/api/batches",
+            json={"document_ids": [str(doc.id)], "pydantic_schema": SCHEMA},
+            headers={"Authorization": f"Bearer {attacker.json()['token']}"},
+        )
+    assert resp.status_code == 403
