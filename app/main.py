@@ -999,19 +999,23 @@ async def ui_batch_extract(
     except SyntaxError as e:
         return HTMLResponse(f'<div style="color:red">{t_req("Invalid Pydantic schema: {error}", error=e)}</div>')
 
+    provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
+    await enforce_job_quota(db, user, len(file))
+
     batch = Batch(user_id=user.id, name=f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     db.add(batch)
     await db.commit()
     await db.refresh(batch)
 
-    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job_ids = []
     for up in file:
         content = await up.read()
         if len(content) > settings.max_upload_size:
             continue
         content_hash = hashlib.sha256(content).hexdigest()
-        result = await db.execute(select(Document).where(Document.content_hash == content_hash))
+        result = await db.execute(
+            select(Document).where(Document.user_id == user.id, Document.content_hash == content_hash)
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             storage_path = save_file(up.filename or "unnamed", content)
