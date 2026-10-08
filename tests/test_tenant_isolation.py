@@ -155,3 +155,35 @@ async def test_extract_rejects_admin_only_model(async_client, db_session, patch_
             headers={"Authorization": f"Bearer {reg.json()['token']}"},
         )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_job_hides_foreign_job(async_client, db_session, patch_async_session):
+    from app.models import ExtractionJob
+
+    owner = await async_client.post("/auth/register", json={
+        "email": "jobowner@example.com",
+        "password": "password123",
+    })
+    attacker = await async_client.post("/auth/register", json={
+        "email": "jobattacker@example.com",
+        "password": "password123",
+    })
+    doc = Document(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    job = ExtractionJob(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        document_id=doc.id, pydantic_schema=SCHEMA,
+    )
+    db_session.add(job)
+    await db_session.commit()
+
+    resp = await async_client.get(
+        f"/jobs/{job.id}",
+        headers={"Authorization": f"Bearer {attacker.json()['token']}"},
+    )
+    assert resp.status_code == 404
