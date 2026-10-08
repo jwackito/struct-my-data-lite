@@ -14,6 +14,7 @@ from starlette.responses import FileResponse, HTMLResponse, JSONResponse, Redire
 
 from app.auth import (
     _extract_token,
+    _jwt_secret,
     _resolve_api_token,
     create_jwt,
     decode_jwt,
@@ -53,6 +54,7 @@ templates.env.globals["t"] = t
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
+    _jwt_secret()
     if not settings.skip_db_wait:
         await wait_for_db()
     try:
