@@ -34,3 +34,11 @@ def test_open_call_is_rejected():
         validate_schema(code)
     with pytest.raises(ValueError):
         safe_exec(code)
+
+
+def test_dunder_traversal_is_rejected():
+    code = "x = ().__class__.__bases__\n"
+    with pytest.raises(ValueError):
+        validate_schema(code)
+    with pytest.raises(ValueError):
+        safe_exec(code)
