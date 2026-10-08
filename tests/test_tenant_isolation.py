@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import patch
 
 import pytest
 
@@ -63,3 +64,32 @@ async def test_identical_bytes_by_same_user_dedup(async_client, db_session, patc
         "/upload", files={"file": ("b.txt", b"dedup me", "text/plain")}, headers=headers,
     )
     assert r1.json()["id"] == r2.json()["id"]
+
+
+SCHEMA = "from pydantic import BaseModel\n\nclass X(BaseModel):\n    y: str\n"
+
+
+@pytest.mark.asyncio
+async def test_extract_rejects_foreign_document(async_client, db_session, patch_async_session):
+    owner = await async_client.post("/auth/register", json={
+        "email": "owner@example.com",
+        "password": "password123",
+    })
+    attacker = await async_client.post("/auth/register", json={
+        "email": "attacker@example.com",
+        "password": "password123",
+    })
+    doc = Document(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        filename="secret.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(
+            "/extract",
+            json={"document_id": str(doc.id), "pydantic_schema": SCHEMA},
+            headers={"Authorization": f"Bearer {attacker.json()['token']}"},
+        )
+    assert resp.status_code == 403
