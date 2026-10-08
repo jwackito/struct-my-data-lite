@@ -42,3 +42,23 @@ async def test_active_cap_rejects_over_limit(db_session, monkeypatch):
     with pytest.raises(HTTPException) as exc:
         await enforce_job_quota(db_session, user, 1)
     assert exc.value.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_active_cap_is_per_user(db_session, monkeypatch):
+    monkeypatch.setattr(settings, "usage_enforced", True)
+    monkeypatch.setattr(settings, "per_user_concurrency", 1)
+
+    alice = User(email="alice@example.com", password_hash="x", display_name="a", role="user")
+    bob = User(email="bob@example.com", password_hash="x", display_name="b", role="user")
+    db_session.add_all([alice, bob])
+    await db_session.commit()
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.commit()
+    db_session.add(ExtractionJob(
+        user_id=alice.id, document_id=doc.id, status=JobStatus.running, pydantic_schema="x",
+    ))
+    await db_session.commit()
+
+    await enforce_job_quota(db_session, bob, 1)
