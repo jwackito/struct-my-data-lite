@@ -352,7 +352,7 @@ async def test_ui_job_pending_polling_div_has_outerhtml(async_client, db_session
 
 @pytest.mark.asyncio
 async def test_ui_job_retry_polling_div_has_outerhtml(async_client, db_session, patch_async_session):
-    await async_client.post("/auth/register", json={
+    reg = await async_client.post("/auth/register", json={
         "email": "jobs@example.com",
         "password": "password123",
     })
@@ -362,6 +362,7 @@ async def test_ui_job_retry_polling_div_has_outerhtml(async_client, db_session, 
 
     job = ExtractionJob(
         document_id=doc.id,
+        user_id=uuid.UUID(reg.json()["user"]["id"]),
         status=JobStatus.failed,
         pydantic_schema="x",
         error_message="oops",
