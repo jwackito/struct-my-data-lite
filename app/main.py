@@ -433,6 +433,15 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
+    docs = []
+    for doc_id in document_ids:
+        doc = await db.get(Document, doc_id)
+        if not doc:
+            raise HTTPException(status_code=404, detail=t_req("Document not found"))
+        if not _can_access(doc.user_id, user):
+            raise HTTPException(status_code=403, detail=t_req("Access denied"))
+        docs.append(doc)
+
     batch = Batch(user_id=user.id, name=name)
     db.add(batch)
     await db.commit()
@@ -440,10 +449,7 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
 
     provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job_ids = []
-    for doc_id in document_ids:
-        doc = await db.get(Document, doc_id)
-        if not doc:
-            continue
+    for doc in docs:
         job = ExtractionJob(
             user_id=user.id,
             batch_id=batch.id,
