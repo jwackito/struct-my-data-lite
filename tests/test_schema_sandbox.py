@@ -48,3 +48,21 @@ def test_disallowed_import_is_rejected():
     code = "import os\n\nclass X(BaseModel):\n    pass\n"
     with pytest.raises(ValueError):
         validate_schema(code)
+
+
+def test_generated_builder_schema_executes():
+    import pydantic
+
+    from app.schema_codegen import build_code
+
+    fields = [
+        {"name": "name", "type": "str", "description": "Full name"},
+        {"name": "age", "type": "int", "default": "0"},
+        {"name": "nickname", "type": "str", "optional": True},
+        {"name": "born", "type": "date"},
+        {"name": "tags", "type": "List[str]"},
+        {"name": "addr", "type": "Object", "children": [{"name": "street", "type": "str"}]},
+    ]
+    code = build_code("Root", fields)
+    ns = safe_exec(code)
+    assert issubclass(ns["Root"], pydantic.BaseModel)
