@@ -120,7 +120,12 @@ def test_extract_invalid_schema(mock_instructor_class):
 @patch("app.extraction.Instructor")
 def test_extract_rejects_unsafe_schema(mock_instructor_class):
     service = ExtractionService(MagicMock())
-    schema = "x = __import__('os')\n\nclass X(BaseModel):\n    y: str\n"
+    schema = (
+        "from pydantic import BaseModel\n"
+        "x = __import__('os')\n\n"
+        "class X(BaseModel):\n"
+        "    y: str\n"
+    )
     with pytest.raises(ValueError, match="Invalid schema"):
         service.extract("hello", schema, "test-model")
 
