@@ -63,3 +63,15 @@ async def test_authorize_model_allow_grant_bypasses_admin_only(db_session):
 
     result = await authorize_model(db_session, user, "ollama/ollama/premium")
     assert result == ("ollama", "ollama", "premium")
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_admin_bypasses_admin_only(db_session):
+    admin = User(email="a@example.com", password_hash="x", display_name="a", role="admin")
+    db_session.add(admin)
+    await db_session.commit()
+    db_session.add(ModelRegistry(connection_id=None, model_name="secret", enabled=True, admin_only=True))
+    await db_session.commit()
+
+    result = await authorize_model(db_session, admin, "ollama/ollama/secret")
+    assert result == ("ollama", "ollama", "secret")
