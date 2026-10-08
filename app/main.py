@@ -1093,7 +1093,7 @@ def _fmt_ms(ms: int) -> str:
 @app.get("/ui/jobs/{job_id}")
 async def ui_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
-    if not job:
+    if not job or not _can_access(job.user_id, user):
         return HTMLResponse(f'<div>{t_req("Job not found")}</div>')
 
     if job.status in (JobStatus.pending, JobStatus.running):
@@ -1112,7 +1112,7 @@ async def ui_job_retry(
     db: AsyncSession = Depends(get_db),
 ):
     job = await db.get(ExtractionJob, job_id)
-    if not job:
+    if not job or not _can_access(job.user_id, user):
         return HTMLResponse(f'<div>{t_req("Job not found")}</div>')
 
     st = job.status
@@ -1137,7 +1137,7 @@ async def ui_job_retry(
 @app.get("/ui/jobs/{job_id}/download")
 async def ui_job_download(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
-    if not job:
+    if not job or not _can_access(job.user_id, user):
         raise HTTPException(status_code=404, detail=t_req("Job not found"))
     if not job.output_data:
         raise HTTPException(status_code=404, detail=t_req("No output data available"))
@@ -1153,7 +1153,7 @@ async def ui_job_download(job_id: uuid.UUID, user: User = Depends(get_current_us
 @app.get("/ui/jobs/{job_id}/result")
 async def ui_job_result_page(job_id: uuid.UUID, request: Request, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
-    if not job:
+    if not job or not _can_access(job.user_id, user):
         raise HTTPException(status_code=404, detail=t_req("Job not found"))
 
     st = job.status
