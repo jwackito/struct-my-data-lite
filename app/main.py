@@ -403,7 +403,7 @@ async def api_batch_estimate(body: dict, user: User = Depends(get_current_user),
     if len(file_sizes) > settings.max_batch_size:
         raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
 
-    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
+    provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     estimated_tokens = sum(size / 4 for size in file_sizes)
     estimated_cost = calculate_cost(provider_type, model_name, estimated_tokens, estimated_tokens / 4)
 
@@ -442,12 +442,14 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
             raise HTTPException(status_code=403, detail=t_req("Access denied"))
         docs.append(doc)
 
+    provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
+    await enforce_job_quota(db, user, len(docs))
+
     batch = Batch(user_id=user.id, name=name)
     db.add(batch)
     await db.commit()
     await db.refresh(batch)
 
-    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
     job_ids = []
     for doc in docs:
         job = ExtractionJob(
