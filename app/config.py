@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     rate_limit_batch: int = 5
     skip_db_wait: bool = False
     log_level: str = "INFO"
+    env: str = "dev"
+    per_user_concurrency: int = 1
+    daily_job_cap: int = 0
+    usage_enforced: bool = False
 
     class Config:
         env_file = "etc/.env"
