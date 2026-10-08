@@ -296,7 +296,7 @@ async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_as
 
 @pytest.mark.asyncio
 async def test_ui_job_result_page_shows_tokens(async_client, db_session, patch_async_session):
-    await async_client.post("/auth/register", json={
+    reg = await async_client.post("/auth/register", json={
         "email": "jobs@example.com",
         "password": "password123",
     })
@@ -306,6 +306,7 @@ async def test_ui_job_result_page_shows_tokens(async_client, db_session, patch_a
 
     job = ExtractionJob(
         document_id=doc.id,
+        user_id=uuid.UUID(reg.json()["user"]["id"]),
         status=JobStatus.completed,
         pydantic_schema="x",
         output_data={"name": "test"},
