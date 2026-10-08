@@ -18,3 +18,11 @@ def test_valid_model_is_accepted():
     validate_schema(code)
     ns = safe_exec(code)
     assert "Person" in ns
+
+
+def test_import_dunder_call_is_rejected():
+    code = "x = __import__('os')\n"
+    with pytest.raises(ValueError):
+        validate_schema(code)
+    with pytest.raises(ValueError):
+        safe_exec(code)
