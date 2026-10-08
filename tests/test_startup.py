@@ -3,6 +3,21 @@ from unittest.mock import AsyncMock, MagicMock
 
 
 @pytest.mark.asyncio
+async def test_lifespan_requires_jwt_secret_outside_dev(monkeypatch):
+    import app.auth as auth
+    from app.main import app, lifespan
+
+    monkeypatch.setattr(auth.settings, "env", "prod")
+    monkeypatch.setattr(auth.settings, "jwt_secret", "")
+    monkeypatch.setattr(auth, "_jwt_secret_cache", None)
+    monkeypatch.setattr("app.main.settings.skip_db_wait", True)
+
+    with pytest.raises(RuntimeError):
+        async with lifespan(app):
+            pass
+
+
+@pytest.mark.asyncio
 async def test_wait_for_db_succeeds():
     from app.database import wait_for_db
 
