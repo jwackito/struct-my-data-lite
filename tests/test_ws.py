@@ -3,10 +3,19 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from starlette.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from app.main import app
 from app.models import Document, ExtractionJob, JobStatus
 from app.ws import ConnectionManager, manager
+
+
+def test_ws_rejects_without_token(patch_async_session):
+    client = TestClient(app)
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with client.websocket_connect(f"/ws/jobs/{uuid.uuid4()}"):
+            pass
+    assert exc.value.code == 4401
 
 
 @pytest.mark.asyncio
