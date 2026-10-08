@@ -20,6 +20,8 @@ def _jwt_secret() -> str:
     global _jwt_secret_cache
     if _jwt_secret_cache is not None:
         return _jwt_secret_cache
+    if not settings.jwt_secret and settings.env != "dev":
+        raise RuntimeError("JWT_SECRET must be set when ENV is not 'dev'")
     _jwt_secret_cache = settings.jwt_secret or secrets.token_urlsafe(32)
     return _jwt_secret_cache
 
