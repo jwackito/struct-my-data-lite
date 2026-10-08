@@ -98,3 +98,19 @@ async def test_authorize_model_rejects_disabled_registry_row(db_session):
     with pytest.raises(HTTPException) as exc:
         await authorize_model(db_session, user, "ollama/ollama/off")
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_rejects_foreign_personal_connection(db_session):
+    from app.models import LLMConnection
+
+    alice = User(email="alice@example.com", password_hash="x", display_name="alice", role="user")
+    bob = User(email="bob@example.com", password_hash="x", display_name="bob", role="user")
+    db_session.add_all([alice, bob])
+    await db_session.commit()
+    db_session.add(LLMConnection(name="bob-key", provider="openai", user_id=bob.id, config={}, secrets="{}"))
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_model(db_session, alice, "openai/bob-key/gpt-4o")
+    assert exc.value.status_code == 403
