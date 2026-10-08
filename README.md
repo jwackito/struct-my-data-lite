@@ -228,12 +228,17 @@ The UI ships in English and Spanish. A language switcher (EN/ES) appears on ever
 | `OPENAI_BASE_URL` | `""` | OpenAI-compatible base URL (optional) |
 | `GEMINI_API_KEY` | `""` | Gemini API key (optional, use connections UI instead) |
 | `APP_SECRET_KEY` | `""` | Fernet key for encrypting stored provider secrets |
-| `JWT_SECRET` | `""` (auto-generated) | Secret for signing JWTs |
+| `JWT_SECRET` | `""` (auto-generated in dev) | Secret for signing JWTs; **required** when `ENV` is not `dev` |
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `JWT_EXPIRY_HOURS` | `24` | JWT session lifetime in hours |
 | `ALLOW_REGISTRATION` | `true` | Whether public registration is open |
+| `ENV` | `dev` | Deployment environment; non-`dev` enforces strict secrets |
+| `USAGE_ENFORCED` | `false` | Master switch for per-user caps |
+| `PER_USER_CONCURRENCY` | `1` | Max concurrent pending+running jobs per user (when enforced) |
+| `DAILY_JOB_CAP` | `0` | Max jobs per user per day; `0` = unlimited (when enforced) |
 
-For production, at minimum set `DATABASE_URL`, `OLLAMA_HOST`, and `OLLAMA_MODEL`.
+For production, at minimum set `DATABASE_URL`, `OLLAMA_HOST`, `OLLAMA_MODEL`,
+`JWT_SECRET`, and `ENV=prod`.
 
 ## Development
 
