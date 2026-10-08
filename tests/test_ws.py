@@ -5,8 +5,9 @@ import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from app.auth import create_jwt
 from app.main import app
-from app.models import Document, ExtractionJob, JobStatus
+from app.models import Document, ExtractionJob, JobStatus, User
 from app.ws import ConnectionManager, manager
 
 
@@ -19,13 +20,23 @@ def test_ws_rejects_without_token(patch_async_session):
 
 
 @pytest.mark.asyncio
-async def test_connect_tracks_connection(patch_async_session):
-    job_id = uuid.uuid4()
+async def test_connect_tracks_connection(db_session, patch_async_session):
+    user = User(email="ws@example.com", password_hash="x", display_name="w", role="user")
+    db_session.add(user)
+    await db_session.commit()
+    doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
+    db_session.add(doc)
+    await db_session.flush()
+    job = ExtractionJob(user_id=user.id, document_id=doc.id, status=JobStatus.running, pydantic_schema="x")
+    db_session.add(job)
+    await db_session.commit()
+    token = create_jwt(str(user.id), user.role)
+
     client = TestClient(app)
-    with client.websocket_connect(f"/ws/jobs/{job_id}"):
-        assert job_id in manager.active
-        assert len(manager.active[job_id]) == 1
-    manager.active.pop(job_id, None)
+    with client.websocket_connect(f"/ws/jobs/{job.id}", cookies={"token": token}):
+        assert job.id in manager.active
+        assert len(manager.active[job.id]) == 1
+    manager.active.pop(job.id, None)
 
 
 @pytest.mark.asyncio
