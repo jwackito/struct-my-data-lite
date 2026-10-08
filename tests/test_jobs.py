@@ -207,7 +207,7 @@ async def test_retry_failed_job(async_client, db_session, patch_async_session):
 
 @pytest.mark.asyncio
 async def test_retry_completed_job_rejected(async_client, db_session, patch_async_session):
-    await async_client.post("/auth/register", json={
+    reg = await async_client.post("/auth/register", json={
         "email": "jobs@example.com",
         "password": "password123",
     })
@@ -215,7 +215,7 @@ async def test_retry_completed_job_rejected(async_client, db_session, patch_asyn
     db_session.add(doc)
     await db_session.commit()
 
-    job = ExtractionJob(document_id=doc.id, status=JobStatus.completed, pydantic_schema="x", output_data={})
+    job = ExtractionJob(document_id=doc.id, user_id=uuid.UUID(reg.json()["user"]["id"]), status=JobStatus.completed, pydantic_schema="x", output_data={})
     db_session.add(job)
     await db_session.commit()
 
