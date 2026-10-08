@@ -881,6 +881,8 @@ async def create_extraction(
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail=t_req("Document not found"))
+    if not _can_access(doc.user_id, user):
+        raise HTTPException(status_code=403, detail=t_req("Access denied"))
 
     try:
         compile(pydantic_schema, "<schema>", "exec")
