@@ -26,3 +26,11 @@ def test_import_dunder_call_is_rejected():
         validate_schema(code)
     with pytest.raises(ValueError):
         safe_exec(code)
+
+
+def test_open_call_is_rejected():
+    code = "x = open('/etc/passwd')\n"
+    with pytest.raises(ValueError):
+        validate_schema(code)
+    with pytest.raises(ValueError):
+        safe_exec(code)
