@@ -12,7 +12,16 @@ from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app.auth import create_jwt, decode_jwt, get_admin_user, get_current_user, hash_password, verify_password
+from app.auth import (
+    _extract_token,
+    _resolve_api_token,
+    create_jwt,
+    decode_jwt,
+    get_admin_user,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 from app.config import settings
 from app.connections import (
     delete_connection,
@@ -1942,27 +1951,47 @@ async def admin_delete_user(
 
 @app.websocket("/ws/jobs/{job_id}")
 async def websocket_endpoint(ws: WebSocket, job_id: uuid.UUID):
-    await manager.connect(job_id, ws)
-    try:
-        async with async_session() as db:
-            job = await db.get(ExtractionJob, job_id)
-            if job:
-                await ws.send_json({
-                    "event": "status",
-                    "job_id": str(job.id),
-                    "status": job.status,
-                    "output_data": job.output_data,
-                    "error_message": job.error_message,
-                    "input_tokens": job.input_tokens,
-                    "output_tokens": job.output_tokens,
-                    "upload_duration_ms": job.upload_duration_ms,
-                    "parsing_duration_ms": job.parsing_duration_ms,
-                    "llm_duration_ms": job.llm_duration_ms,
-                    "connection_name": job.connection_name,
-                    "provider_type": job.provider_type,
-                    "model_name": job.model_name,
-                })
-        while True:
-            await ws.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(job_id, ws)
+    token = _extract_token(ws) or ws.query_params.get("token")
+    if not token:
+        await ws.close(code=4401)
+        return
+
+    async with async_session() as db:
+        user = None
+        payload = decode_jwt(token)
+        if payload:
+            user = await db.get(User, payload.get("sub"))
+            if user and not user.is_active:
+                user = None
+        if user is None:
+            user = await _resolve_api_token(token, db)
+        if user is None:
+            await ws.close(code=4401)
+            return
+
+        job = await db.get(ExtractionJob, job_id)
+        if not job or not _can_access(job.user_id, user):
+            await ws.close(code=4403)
+            return
+
+        await manager.connect(job_id, ws)
+        try:
+            await ws.send_json({
+                "event": "status",
+                "job_id": str(job.id),
+                "status": job.status,
+                "output_data": job.output_data,
+                "error_message": job.error_message,
+                "input_tokens": job.input_tokens,
+                "output_tokens": job.output_tokens,
+                "upload_duration_ms": job.upload_duration_ms,
+                "parsing_duration_ms": job.parsing_duration_ms,
+                "llm_duration_ms": job.llm_duration_ms,
+                "connection_name": job.connection_name,
+                "provider_type": job.provider_type,
+                "model_name": job.model_name,
+            })
+            while True:
+                await ws.receive_text()
+        except WebSocketDisconnect:
+            manager.disconnect(job_id, ws)
