@@ -85,3 +85,16 @@ async def test_authorize_model_allows_missing_registry_row(db_session):
 
     result = await authorize_model(db_session, user, "ollama/ollama/never-synced")
     assert result == ("ollama", "ollama", "never-synced")
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_rejects_disabled_registry_row(db_session):
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+    db_session.add(ModelRegistry(connection_id=None, model_name="off", enabled=False))
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_model(db_session, user, "ollama/ollama/off")
+    assert exc.value.status_code == 403
