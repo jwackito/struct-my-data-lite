@@ -126,3 +126,32 @@ async def test_extract_admin_can_access_foreign_document(async_client, db_sessio
             headers={"Authorization": f"Bearer {admin.json()['token']}"},
         )
     assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_extract_rejects_admin_only_model(async_client, db_session, patch_async_session):
+    from app.models import ModelRegistry
+
+    reg = await async_client.post("/auth/register", json={
+        "email": "modeluser@example.com",
+        "password": "password123",
+    })
+    db_session.add(ModelRegistry(connection_id=None, model_name="secret-model", enabled=True, admin_only=True))
+    doc = Document(
+        user_id=uuid.UUID(reg.json()["user"]["id"]),
+        filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(
+            "/extract",
+            json={
+                "document_id": str(doc.id),
+                "pydantic_schema": SCHEMA,
+                "model_id": "ollama/ollama/secret-model",
+            },
+            headers={"Authorization": f"Bearer {reg.json()['token']}"},
+        )
+    assert resp.status_code == 403
