@@ -41,15 +41,19 @@ async def test_connect_tracks_connection(db_session, patch_async_session):
 
 @pytest.mark.asyncio
 async def test_known_job_receives_status(db_session, patch_async_session):
+    user = User(email="ws2@example.com", password_hash="x", display_name="w", role="user")
+    db_session.add(user)
+    await db_session.commit()
     doc = Document(filename="t.txt", content_type="text/plain", file_size=1, storage_path="/dev/null")
     db_session.add(doc)
-    await db_session.commit()
-    job = ExtractionJob(document_id=doc.id, status=JobStatus.running, pydantic_schema="x")
+    await db_session.flush()
+    job = ExtractionJob(user_id=user.id, document_id=doc.id, status=JobStatus.running, pydantic_schema="x")
     db_session.add(job)
     await db_session.commit()
+    token = create_jwt(str(user.id), user.role)
 
     client = TestClient(app)
-    with client.websocket_connect(f"/ws/jobs/{job.id}") as ws:
+    with client.websocket_connect(f"/ws/jobs/{job.id}", cookies={"token": token}) as ws:
         data = ws.receive_json()
         assert data["event"] == "status"
         assert data["status"] == "running"
