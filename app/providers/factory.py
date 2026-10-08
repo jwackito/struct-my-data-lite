@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connections import get_connection, list_connections
 from app.config import settings
+from app.i18n import t_req
 from app.models import ModelRegistry, User, UserModelAccess
 from app.providers.base import LLMProvider, ModelInfo
 from app.providers.gemini import GeminiProvider
@@ -130,3 +132,70 @@ async def list_all_models(db: AsyncSession, user: User | None = None) -> list[di
 
     await db.commit()
     return results
+
+
+async def _parse_model_id(model_id: str, db: AsyncSession | None = None) -> tuple[str, str, str | None]:
+    if not model_id:
+        if db is not None:
+            result = await db.execute(
+                select(ModelRegistry).where(
+                    ModelRegistry.connection_id.is_(None),
+                    ModelRegistry.is_default.is_(True),
+                )
+            )
+            reg = result.scalar_one_or_none()
+            if reg:
+                return "ollama", "ollama", reg.model_name
+        return "ollama", "ollama", settings.ollama_model
+    parts = model_id.split("/", 2)
+    if len(parts) == 3:
+        provider_type, connection_name, model_name = parts
+        return provider_type, connection_name, model_name
+    if len(parts) == 2:
+        provider_type, model_name = parts
+        return provider_type, provider_type, model_name
+    return model_id, model_id, None
+
+
+async def authorize_model(db: AsyncSession, user: User, model_id: str) -> tuple[str, str, str | None]:
+    """Enforce model access for job creation.
+
+    Resolves a connection visible to the caller (their own or a global one),
+    then applies the registry's enabled/admin_only flags and per-user grants.
+    A model with no registry row is allowed (D18-14). Raises HTTP 403 on denial.
+    """
+    provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
+
+    conn = await get_connection(connection_name, db, user=user)
+    if not conn:
+        conn = await get_connection(connection_name, db)
+    if not conn or not conn.get("enabled", True):
+        raise HTTPException(status_code=403, detail=t_req("Model not available"))
+
+    result = await db.execute(
+        select(ModelRegistry).where(
+            ModelRegistry.connection_id == conn.get("id"),
+            ModelRegistry.model_name == model_name,
+        )
+    )
+    reg = result.scalar_one_or_none()
+    if reg is not None:
+        if not reg.enabled:
+            raise HTTPException(status_code=403, detail=t_req("Model not available"))
+        is_admin = user.role == "admin"
+        access = None
+        grant = await db.execute(
+            select(UserModelAccess).where(
+                UserModelAccess.user_id == user.id,
+                UserModelAccess.model_id == reg.id,
+            )
+        )
+        row = grant.scalar_one_or_none()
+        if row:
+            access = row.access
+        if access == "deny":
+            raise HTTPException(status_code=403, detail=t_req("Model not available"))
+        if reg.admin_only and not is_admin and access != "allow":
+            raise HTTPException(status_code=403, detail=t_req("Model not available"))
+
+    return provider_type, connection_name, model_name

@@ -28,7 +28,7 @@ from app.pricing import calculate_cost, refresh_pricing
 from app.processing import process_job, try_reserve_slot
 from sqlalchemy import cast, Date, update
 from app.providers import list_all_models
-from app.providers.factory import _build_provider, _sync_registry
+from app.providers.factory import _build_provider, _parse_model_id, _sync_registry
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.schema_parser import parse_schema
 from app.storage import sanitize_filename, save_file
@@ -860,29 +860,6 @@ async def upload(file: UploadFile, user: User = Depends(get_current_user), db: A
         "created_at": doc.created_at.isoformat(),
         "updated_at": doc.updated_at.isoformat(),
     }
-
-
-async def _parse_model_id(model_id: str, db: AsyncSession | None = None) -> tuple[str, str, str | None]:
-    if not model_id:
-        if db is not None:
-            result = await db.execute(
-                select(ModelRegistry).where(
-                    ModelRegistry.connection_id.is_(None),
-                    ModelRegistry.is_default.is_(True),
-                )
-            )
-            reg = result.scalar_one_or_none()
-            if reg:
-                return "ollama", "ollama", reg.model_name
-        return "ollama", "ollama", settings.ollama_model
-    parts = model_id.split("/", 2)
-    if len(parts) == 3:
-        provider_type, connection_name, model_name = parts
-        return provider_type, connection_name, model_name
-    if len(parts) == 2:
-        provider_type, model_name = parts
-        return provider_type, provider_type, model_name
-    return model_id, model_id, None
 
 
 @app.post("/extract")
