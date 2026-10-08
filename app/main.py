@@ -816,6 +816,12 @@ async def test_connection_endpoint(name: str, body: dict, admin: User = Depends(
     return result
 
 
+def _can_access(owner_id, user: User) -> bool:
+    if user.role == "admin":
+        return True
+    return owner_id is not None and owner_id == user.id
+
+
 @app.post("/upload")
 async def upload(file: UploadFile, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     content = await file.read()
@@ -824,7 +830,7 @@ async def upload(file: UploadFile, user: User = Depends(get_current_user), db: A
 
     content_hash = hashlib.sha256(content).hexdigest()
 
-    stmt = select(Document).where(Document.content_hash == content_hash)
+    stmt = select(Document).where(Document.user_id == user.id, Document.content_hash == content_hash)
     result = await db.execute(stmt)
     existing = result.scalar_one_or_none()
     if existing:
@@ -841,6 +847,7 @@ async def upload(file: UploadFile, user: User = Depends(get_current_user), db: A
     storage_path = save_file(file.filename or "unnamed", content)
 
     doc = Document(
+        user_id=user.id,
         filename=file.filename or "unnamed",
         content_type=file.content_type or "application/octet-stream",
         file_size=len(content),
