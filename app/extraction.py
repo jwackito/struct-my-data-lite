@@ -3,6 +3,8 @@ import base64
 import pydantic
 from instructor import Instructor
 
+from app.schema_sandbox import safe_exec
+
 
 def _find_model(namespace: dict) -> type[pydantic.BaseModel]:
     found = None
@@ -21,7 +23,7 @@ class ExtractionService:
     def extract(self, content: str | dict, schema_code: str, model: str, on_response=None) -> dict:
         namespace = {}
         try:
-            exec(schema_code, namespace)
+            safe_exec(schema_code, namespace)
         except Exception as e:
             raise ValueError(f"Invalid schema code: {e}") from e
 
