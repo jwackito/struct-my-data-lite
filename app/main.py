@@ -917,7 +917,7 @@ async def create_extraction(
 @app.get("/jobs/{job_id}")
 async def get_job(job_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     job = await db.get(ExtractionJob, job_id)
-    if not job:
+    if not job or not _can_access(job.user_id, user):
         raise HTTPException(status_code=404, detail=t_req("Job not found"))
 
     return {
