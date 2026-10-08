@@ -46,3 +46,20 @@ async def test_identical_bytes_by_two_users_are_separate(async_client, db_sessio
         headers={"Authorization": f"Bearer {second.json()['token']}"},
     )
     assert r1.json()["id"] != r2.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_identical_bytes_by_same_user_dedup(async_client, db_session, patch_async_session):
+    reg = await async_client.post("/auth/register", json={
+        "email": "dedup@example.com",
+        "password": "password123",
+    })
+    headers = {"Authorization": f"Bearer {reg.json()['token']}"}
+
+    r1 = await async_client.post(
+        "/upload", files={"file": ("a.txt", b"dedup me", "text/plain")}, headers=headers,
+    )
+    r2 = await async_client.post(
+        "/upload", files={"file": ("b.txt", b"dedup me", "text/plain")}, headers=headers,
+    )
+    assert r1.json()["id"] == r2.json()["id"]
