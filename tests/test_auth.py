@@ -35,6 +35,16 @@ def test_jwt_secret_required_outside_dev(monkeypatch):
         auth._jwt_secret()
 
 
+def test_jwt_secret_falls_back_in_dev(monkeypatch):
+    import app.auth as auth
+
+    monkeypatch.setattr(auth.settings, "env", "dev")
+    monkeypatch.setattr(auth.settings, "jwt_secret", "")
+    monkeypatch.setattr(auth, "_jwt_secret_cache", None)
+
+    assert auth._jwt_secret()
+
+
 @pytest.mark.asyncio
 async def test_get_current_user_no_token():
     from app.auth import get_current_user
