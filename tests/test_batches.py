@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 
@@ -12,7 +14,7 @@ async def test_batch_creation_creates_job_per_document(async_client, db_session)
     from app.models import Document
     doc_ids = []
     for i in range(3):
-        doc = Document(filename=f"doc{i}.txt", content_type="text/plain", file_size=10, storage_path=f"/tmp/doc{i}.txt")
+        doc = Document(user_id=uuid.UUID(reg.json()["user"]["id"]), filename=f"doc{i}.txt", content_type="text/plain", file_size=10, storage_path=f"/tmp/doc{i}.txt")
         db_session.add(doc)
         await db_session.flush()
         doc_ids.append(str(doc.id))
