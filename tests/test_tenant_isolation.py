@@ -2,8 +2,9 @@ import uuid
 from unittest.mock import patch
 
 import pytest
+from sqlalchemy import select
 
-from app.models import Document
+from app.models import Document, User
 
 
 @pytest.mark.asyncio
@@ -93,3 +94,35 @@ async def test_extract_rejects_foreign_document(async_client, db_session, patch_
             headers={"Authorization": f"Bearer {attacker.json()['token']}"},
         )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_extract_admin_can_access_foreign_document(async_client, db_session, patch_async_session):
+    owner = await async_client.post("/auth/register", json={
+        "email": "owner2@example.com",
+        "password": "password123",
+    })
+    admin = await async_client.post("/auth/register", json={
+        "email": "admin2@example.com",
+        "password": "password123",
+    })
+    admin_user = (await db_session.execute(
+        select(User).where(User.email == "admin2@example.com")
+    )).scalar_one()
+    admin_user.role = "admin"
+    await db_session.commit()
+
+    doc = Document(
+        user_id=uuid.UUID(owner.json()["user"]["id"]),
+        filename="secret.txt", content_type="text/plain", file_size=1, storage_path="/dev/null",
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    with patch("app.main.process_job"):
+        resp = await async_client.post(
+            "/extract",
+            json={"document_id": str(doc.id), "pydantic_schema": SCHEMA},
+            headers={"Authorization": f"Bearer {admin.json()['token']}"},
+        )
+    assert resp.status_code == 200
