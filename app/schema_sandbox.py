@@ -207,6 +207,7 @@ def validate_schema(code: str) -> None:
 def safe_exec(code: str, namespace: dict | None = None) -> dict:
     validate_schema(code)
     ns = namespace if namespace is not None else {}
+    ns.setdefault("__name__", "<schema>")
     ns["__builtins__"] = _restricted_builtins()
     exec(compile(code, "<schema>", "exec"), ns)
     return ns
