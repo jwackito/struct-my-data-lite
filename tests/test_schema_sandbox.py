@@ -42,3 +42,9 @@ def test_dunder_traversal_is_rejected():
         validate_schema(code)
     with pytest.raises(ValueError):
         safe_exec(code)
+
+
+def test_disallowed_import_is_rejected():
+    code = "import os\n\nclass X(BaseModel):\n    pass\n"
+    with pytest.raises(ValueError):
+        validate_schema(code)
