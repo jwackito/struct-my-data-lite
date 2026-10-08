@@ -28,3 +28,21 @@ async def test_authorize_model_rejects_admin_only_for_user(db_session):
     with pytest.raises(HTTPException) as exc:
         await authorize_model(db_session, user, "ollama/ollama/secret")
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_authorize_model_rejects_deny_grant(db_session):
+    from app.models import UserModelAccess
+
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+    reg = ModelRegistry(connection_id=None, model_name="blocked", enabled=True)
+    db_session.add(reg)
+    await db_session.commit()
+    db_session.add(UserModelAccess(user_id=user.id, model_id=reg.id, access="deny"))
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_model(db_session, user, "ollama/ollama/blocked")
+    assert exc.value.status_code == 403
