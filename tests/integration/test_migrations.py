@@ -84,6 +84,24 @@ async def test_extraction_jobs_has_error_detail(migration_engine):
 
 
 @pytest.mark.asyncio
+async def test_documents_ownership_indexes(migration_engine):
+    proc = await asyncio.create_subprocess_shell(
+        f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
+        cwd=str(_REPO_ROOT),
+    )
+    await proc.wait()
+    assert proc.returncode == 0, f"upgrade failed (exit {proc.returncode})"
+
+    async with migration_engine.begin() as conn:
+        result = await conn.execute(text(
+            "SELECT indexname FROM pg_indexes WHERE tablename = 'documents'"
+        ))
+        names = [r[0] for r in result.fetchall()]
+    assert "ix_documents_user_id" in names
+    assert "uq_documents_user_hash" in names
+
+
+@pytest.mark.asyncio
 async def test_alembic_downgrade_and_reupgrade(migration_engine):
     proc_up = await asyncio.create_subprocess_shell(
         f"DATABASE_URL={MIGRATION_DB_URL} python -m alembic upgrade head",
