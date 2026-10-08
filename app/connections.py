@@ -12,6 +12,7 @@ from app.models import LLMConnection, User
 
 def get_implicit_ollama() -> dict:
     return {
+        "id": None,
         "name": "ollama",
         "provider": "ollama",
         "config": {
@@ -70,6 +71,7 @@ async def get_connection(name: str, db: AsyncSession, user: User | None = None) 
 
     secrets = decrypt_secrets(row.secrets)
     return {
+        "id": str(row.id) if row.id else None,
         "name": row.name,
         "provider": row.provider,
         "config": {**row.config, **secrets},
