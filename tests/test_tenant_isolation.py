@@ -245,3 +245,22 @@ async def test_batch_rejects_foreign_document(async_client, db_session, patch_as
             headers={"Authorization": f"Bearer {attacker.json()['token']}"},
         )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_batch_estimate_rejects_admin_only_model(async_client, db_session, patch_async_session):
+    from app.models import ModelRegistry
+
+    reg = await async_client.post("/auth/register", json={
+        "email": "estimateuser@example.com",
+        "password": "password123",
+    })
+    db_session.add(ModelRegistry(connection_id=None, model_name="secret-model", enabled=True, admin_only=True))
+    await db_session.commit()
+
+    resp = await async_client.post(
+        "/api/batches/estimate",
+        json={"file_sizes": [4000], "model_id": "ollama/ollama/secret-model"},
+        headers={"Authorization": f"Bearer {reg.json()['token']}"},
+    )
+    assert resp.status_code == 403
