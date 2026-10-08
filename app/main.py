@@ -42,6 +42,7 @@ from app.providers.factory import _build_provider, _parse_model_id, _sync_regist
 from app.quotas import enforce_job_quota
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.schema_parser import parse_schema
+from app.schema_sandbox import validate_schema
 from app.storage import sanitize_filename, save_file
 from app.version import get_version
 from app.ws import manager
@@ -440,8 +441,8 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
     if not pydantic_schema:
         raise HTTPException(status_code=422, detail=t_req("pydantic_schema is required"))
     try:
-        compile(pydantic_schema, "<schema>", "exec")
-    except SyntaxError as e:
+        validate_schema(pydantic_schema)
+    except (SyntaxError, ValueError) as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
     docs = []
@@ -905,8 +906,8 @@ async def create_extraction(
         raise HTTPException(status_code=403, detail=t_req("Access denied"))
 
     try:
-        compile(pydantic_schema, "<schema>", "exec")
-    except SyntaxError as e:
+        validate_schema(pydantic_schema)
+    except (SyntaxError, ValueError) as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
@@ -1006,8 +1007,8 @@ async def ui_batch_extract(
         return HTMLResponse(f'<div style="color:red">{t_req("Batch exceeds max size of {max}", max=settings.max_batch_size)}</div>')
 
     try:
-        compile(pydantic_schema, "<schema>", "exec")
-    except SyntaxError as e:
+        validate_schema(pydantic_schema)
+    except (SyntaxError, ValueError) as e:
         return HTMLResponse(f'<div style="color:red">{t_req("Invalid Pydantic schema: {error}", error=e)}</div>')
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
@@ -1442,6 +1443,7 @@ async def parse_schema_endpoint(body: dict = Body(...), user: User = Depends(get
     if not code:
         raise HTTPException(status_code=422, detail=t_req("Empty schema"))
     try:
+        validate_schema(code)
         result = parse_schema(code)
     except SyntaxError as e:
         raise HTTPException(status_code=422, detail=t_req("Invalid Python syntax: {error}", error=e))
@@ -1476,6 +1478,11 @@ async def import_schema(file: UploadFile, user: User = Depends(get_current_user)
         name = "Imported Schema"
     if not pydantic_schema:
         raise HTTPException(status_code=422, detail=t_req("No schema code found in file"))
+
+    try:
+        validate_schema(pydantic_schema)
+    except (SyntaxError, ValueError) as e:
+        raise HTTPException(status_code=422, detail=t_req("Invalid Pydantic schema: {error}", error=e))
 
     existing = await db.execute(
         select(SavedSchema).where(SavedSchema.user_id == user.id, SavedSchema.name == name)
