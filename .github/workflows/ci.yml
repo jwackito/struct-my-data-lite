@@ -44,4 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Syntax check
-        run: bash -n deploy/*.sh
+        run: |
+          if compgen -G "deploy/*.sh" > /dev/null; then
+            bash -n deploy/*.sh
+          else
+            echo "no deploy/ scripts to check"
+          fi
