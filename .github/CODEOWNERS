@@ -1,0 +1,4 @@
+# Default owner for everything in this repository.
+# GitHub uses this to request reviews; requiring code-owner approval needs a
+# paid plan (branch protection/rulesets on private repos).
+* @jwackito
