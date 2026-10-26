@@ -24,3 +24,14 @@ def test_saas_config_defaults():
     assert s.redis_url == ""
     assert s.invite_only is False
     assert s.worker_max_jobs == 4
+
+
+def test_smtp_config_defaults():
+    s = Settings()
+    assert s.public_base_url == ""
+    assert s.smtp_host == ""
+    assert s.smtp_port == 587
+    assert s.smtp_username == ""
+    assert s.smtp_password == ""
+    assert s.smtp_from == ""
+    assert s.smtp_starttls is True
