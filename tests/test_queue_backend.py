@@ -23,7 +23,11 @@ def test_get_backend_rejects_unknown_backend(monkeypatch):
 
 
 def test_get_backend_arq_without_cloud_module(monkeypatch):
+    import importlib.util
+
     monkeypatch.setattr(queue_mod.settings, "queue_backend", "arq")
+    if importlib.util.find_spec("app.queue.arq_backend") is not None:
+        pytest.skip("cloud edition ships the arq backend")
     with pytest.raises(RuntimeError, match="cloud edition"):
         queue_mod.get_backend()
 
