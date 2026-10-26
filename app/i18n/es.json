@@ -346,5 +346,7 @@
   "You're invited": "Estás invitado",
   "Accept invite": "Aceptar invitación",
   "This invite is invalid or has expired": "Esta invitación no es válida o expiró",
-  "Invite required": "Se requiere una invitación"
+  "Invite required": "Se requiere una invitación",
+  "Something went wrong": "Algo salió mal",
+  "Invite not found": "Invitación no encontrada"
 }
