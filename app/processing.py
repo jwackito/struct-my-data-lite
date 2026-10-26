@@ -14,7 +14,6 @@ from app.hooks import run_job_completion_hooks
 from app.models import Document, ExtractionJob, JobStatus, User
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
-from app.queue import inprocess
 from app.ws import manager
 
 logger = logging.getLogger(__name__)
@@ -39,6 +38,8 @@ def _job_payload(job: ExtractionJob) -> dict:
 
 
 async def process_job(job_id: uuid.UUID):
+    from app.queue import inprocess
+
     await inprocess._queue.run(_run_job(job_id))
 
 
