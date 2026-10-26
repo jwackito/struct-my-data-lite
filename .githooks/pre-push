@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Refuse direct pushes to main (workflow: feature branch + pull request).
+# Enable once per clone: git config core.hooksPath .githooks
+set -eu
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    case "$remote_ref" in
+        refs/heads/main|refs/heads/master)
+            echo "error: direct pushes to '${remote_ref#refs/heads/}' are not allowed." >&2
+            echo "       Work on a branch and open a pull request:" >&2
+            echo "         git switch -c feat/<issue>-<slug>" >&2
+            exit 1
+            ;;
+    esac
+done
