@@ -33,7 +33,9 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-saas.txt
       - name: Run tests
         env:
           SKIP_DB_WAIT: "true"
