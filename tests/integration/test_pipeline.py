@@ -284,3 +284,49 @@ async def test_pipeline_parses_octet_stream_docx_by_extension(async_client, db_s
     job = result.scalar_one()
     assert job.status == JobStatus.completed
     assert job.output_data == {"name": "Alice", "age": 30}
+
+
+@pytest.mark.asyncio
+async def test_job_completion_hooks_run_before_commit(
+    async_client, db_session, patch_async_session, monkeypatch
+):
+    from app import hooks
+
+    seen = []
+
+    async def hook(db, job, user):
+        seen.append((job.status, job.completed_at, user.email))
+
+    monkeypatch.setattr(hooks, "_job_completion_hooks", [hook])
+
+    await async_client.post("/auth/register", json=REGISTER)
+    upload_resp = await async_client.post(
+        "/upload", files={"file": ("input.txt", b"Alice is 30 years old")}
+    )
+    extract_resp = await async_client.post(
+        "/extract",
+        json={
+            "document_id": upload_resp.json()["id"],
+            "pydantic_schema": (
+                "from pydantic import BaseModel\n"
+                "class Person(BaseModel):\n"
+                "    name: str\n"
+            ),
+        },
+    )
+
+    mock_result = MagicMock()
+    mock_result.model_dump.return_value = {"name": "Alice"}
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_result
+
+    with patch("app.processing.get_provider") as mock_get_provider:
+        mock_provider = MagicMock()
+        mock_provider.get_client.return_value = mock_client
+        mock_get_provider.return_value = mock_provider
+        await process_job(uuid.UUID(extract_resp.json()["id"]))
+
+    status, completed_at, email = seen[0]
+    assert status == JobStatus.completed
+    assert completed_at is not None
+    assert email == REGISTER["email"]
