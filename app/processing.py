@@ -11,6 +11,7 @@ from app.connections import get_connection
 from app.config import settings
 from app.database import async_session
 from app.extraction import ExtractionService
+from app.hooks import run_job_completion_hooks
 from app.models import Document, ExtractionJob, JobStatus, User
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
@@ -86,6 +87,7 @@ async def _run_job(job_id: uuid.UUID):
         if not job:
             return
 
+        user = None
         try:
             job.status = JobStatus.running
             await db.commit()
@@ -148,6 +150,7 @@ async def _run_job(job_id: uuid.UUID):
             logger.exception("job %s failed", job_id)
         finally:
             job.completed_at = datetime.now(timezone.utc)
+            await run_job_completion_hooks(db, job, user)
             try:
                 await db.commit()
             except Exception as e:
