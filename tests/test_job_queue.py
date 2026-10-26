@@ -1,6 +1,7 @@
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import select
+from unittest.mock import AsyncMock
 
 import app.main as main_mod
 from app.models import Document, ExtractionJob
@@ -33,7 +34,7 @@ async def test_enqueue_rejects_when_queue_full(monkeypatch):
     monkeypatch.setattr(queue_mod, "_queue", full)
 
     with pytest.raises(HTTPException) as exc:
-        await main_mod._enqueue_jobs(BackgroundTasks(), [object()])
+        await main_mod._enqueue_jobs(AsyncMock(), BackgroundTasks(), [object()])
     assert exc.value.status_code == 503
 
 
