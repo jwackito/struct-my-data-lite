@@ -91,6 +91,46 @@ async def test_register_returns_token(async_client):
 
 
 @pytest.mark.asyncio
+async def test_register_runs_registration_validators(async_client, monkeypatch):
+    from app import hooks
+
+    seen = []
+
+    async def validator(db, payload):
+        seen.append(payload)
+
+    monkeypatch.setattr(hooks, "_registration_validators", [validator])
+
+    resp = await async_client.post("/auth/register", json={
+        "email": "hooked@example.com",
+        "password": "password123",
+    })
+
+    assert resp.status_code == 200
+    assert seen[0]["email"] == "hooked@example.com"
+
+
+@pytest.mark.asyncio
+async def test_register_is_blocked_when_validator_raises(async_client, monkeypatch):
+    from fastapi import HTTPException
+
+    from app import hooks
+
+    async def validator(db, payload):
+        raise HTTPException(status_code=422, detail="invite required")
+
+    monkeypatch.setattr(hooks, "_registration_validators", [validator])
+
+    resp = await async_client.post("/auth/register", json={
+        "email": "no-invite@example.com",
+        "password": "password123",
+    })
+
+    assert resp.status_code == 422
+    assert resp.json()["detail"] == "invite required"
+
+
+@pytest.mark.asyncio
 async def test_register_duplicate_email(async_client):
     await async_client.post("/auth/register", json={
         "email": "dup@example.com",
