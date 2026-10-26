@@ -15,3 +15,11 @@ def test_tenant_isolation_defaults():
     assert s.per_user_concurrency == 1
     assert s.daily_job_cap == 0
     assert s.usage_enforced is False
+
+
+def test_saas_config_defaults():
+    s = Settings()
+    assert s.billing_enabled is False
+    assert s.queue_backend == "inprocess"
+    assert s.redis_url == ""
+    assert s.invite_only is False
