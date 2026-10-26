@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     billing_enabled: bool = False
     queue_backend: str = "inprocess"
     redis_url: str = ""
+    worker_max_jobs: int = 4
     invite_only: bool = False
 
     class Config:
