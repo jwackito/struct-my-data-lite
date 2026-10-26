@@ -23,3 +23,4 @@ def test_saas_config_defaults():
     assert s.queue_backend == "inprocess"
     assert s.redis_url == ""
     assert s.invite_only is False
+    assert s.worker_max_jobs == 4
