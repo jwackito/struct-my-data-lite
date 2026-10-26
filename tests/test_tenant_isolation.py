@@ -87,7 +87,7 @@ async def test_extract_rejects_foreign_document(async_client, db_session, patch_
     db_session.add(doc)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(
             "/extract",
             json={"document_id": str(doc.id), "pydantic_schema": SCHEMA},
@@ -119,7 +119,7 @@ async def test_extract_admin_can_access_foreign_document(async_client, db_sessio
     db_session.add(doc)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(
             "/extract",
             json={"document_id": str(doc.id), "pydantic_schema": SCHEMA},
@@ -144,7 +144,7 @@ async def test_extract_rejects_admin_only_model(async_client, db_session, patch_
     db_session.add(doc)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(
             "/extract",
             json={
@@ -238,7 +238,7 @@ async def test_batch_rejects_foreign_document(async_client, db_session, patch_as
     db_session.add(doc)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(
             "/api/batches",
             json={"document_ids": [str(doc.id)], "pydantic_schema": SCHEMA},
@@ -280,7 +280,7 @@ async def test_extract_rejects_unsafe_schema(async_client, db_session, patch_asy
     await db_session.commit()
     unsafe = "from pydantic import BaseModel\nx = __import__('os')\n\nclass X(BaseModel):\n    y: str\n"
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(
             "/extract",
             json={"document_id": str(doc.id), "pydantic_schema": unsafe},
