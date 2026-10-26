@@ -59,7 +59,8 @@ Types: `test`, `feat`, `fix`, `chore`, `docs`.
 5. Agents open PRs and merge only after the maintainer approves in chat.
 
 Guardrails (Free plan, so no server-side branch protection):
-`git config core.hooksPath .githooks` enables the `pre-push` hook;
+`bash scripts/install_hooks.sh` enables the `pre-push` hook (it copies the hooks
+to an executable location, since git ignores hooks on a `noexec` mount);
 `pr-guards.yml` checks branch/issue/commit format; `main-guard.yml` flags a
 commit that reached `main` without a PR.
 

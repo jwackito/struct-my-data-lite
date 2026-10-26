@@ -17,10 +17,12 @@ Thanks for your interest in Struct My Data.
 `main` is **pull-request only**. There is no server-side branch protection on
 the GitHub Free plan, so the rule is enforced by:
 
-- `.githooks/pre-push` — refuses pushes to `main`. Enable once per clone:
+- `.githooks/pre-push` — refuses pushes to `main`. Install once per clone with
   ```bash
-  git config core.hooksPath .githooks
+  bash scripts/install_hooks.sh
   ```
+  (the script copies the hooks to an executable location, because git silently
+  ignores hooks when the checkout is on a `noexec` mount).
 - `.github/workflows/pr-guards.yml` — branch name, `Closes #N` on an open issue,
   and commit message format.
 - `.github/workflows/main-guard.yml` — fails the run if a commit reaches `main`
