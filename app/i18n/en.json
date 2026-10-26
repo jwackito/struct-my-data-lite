@@ -332,5 +332,19 @@
   "Schema": "Schema",
   "Download document": "Download document",
   "Completed": "Completed",
-  "Output": "Output"
+  "Output": "Output",
+  "Invites": "Invites",
+  "Manage Invites": "Manage Invites",
+  "Invites — Admin — Struct My Data": "Invites — Admin — Struct My Data",
+  "Expires in days": "Expires in days",
+  "Create invite": "Create invite",
+  "Invite link": "Invite link",
+  "Used": "Used",
+  "Expired": "Expired",
+  "Pending": "Pending",
+  "No invites yet": "No invites yet",
+  "You're invited": "You're invited",
+  "Accept invite": "Accept invite",
+  "This invite is invalid or has expired": "This invite is invalid or has expired",
+  "Invite required": "Invite required"
 }
