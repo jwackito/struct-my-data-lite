@@ -18,6 +18,25 @@ async def test_lifespan_requires_jwt_secret_outside_dev(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_lifespan_runs_registered_hooks(monkeypatch):
+    from app import hooks
+    from app.main import app, lifespan
+
+    seen = []
+
+    async def hook(application):
+        seen.append(application)
+
+    monkeypatch.setattr(hooks, "_lifespan_hooks", [hook])
+    monkeypatch.setattr("app.main.settings.skip_db_wait", True)
+
+    async with lifespan(app):
+        pass
+
+    assert seen == [app]
+
+
+@pytest.mark.asyncio
 async def test_wait_for_db_succeeds():
     from app.database import wait_for_db
 
