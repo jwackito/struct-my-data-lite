@@ -1,0 +1,3 @@
+# Edition-specific requirements (spec 24).
+# Lite installs none; the Dockerfile build arg EXTRA_REQUIREMENTS selects a
+# hash-pinned file when present.
