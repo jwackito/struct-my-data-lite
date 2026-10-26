@@ -48,7 +48,7 @@ from app.storage import sanitize_filename, save_file
 from app.version import get_version
 from app.ws import manager
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import cast, Date, update
+from sqlalchemy import cast, Date, delete, update
 
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["t"] = t
@@ -117,11 +117,19 @@ def _rate_limit_user(request: Request):
     return _RateLimitUser(payload["sub"])
 
 
-async def _enqueue_jobs(background_tasks: BackgroundTasks, job_ids: list) -> None:
-    """Hand pending jobs to the configured backend; 503 when it is full."""
+async def _enqueue_jobs(
+    db: AsyncSession, background_tasks: BackgroundTasks, job_ids: list
+) -> None:
+    """Hand pending jobs to the configured backend; 503 when it is full.
+
+    The rows are committed before this call, so a rejection must delete them:
+    otherwise they stay `pending` forever and eat the backend's cap.
+    """
     try:
         await get_backend().enqueue(background_tasks, job_ids)
     except QueueFull:
+        await db.execute(delete(ExtractionJob).where(ExtractionJob.id.in_(job_ids)))
+        await db.commit()
         raise HTTPException(status_code=503, detail=t_req("Server is busy, try again shortly"))
 
 
@@ -479,7 +487,7 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
         job_ids.append(job.id)
     await db.commit()
 
-    await _enqueue_jobs(background_tasks, job_ids)
+    await _enqueue_jobs(db, background_tasks, job_ids)
 
     return {"batch_id": str(batch.id), "job_ids": [str(j) for j in job_ids], "name": batch.name}
 
@@ -585,7 +593,7 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
     await db.commit()
 
     for job_id in retried:
-        await _enqueue_jobs(background_tasks, [job_id])
+        await _enqueue_jobs(db, background_tasks, [job_id])
 
     return {"ok": True, "retried": [str(j) for j in retried]}
 
@@ -926,7 +934,7 @@ async def create_extraction(
     await db.refresh(job)
 
     if background_tasks:
-        await _enqueue_jobs(background_tasks, [job.id])
+        await _enqueue_jobs(db, background_tasks, [job.id])
 
     return {
         "id": str(job.id),
@@ -1056,7 +1064,7 @@ async def ui_batch_extract(
         job_ids.append(job.id)
     await db.commit()
 
-    await _enqueue_jobs(background_tasks, job_ids)
+    await _enqueue_jobs(db, background_tasks, job_ids)
 
     resp = HTMLResponse(f'<div>{t_req("Batch started")}</div>')
     resp.headers["HX-Redirect"] = f"/ui/batches/{batch.id}"
@@ -1154,7 +1162,7 @@ async def ui_job_retry(
     job.llm_duration_ms = None
     await db.commit()
 
-    await _enqueue_jobs(background_tasks, [job.id])
+    await _enqueue_jobs(db, background_tasks, [job.id])
     return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ {t_req("Retrying...")}</div>')
 
 
