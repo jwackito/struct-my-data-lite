@@ -42,6 +42,7 @@ from app.providers import list_all_models
 from app.providers.factory import _build_provider, _parse_model_id, _sync_registry, authorize_model
 from app.quotas import enforce_job_quota
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
+from app.saas import install
 from app.schema_parser import parse_schema
 from app.schema_sandbox import validate_schema
 from app.storage import sanitize_filename, save_file
@@ -69,6 +70,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Struct My Data", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+
+install(app)
 
 
 @app.middleware("http")
