@@ -13,7 +13,7 @@ from app import saas
 
 
 def test_install_is_a_noop():
-    if importlib.util.find_spec("app.invites.routes") is not None:
+    if importlib.util.find_spec("app.invites") is not None:
         pytest.skip("cloud edition registers routers and hooks")
     app = FastAPI()
     routes_before = len(app.routes)
