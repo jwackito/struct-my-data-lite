@@ -222,7 +222,7 @@ async def test_process_job_notify_failure_sets_failed(async_client, db_session, 
 
     mock_notify = AsyncMock(side_effect=[Exception("notify failure"), None])
 
-    with patch("app.processing.manager.notify", mock_notify):
+    with patch("app.events.manager.notify", mock_notify):
         with patch("app.processing.get_provider") as mock_get_provider:
             mock_provider = MagicMock()
             mock_provider.get_client.return_value = MagicMock()
