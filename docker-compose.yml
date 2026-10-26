@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        EXTRA_REQUIREMENTS: requirements-saas.txt
     user: "0:0"
     ports:
       - "8080:8080"
