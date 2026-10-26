@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     per_user_concurrency: int = 1
     daily_job_cap: int = 0
     usage_enforced: bool = False
+    billing_enabled: bool = False
+    queue_backend: str = "inprocess"
+    redis_url: str = ""
+    invite_only: bool = False
 
     class Config:
         env_file = "etc/.env"
