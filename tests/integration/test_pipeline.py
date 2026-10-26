@@ -303,17 +303,18 @@ async def test_job_completion_hooks_run_before_commit(
     upload_resp = await async_client.post(
         "/upload", files={"file": ("input.txt", b"Alice is 30 years old")}
     )
-    extract_resp = await async_client.post(
-        "/extract",
-        json={
-            "document_id": upload_resp.json()["id"],
-            "pydantic_schema": (
-                "from pydantic import BaseModel\n"
-                "class Person(BaseModel):\n"
-                "    name: str\n"
-            ),
-        },
-    )
+    with patch("app.main.process_job"):
+        extract_resp = await async_client.post(
+            "/extract",
+            json={
+                "document_id": upload_resp.json()["id"],
+                "pydantic_schema": (
+                    "from pydantic import BaseModel\n"
+                    "class Person(BaseModel):\n"
+                    "    name: str\n"
+                ),
+            },
+        )
 
     mock_result = MagicMock()
     mock_result.model_dump.return_value = {"name": "Alice"}
