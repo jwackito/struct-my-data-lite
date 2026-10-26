@@ -32,6 +32,7 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
+from app.hooks import run_lifespan_hooks
 from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, LLMConnection, ModelRegistry, SavedSchema, User, UserModelAccess, UserRole
 from app.pricing import calculate_cost, refresh_pricing
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI):
             await refresh_pricing(db)
     except Exception:
         pass
+    await run_lifespan_hooks(app)
     yield
 
 
