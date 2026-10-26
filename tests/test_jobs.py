@@ -195,7 +195,7 @@ async def test_retry_failed_job(async_client, db_session, patch_async_session):
     db_session.add(job)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
     assert resp.status_code == 200
 
@@ -282,7 +282,7 @@ async def test_retry_resets_tokens_and_timing(async_client, db_session, patch_as
     db_session.add(job)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
     assert resp.status_code == 200
 
@@ -370,7 +370,7 @@ async def test_ui_job_retry_polling_div_has_outerhtml(async_client, db_session, 
     db_session.add(job)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post(f"/ui/jobs/{job.id}/retry")
     assert resp.status_code == 200
     assert 'hx-swap="outerHTML"' in resp.text
