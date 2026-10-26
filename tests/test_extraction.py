@@ -190,7 +190,7 @@ async def test_extract_without_model_id_uses_default(async_client, db_session, p
     db_session.add(doc)
     await db_session.commit()
 
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         resp = await async_client.post("/extract", json={
             "document_id": str(doc.id),
             "pydantic_schema": "from pydantic import BaseModel\nclass X(BaseModel):\n  y: str",
