@@ -303,7 +303,7 @@ async def test_job_completion_hooks_run_before_commit(
     upload_resp = await async_client.post(
         "/upload", files={"file": ("input.txt", b"Alice is 30 years old")}
     )
-    with patch("app.main.process_job"):
+    with patch("app.queue.inprocess.process_job"):
         extract_resp = await async_client.post(
             "/extract",
             json={
