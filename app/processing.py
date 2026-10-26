@@ -9,12 +9,12 @@ from fastapi.encoders import jsonable_encoder
 
 from app.connections import get_connection
 from app.database import async_session
+from app.events import publish_job_update
 from app.extraction import ExtractionService
 from app.hooks import run_job_completion_hooks
 from app.models import Document, ExtractionJob, JobStatus, User
 from app.parsers import get_parser as get_doc_parser
 from app.providers import get_provider
-from app.ws import manager
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ async def _run_job(job_id: uuid.UUID):
         try:
             job.status = JobStatus.running
             await db.commit()
-            await manager.notify(job_id, _job_payload(job))
+            await publish_job_update(_job_payload(job))
 
             doc = await db.get(Document, job.document_id)
             if not doc:
@@ -117,4 +117,4 @@ async def _run_job(job_id: uuid.UUID):
                 await db.commit()
             except Exception as e:
                 logger.error("commit failed for job %s: %s", job_id, e)
-            await manager.notify(job_id, _job_payload(job))
+            await publish_job_update(_job_payload(job))
