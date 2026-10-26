@@ -48,6 +48,21 @@ type: short description
 
 Types: `test`, `feat`, `fix`, `chore`, `docs`.
 
+### Branching & pull requests
+
+`main` is **pull-request only** — never push to it directly.
+
+1. Work on `type/<issue>-<slug>`, e.g. `feat/42-per-user-concurrency`.
+2. Keep the per-file commit rule **inside** the branch.
+3. Push the branch, open a PR with `Closes #<issue>`.
+4. Merge with a **merge commit** (never squash — the per-file trail is history).
+5. Agents open PRs and merge only after the maintainer approves in chat.
+
+Guardrails (Free plan, so no server-side branch protection):
+`git config core.hooksPath .githooks` enables the `pre-push` hook;
+`pr-guards.yml` checks branch/issue/commit format; `main-guard.yml` flags a
+commit that reached `main` without a PR.
+
 ## Running
 
 See `README.md` for the full setup. In short:

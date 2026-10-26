@@ -1,0 +1,25 @@
+name: Main guard
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pull-request-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an associated pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          count=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq 'length')
+          if [ "$count" -eq 0 ]; then
+            echo "::error::Direct push to main detected ($SHA). Work on a branch and open a pull request."
+            exit 1
+          fi

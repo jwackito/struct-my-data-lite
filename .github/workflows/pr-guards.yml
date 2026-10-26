@@ -1,0 +1,55 @@
+name: PR guards
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if ! printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|docs|test)/[0-9]+-[a-z0-9-]+$'; then
+            echo "::error::Branch '$BRANCH' must match type/<issue>-<slug> (feat|fix|chore|docs|test)."
+            exit 1
+          fi
+
+      - name: Linked issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          number=$(printf '%s' "$BODY" | grep -oE 'Closes #[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
+          if [ -z "$number" ]; then
+            echo "::error::PR body must contain 'Closes #<issue>' for an issue in this repo."
+            exit 1
+          fi
+          state=$(gh api "repos/$REPO/issues/$number" --jq '.state' 2>/dev/null || echo missing)
+          if [ "$state" != "open" ]; then
+            echo "::error::Issue #$number is $state; link an open issue in this repo."
+            exit 1
+          fi
+
+      - name: Commit message format
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          bad=$(git log --format=%s "$BASE_SHA..$HEAD_SHA" | grep -vE '^(test|feat|fix|chore|docs): .+' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Commit subjects must match 'type: description':"
+            printf '%s\n' "$bad"
+            exit 1
+          fi
