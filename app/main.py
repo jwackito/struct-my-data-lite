@@ -36,10 +36,9 @@ from app.hooks import run_lifespan_hooks, run_registration_validators
 from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, LLMConnection, ModelRegistry, SavedSchema, User, UserModelAccess, UserRole
 from app.pricing import calculate_cost, refresh_pricing
-from app.processing import process_job, try_reserve_slot
-from sqlalchemy import cast, Date, update
 from app.providers import list_all_models
 from app.providers.factory import _build_provider, _parse_model_id, _sync_registry, authorize_model
+from app.queue import QueueFull, get_backend
 from app.quotas import enforce_job_quota
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.saas import install
@@ -49,6 +48,7 @@ from app.storage import sanitize_filename, save_file
 from app.version import get_version
 from app.ws import manager
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import cast, Date, update
 
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["t"] = t
@@ -117,19 +117,12 @@ def _rate_limit_user(request: Request):
     return _RateLimitUser(payload["sub"])
 
 
-def _enqueue_jobs(background_tasks: BackgroundTasks, job_ids: list) -> None:
-    """Reserve a queue slot per job; reject the whole request if the queue is full."""
-    from app.processing import _queue
-
-    reserved = 0
-    for _ in job_ids:
-        if not try_reserve_slot():
-            for _ in range(reserved):
-                _queue.release()
-            raise HTTPException(status_code=503, detail=t_req("Server is busy, try again shortly"))
-        reserved += 1
-    for job_id in job_ids:
-        background_tasks.add_task(process_job, job_id)
+async def _enqueue_jobs(background_tasks: BackgroundTasks, job_ids: list) -> None:
+    """Hand pending jobs to the configured backend; 503 when it is full."""
+    try:
+        await get_backend().enqueue(background_tasks, job_ids)
+    except QueueFull:
+        raise HTTPException(status_code=503, detail=t_req("Server is busy, try again shortly"))
 
 
 @app.middleware("http")
@@ -486,7 +479,7 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
         job_ids.append(job.id)
     await db.commit()
 
-    _enqueue_jobs(background_tasks, job_ids)
+    await _enqueue_jobs(background_tasks, job_ids)
 
     return {"batch_id": str(batch.id), "job_ids": [str(j) for j in job_ids], "name": batch.name}
 
@@ -592,7 +585,7 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
     await db.commit()
 
     for job_id in retried:
-        _enqueue_jobs(background_tasks, [job_id])
+        await _enqueue_jobs(background_tasks, [job_id])
 
     return {"ok": True, "retried": [str(j) for j in retried]}
 
@@ -933,7 +926,7 @@ async def create_extraction(
     await db.refresh(job)
 
     if background_tasks:
-        _enqueue_jobs(background_tasks, [job.id])
+        await _enqueue_jobs(background_tasks, [job.id])
 
     return {
         "id": str(job.id),
@@ -1063,7 +1056,7 @@ async def ui_batch_extract(
         job_ids.append(job.id)
     await db.commit()
 
-    _enqueue_jobs(background_tasks, job_ids)
+    await _enqueue_jobs(background_tasks, job_ids)
 
     resp = HTMLResponse(f'<div>{t_req("Batch started")}</div>')
     resp.headers["HX-Redirect"] = f"/ui/batches/{batch.id}"
@@ -1161,7 +1154,7 @@ async def ui_job_retry(
     job.llm_duration_ms = None
     await db.commit()
 
-    _enqueue_jobs(background_tasks, [job.id])
+    await _enqueue_jobs(background_tasks, [job.id])
     return HTMLResponse(f'<div hx-get="/ui/jobs/{job.id}" hx-trigger="every 2s" hx-swap="outerHTML">⏳ {t_req("Retrying...")}</div>')
 
 
