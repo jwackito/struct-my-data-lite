@@ -239,7 +239,7 @@ async def login_page(request: Request):
 
 @app.get("/register")
 async def register_page(request: Request):
-    if not settings.allow_registration:
+    if not settings.allow_registration or settings.invite_only:
         return HTMLResponse(f'<html><body style="font-family:sans-serif;text-align:center;padding:4rem"><h1>{t_req("Registration is closed")}</h1><p><a href="/login">{t_req("Back to login")}</a></p></body></html>', status_code=403)
     return templates.TemplateResponse(request, "register.html", {"user": None, "lang": resolve_lang(request)})
 
