@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     redis_url: str = ""
     worker_max_jobs: int = 4
     invite_only: bool = False
+    public_base_url: str = ""
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_starttls: bool = True
 
     class Config:
         env_file = "etc/.env"
