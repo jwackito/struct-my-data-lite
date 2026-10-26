@@ -1,4 +1,5 @@
 import enum
+import importlib.util
 import uuid
 from datetime import datetime
 
@@ -152,3 +153,9 @@ class UserModelAccess(Base):
     model_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_registry.id", ondelete="CASCADE"), index=True)
     access: Mapped[str] = mapped_column(String(10), default="allow")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# Cloud-only model modules (absent in lite). Importing them registers their
+# tables on Base.metadata for Alembic and the tests (spec 26 D26-14).
+if importlib.util.find_spec("app.invites") is not None:
+    from app.invites import models as _cloud_models  # noqa: F401
