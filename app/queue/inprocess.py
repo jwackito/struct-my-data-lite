@@ -9,6 +9,7 @@ import asyncio
 from fastapi import BackgroundTasks
 
 from app.config import settings
+from app.processing import process_job
 from app.queue.base import QueueFull
 
 
@@ -49,8 +50,6 @@ _queue = JobQueue(settings.batch_concurrency, settings.job_queue_max)
 
 class InProcessQueue:
     async def enqueue(self, background_tasks: BackgroundTasks, job_ids: list) -> None:
-        from app.processing import process_job
-
         reserved = 0
         for _ in job_ids:
             if not _queue.try_reserve():
