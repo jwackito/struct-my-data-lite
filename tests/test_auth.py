@@ -205,3 +205,24 @@ async def test_openapi_ok_with_auth(async_client):
     resp = await async_client.get("/openapi.json")
     assert resp.status_code == 200
     assert resp.json()["openapi"]
+
+
+@pytest.mark.asyncio
+async def test_register_runs_post_registration_hooks(async_client, monkeypatch):
+    from app import hooks
+
+    seen = []
+
+    async def hook(db, user):
+        seen.append(user.email)
+
+    monkeypatch.setattr(hooks, "_post_registration_hooks", [])
+    hooks.register_post_registration_hook(hook)
+
+    resp = await async_client.post(
+        "/auth/register",
+        json={"email": "post-hook@example.com", "password": "password123"},
+    )
+
+    assert resp.status_code == 200
+    assert seen == ["post-hook@example.com"]

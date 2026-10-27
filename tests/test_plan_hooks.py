@@ -19,8 +19,8 @@ async def _user_and_doc(async_client):
 
 
 def _spy(monkeypatch, seen):
-    async def validator(db, user, provider_type, new_jobs, estimate_usd):
-        seen.append((provider_type, new_jobs, estimate_usd))
+    async def validator(db, user, provider_type, model_name, new_jobs, estimate_usd):
+        seen.append((provider_type, model_name, new_jobs, estimate_usd))
 
     monkeypatch.setattr(hooks, "_job_creation_validators", [validator])
 
@@ -43,7 +43,7 @@ async def test_extract_runs_creation_validators(
     )
 
     assert resp.status_code == 200
-    assert seen == [("ollama", 1, None)]
+    assert seen == [("ollama", "qwen3.6:35b", 1, None)]
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,7 @@ async def test_extract_propagates_rejection(
 
     doc_id = await _user_and_doc(async_client)
 
-    async def validator(db, user, provider_type, new_jobs, estimate_usd):
+    async def validator(db, user, provider_type, model_name, new_jobs, estimate_usd):
         raise HTTPException(status_code=402, detail="Insufficient credit")
 
     monkeypatch.setattr(hooks, "_job_creation_validators", [validator])
@@ -89,7 +89,7 @@ async def test_batch_create_passes_an_estimate(
     )
 
     assert resp.status_code == 200
-    provider_type, new_jobs, estimate = seen[0]
+    provider_type, model_name, new_jobs, estimate = seen[0]
     assert provider_type == "ollama"
     assert new_jobs == 1
     assert estimate == 0.0
@@ -128,7 +128,7 @@ async def test_retry_failed_runs_creation_validators(
     resp = await async_client.post(f"/api/batches/{batch_id}/retry-failed")
 
     assert resp.status_code == 200
-    assert seen and seen[0][1] == 1
+    assert seen and seen[0][2] == 1
 
 
 @pytest.mark.asyncio
@@ -162,4 +162,4 @@ async def test_single_job_retry_runs_creation_validators(
     resp = await async_client.post(f"/ui/jobs/{job_id}/retry")
 
     assert resp.status_code == 200
-    assert seen and seen[0][1] == 1
+    assert seen and seen[0][2] == 1

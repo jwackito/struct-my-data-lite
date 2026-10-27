@@ -32,7 +32,12 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.hooks import run_job_creation_validators, run_lifespan_hooks, run_registration_validators
+from app.hooks import (
+    run_job_creation_validators,
+    run_lifespan_hooks,
+    run_post_registration_hooks,
+    run_registration_validators,
+)
 from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, LLMConnection, ModelRegistry, SavedSchema, User, UserModelAccess, UserRole
 from app.pricing import calculate_cost, refresh_pricing
@@ -188,6 +193,8 @@ async def auth_register(body: dict, db: AsyncSession = Depends(get_db)):
         role="user",
     )
     db.add(user)
+    await db.flush()
+    await run_post_registration_hooks(db, user)
     await db.commit()
     await db.refresh(user)
 
@@ -478,6 +485,7 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
         db,
         user,
         provider_type,
+        model_name,
         len(docs),
         _estimate_batch_cost(provider_type, model_name, [d.file_size for d in docs]),
     )
@@ -599,7 +607,12 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
 
     if failed_jobs:
         await run_job_creation_validators(
-            db, user, failed_jobs[0].provider_type or "", len(failed_jobs), None
+            db,
+            user,
+            failed_jobs[0].provider_type or "",
+            failed_jobs[0].model_name or "",
+            len(failed_jobs),
+            None,
         )
 
     retried = []
@@ -942,7 +955,7 @@ async def create_extraction(
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     await enforce_job_quota(db, user, 1)
-    await run_job_creation_validators(db, user, provider_type, 1, None)
+    await run_job_creation_validators(db, user, provider_type, model_name, 1, None)
     job = ExtractionJob(
         user_id=user.id,
         document_id=document_id,
@@ -1052,6 +1065,7 @@ async def ui_batch_extract(
         db,
         user,
         provider_type,
+        model_name,
         len(file),
         _estimate_batch_cost(provider_type, model_name, [f.size or 0 for f in file]),
     )
@@ -1187,7 +1201,9 @@ async def ui_job_retry(
     if st not in ("pending", "failed"):
         return HTMLResponse(f'<div>{t_req("Can only retry failed or pending jobs")}</div>')
 
-    await run_job_creation_validators(db, user, job.provider_type or "", 1, None)
+    await run_job_creation_validators(
+        db, user, job.provider_type or "", job.model_name or "", 1, None
+    )
 
     job.status = JobStatus.pending
     job.error_message = None

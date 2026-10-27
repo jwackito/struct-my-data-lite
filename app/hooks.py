@@ -11,13 +11,15 @@ broken edition hook must fail loudly instead of being swallowed.
 from typing import Any, Awaitable, Callable
 
 RegistrationValidator = Callable[[Any, dict], Awaitable[None]]
-JobCreationValidator = Callable[[Any, Any, str, int, float | None], Awaitable[None]]
+JobCreationValidator = Callable[[Any, Any, str, str, int, float | None], Awaitable[None]]
+PostRegistrationHook = Callable[[Any, Any], Awaitable[None]]
 JobCompletionHook = Callable[[Any, Any, Any], Awaitable[None]]
 PlanLimitsProvider = Callable[[Any, Any], Awaitable[dict | None]]
 LifespanHook = Callable[[Any], Awaitable[None]]
 
 _registration_validators: list[RegistrationValidator] = []
 _job_creation_validators: list[JobCreationValidator] = []
+_post_registration_hooks: list[PostRegistrationHook] = []
 _job_completion_hooks: list[JobCompletionHook] = []
 _plan_limits_provider: PlanLimitsProvider | None = None
 _lifespan_hooks: list[LifespanHook] = []
@@ -42,11 +44,22 @@ async def run_job_creation_validators(
     db: Any,
     user: Any,
     provider_type: str,
+    model_name: str = "",
     new_jobs: int = 1,
     estimate_usd: float | None = None,
 ) -> None:
     for fn in _job_creation_validators:
-        await fn(db, user, provider_type, new_jobs, estimate_usd)
+        await fn(db, user, provider_type, model_name, new_jobs, estimate_usd)
+
+
+def register_post_registration_hook(fn: PostRegistrationHook) -> None:
+    """Run after the user row is flushed, before the registration commits."""
+    _post_registration_hooks.append(fn)
+
+
+async def run_post_registration_hooks(db: Any, user: Any) -> None:
+    for fn in _post_registration_hooks:
+        await fn(db, user)
 
 
 def register_job_completion_hook(fn: JobCompletionHook) -> None:
