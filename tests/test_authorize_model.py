@@ -114,3 +114,42 @@ async def test_authorize_model_rejects_foreign_personal_connection(db_session):
     with pytest.raises(HTTPException) as exc:
         await authorize_model(db_session, alice, "openai/bob-key/gpt-4o")
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_plan_provider_scope_blocks_non_ollama(db_session, monkeypatch):
+    from app import hooks
+
+    async def provider(db, user):
+        return {"provider_scope": "ollama"}
+
+    monkeypatch.setattr(hooks, "_plan_limits_provider", provider)
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        await authorize_model(db_session, user, "openai/gpt-4o")
+    assert exc.value.status_code == 403
+    assert "local models" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_plan_provider_scope_allows_ollama(db_session, monkeypatch):
+    from app import hooks
+
+    async def provider(db, user):
+        return {"provider_scope": "ollama"}
+
+    monkeypatch.setattr(hooks, "_plan_limits_provider", provider)
+    user = User(email="u@example.com", password_hash="x", display_name="u", role="user")
+    db_session.add(user)
+    await db_session.commit()
+    db_session.add(ModelRegistry(connection_id=None, model_name="qwen-test", enabled=True))
+    await db_session.commit()
+
+    assert await authorize_model(db_session, user, "ollama/ollama/qwen-test") == (
+        "ollama",
+        "ollama",
+        "qwen-test",
+    )

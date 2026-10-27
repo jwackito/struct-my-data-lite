@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     smtp_starttls: bool = True
+    billing_margin: float = 0.30
+    min_balance_reserve_usd: float = 0.01
+    trial_credit_usd: float = 0.50
+    trial_credit_days: int = 30
 
     class Config:
         env_file = "etc/.env"

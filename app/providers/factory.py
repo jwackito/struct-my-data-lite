@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connections import get_connection, list_connections
 from app.config import settings
+from app.hooks import resolve_plan_limits
 from app.i18n import t_req
 from app.models import ModelRegistry, User, UserModelAccess
 from app.providers.base import LLMProvider, ModelInfo
@@ -165,6 +166,10 @@ async def authorize_model(db: AsyncSession, user: User, model_id: str) -> tuple[
     A model with no registry row is allowed (D18-14). Raises HTTP 403 on denial.
     """
     provider_type, connection_name, model_name = await _parse_model_id(model_id, db)
+
+    limits = await resolve_plan_limits(db, user)
+    if limits and limits.get("provider_scope") == "ollama" and provider_type != "ollama":
+        raise HTTPException(status_code=403, detail=t_req("This plan only allows local models"))
 
     conn = await get_connection(connection_name, db, user=user)
     if not conn:

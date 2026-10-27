@@ -35,3 +35,11 @@ def test_smtp_config_defaults():
     assert s.smtp_password == ""
     assert s.smtp_from == ""
     assert s.smtp_starttls is True
+
+
+def test_billing_config_defaults():
+    s = Settings()
+    assert s.billing_margin == 0.30
+    assert s.min_balance_reserve_usd == 0.01
+    assert s.trial_credit_usd == 0.50
+    assert s.trial_credit_days == 30

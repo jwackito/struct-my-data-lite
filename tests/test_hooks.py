@@ -109,3 +109,23 @@ async def test_lifespan_hooks_receive_app_in_order(monkeypatch):
     await hooks.run_lifespan_hooks("app")
 
     assert calls == ["first", "second"]
+
+
+@pytest.mark.asyncio
+async def test_run_job_creation_validators_is_noop_by_default(monkeypatch):
+    monkeypatch.setattr(hooks, "_job_creation_validators", [])
+    assert await hooks.run_job_creation_validators(object(), object(), "ollama") is None
+
+
+@pytest.mark.asyncio
+async def test_job_creation_validators_receive_arguments(monkeypatch):
+    seen = []
+
+    async def validator(db, user, provider_type, new_jobs, estimate_usd):
+        seen.append((provider_type, new_jobs, estimate_usd))
+
+    monkeypatch.setattr(hooks, "_job_creation_validators", [validator])
+
+    await hooks.run_job_creation_validators(object(), object(), "openai", 3, 0.25)
+
+    assert seen == [("openai", 3, 0.25)]

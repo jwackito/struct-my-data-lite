@@ -32,14 +32,14 @@ from app.connections import (
     test_connection,
 )
 from app.database import get_db, async_session, wait_for_db
-from app.hooks import run_lifespan_hooks, run_registration_validators
+from app.hooks import run_job_creation_validators, run_lifespan_hooks, run_registration_validators
 from app.i18n import DICTS, SUPPORTED_LANGS, current_lang, resolve_lang, t, t_req
 from app.models import ApiToken, Batch, Document, ExtractionJob, JobStatus, LLMConnection, ModelRegistry, SavedSchema, User, UserModelAccess, UserRole
 from app.pricing import calculate_cost, refresh_pricing
 from app.providers import list_all_models
 from app.providers.factory import _build_provider, _parse_model_id, _sync_registry, authorize_model
 from app.queue import QueueFull, get_backend
-from app.quotas import enforce_job_quota
+from app.quotas import enforce_job_quota, enforce_vision_batch, plan_max_batch_size
 from app.ratelimit import apply_rate_limit, bucket_for, make_limiters
 from app.saas import install
 from app.schema_parser import parse_schema
@@ -412,6 +412,11 @@ async def api_revoke_token(token_id: uuid.UUID, user: User = Depends(get_current
     return {"ok": True}
 
 
+def _estimate_batch_cost(provider_type: str, model_name: str, file_sizes: list[int]) -> float:
+    estimated_tokens = sum(size / 4 for size in file_sizes)
+    return calculate_cost(provider_type, model_name, estimated_tokens, estimated_tokens / 4)
+
+
 @app.post("/api/batches/estimate")
 async def api_batch_estimate(body: dict, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     from app.pricing import calculate_cost
@@ -420,12 +425,13 @@ async def api_batch_estimate(body: dict, user: User = Depends(get_current_user),
     model_id = body.get("model_id", "")
     if not file_sizes:
         raise HTTPException(status_code=422, detail=t_req("file_sizes is required"))
-    if len(file_sizes) > settings.max_batch_size:
-        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
+    max_batch = await plan_max_batch_size(db, user)
+    if len(file_sizes) > max_batch:
+        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=max_batch))
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     estimated_tokens = sum(size / 4 for size in file_sizes)
-    estimated_cost = calculate_cost(provider_type, model_name, estimated_tokens, estimated_tokens / 4)
+    estimated_cost = _estimate_batch_cost(provider_type, model_name, file_sizes)
 
     return {
         "documents": len(file_sizes),
@@ -444,8 +450,9 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
 
     if not document_ids:
         raise HTTPException(status_code=422, detail=t_req("document_ids is required"))
-    if len(document_ids) > settings.max_batch_size:
-        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=settings.max_batch_size))
+    max_batch = await plan_max_batch_size(db, user)
+    if len(document_ids) > max_batch:
+        raise HTTPException(status_code=422, detail=t_req("Batch exceeds max size of {max}", max=max_batch))
     if not pydantic_schema:
         raise HTTPException(status_code=422, detail=t_req("pydantic_schema is required"))
     try:
@@ -464,6 +471,16 @@ async def api_create_batch(body: dict, background_tasks: BackgroundTasks, user: 
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     await enforce_job_quota(db, user, len(docs))
+    await enforce_vision_batch(
+        db, user, sum(1 for d in docs if (d.content_type or "").startswith("image/"))
+    )
+    await run_job_creation_validators(
+        db,
+        user,
+        provider_type,
+        len(docs),
+        _estimate_batch_cost(provider_type, model_name, [d.file_size for d in docs]),
+    )
 
     batch = Batch(user_id=user.id, name=name)
     db.add(batch)
@@ -579,6 +596,11 @@ async def api_batch_retry_failed(batch_id: uuid.UUID, background_tasks: Backgrou
         select(ExtractionJob).where(ExtractionJob.batch_id == batch.id, ExtractionJob.status == JobStatus.failed)
     )
     failed_jobs = result.scalars().all()
+
+    if failed_jobs:
+        await run_job_creation_validators(
+            db, user, failed_jobs[0].provider_type or "", len(failed_jobs), None
+        )
 
     retried = []
     for job in failed_jobs:
@@ -920,6 +942,7 @@ async def create_extraction(
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     await enforce_job_quota(db, user, 1)
+    await run_job_creation_validators(db, user, provider_type, 1, None)
     job = ExtractionJob(
         user_id=user.id,
         document_id=document_id,
@@ -1011,8 +1034,9 @@ async def ui_batch_extract(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if len(file) > settings.max_batch_size:
-        return HTMLResponse(f'<div style="color:red">{t_req("Batch exceeds max size of {max}", max=settings.max_batch_size)}</div>')
+    max_batch = await plan_max_batch_size(db, user)
+    if len(file) > max_batch:
+        return HTMLResponse(f'<div style="color:red">{t_req("Batch exceeds max size of {max}", max=max_batch)}</div>')
 
     try:
         validate_schema(pydantic_schema)
@@ -1021,6 +1045,16 @@ async def ui_batch_extract(
 
     provider_type, connection_name, model_name = await authorize_model(db, user, model_id)
     await enforce_job_quota(db, user, len(file))
+    await enforce_vision_batch(
+        db, user, sum(1 for f in file if (f.content_type or "").startswith("image/"))
+    )
+    await run_job_creation_validators(
+        db,
+        user,
+        provider_type,
+        len(file),
+        _estimate_batch_cost(provider_type, model_name, [f.size or 0 for f in file]),
+    )
 
     batch = Batch(user_id=user.id, name=f"Batch {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     db.add(batch)
@@ -1152,6 +1186,8 @@ async def ui_job_retry(
         st = st.value
     if st not in ("pending", "failed"):
         return HTMLResponse(f'<div>{t_req("Can only retry failed or pending jobs")}</div>')
+
+    await run_job_creation_validators(db, user, job.provider_type or "", 1, None)
 
     job.status = JobStatus.pending
     job.error_message = None
