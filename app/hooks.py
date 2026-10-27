@@ -11,11 +11,13 @@ broken edition hook must fail loudly instead of being swallowed.
 from typing import Any, Awaitable, Callable
 
 RegistrationValidator = Callable[[Any, dict], Awaitable[None]]
+JobCreationValidator = Callable[[Any, Any, str, int, float | None], Awaitable[None]]
 JobCompletionHook = Callable[[Any, Any, Any], Awaitable[None]]
 PlanLimitsProvider = Callable[[Any, Any], Awaitable[dict | None]]
 LifespanHook = Callable[[Any], Awaitable[None]]
 
 _registration_validators: list[RegistrationValidator] = []
+_job_creation_validators: list[JobCreationValidator] = []
 _job_completion_hooks: list[JobCompletionHook] = []
 _plan_limits_provider: PlanLimitsProvider | None = None
 _lifespan_hooks: list[LifespanHook] = []
@@ -29,6 +31,22 @@ def register_registration_validator(fn: RegistrationValidator) -> None:
 async def run_registration_validators(db: Any, payload: dict) -> None:
     for fn in _registration_validators:
         await fn(db, payload)
+
+
+def register_job_creation_validator(fn: JobCreationValidator) -> None:
+    """Veto job creation (e.g. insufficient balance) before the rows are queued."""
+    _job_creation_validators.append(fn)
+
+
+async def run_job_creation_validators(
+    db: Any,
+    user: Any,
+    provider_type: str,
+    new_jobs: int = 1,
+    estimate_usd: float | None = None,
+) -> None:
+    for fn in _job_creation_validators:
+        await fn(db, user, provider_type, new_jobs, estimate_usd)
 
 
 def register_job_completion_hook(fn: JobCompletionHook) -> None:
