@@ -35,13 +35,18 @@ async def refresh_pricing(db) -> None:
 
     result = await db.execute(
         select(ModelRegistry, LLMConnection)
-        .join(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
+        .outerjoin(LLMConnection, ModelRegistry.connection_id == LLMConnection.id)
         .where(ModelRegistry.enabled.is_(True), ModelRegistry.price_input_usd.isnot(None))
         .order_by(ModelRegistry.created_at, LLMConnection.name)
     )
     merged: dict[str, dict[str, tuple[float, float]]] = {}
     for reg, conn in result.all():
-        table = merged.setdefault(conn.provider, {})
+        # Implicit connections (Ollama) have no row: their registry rows carry
+        # connection_id = NULL and the provider is implied.
+        if conn is not None and not conn.enabled:
+            continue
+        provider = conn.provider if conn is not None else "ollama"
+        table = merged.setdefault(provider, {})
         if reg.model_name not in table:
             table[reg.model_name] = (reg.price_input_usd, reg.price_output_usd)
     CUSTOM_PRICING.clear()
