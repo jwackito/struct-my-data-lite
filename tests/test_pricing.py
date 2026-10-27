@@ -57,3 +57,22 @@ async def test_refresh_pricing_skips_disabled(async_client, db_session):
         assert calculate_cost("gemini", "gemini-2.0-flash", 1_000_000, 0) == pytest.approx(0.10)
     finally:
         CUSTOM_PRICING.clear()
+
+@pytest.mark.asyncio
+async def test_refresh_pricing_includes_implicit_connections(db_session):
+    """Ollama rows have connection_id = NULL; their prices must still load."""
+    db_session.add(
+        ModelRegistry(
+            connection_id=None,
+            model_name="qwen3.6:35b",
+            enabled=True,
+            price_input_usd=0.01,
+            price_output_usd=0.02,
+        )
+    )
+    await db_session.commit()
+
+    await refresh_pricing(db_session)
+
+    assert CUSTOM_PRICING["ollama"]["qwen3.6:35b"] == (0.01, 0.02)
+    assert calculate_cost("ollama", "qwen3.6:35b", 1_000_000, 0) == pytest.approx(0.01)
