@@ -121,11 +121,27 @@ async def test_run_job_creation_validators_is_noop_by_default(monkeypatch):
 async def test_job_creation_validators_receive_arguments(monkeypatch):
     seen = []
 
-    async def validator(db, user, provider_type, new_jobs, estimate_usd):
-        seen.append((provider_type, new_jobs, estimate_usd))
+    async def validator(db, user, provider_type, model_name, new_jobs, estimate_usd):
+        seen.append((provider_type, model_name, new_jobs, estimate_usd))
 
     monkeypatch.setattr(hooks, "_job_creation_validators", [validator])
 
-    await hooks.run_job_creation_validators(object(), object(), "openai", 3, 0.25)
+    await hooks.run_job_creation_validators(object(), object(), "openai", "gpt-4o", 3, 0.25)
 
-    assert seen == [("openai", 3, 0.25)]
+    assert seen == [("openai", "gpt-4o", 3, 0.25)]
+
+
+@pytest.mark.asyncio
+async def test_post_registration_hooks_receive_the_user(monkeypatch):
+    seen = []
+
+    async def hook(db, user):
+        seen.append(user)
+
+    monkeypatch.setattr(hooks, "_post_registration_hooks", [])
+    hooks.register_post_registration_hook(hook)
+
+    user = object()
+    await hooks.run_post_registration_hooks(object(), user)
+
+    assert seen == [user]
