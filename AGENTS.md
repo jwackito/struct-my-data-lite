@@ -20,7 +20,8 @@ multi-user support.
 | Task queue | FastAPI BackgroundTasks |
 | Realtime | WebSocket |
 | Frontend | Static HTML + HTMX (no build step) |
-| Testing | pytest, pytest-asyncio, pytest-cov |
+| Testing | pytest, pytest-asyncio |
+| Planning | OpenSpec changes (`openspec/`) |
 | Containerization | Docker Compose (Ollama runs externally on the host) |
 | OCR | Ollama multimodal (image parser) |
 | Max upload | 10 MB |
@@ -32,50 +33,73 @@ multi-user support.
 
 ## Workflow
 
-1. Write a failing test (`pytest` → RED)
-2. Implement the minimal code to pass (`pytest` → GREEN)
-3. Refactor if needed
-4. Commit (`test: ...` then `feat: ...`)
+Every contribution is an OpenSpec change. Create or continue one before writing
+code, and keep the change directory in the branch.
 
-Every feature starts with a failing test. Every bug fix starts with a failing
-test that reproduces it.
+1. `openspec new change <change-name>`.
+2. Fill `proposal.md`, the spec delta under `specs/<capability>/`, `design.md`
+   when the change is cross-cutting, and `tasks.md`.
+3. Run `openspec validate <change-name> --strict`.
+4. Work through the tasks test-first.
+5. Archive in the PR that completes the change:
+   `openspec archive <change-name> --yes`.
+
+Docs, tests, chores and style-only changes still use a change, with
+`skip_specs: true` in `.openspec.yaml` and `archive --skip-specs`.
+
+Every behaviour change starts with a failing test (`pytest` → RED), then the
+minimal implementation (`pytest` → GREEN), then refactor. Every bug fix starts
+with a failing test that reproduces it.
 
 ### Commit convention
 
-```
-type: short description
+Full Conventional Commits:
+
+```text
+type(scope)!: short description
 ```
 
-Types: `test`, `feat`, `fix`, `chore`, `docs`.
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`,
+`ci`, `chore`, `revert`. `Merge` and `Revert "..."` subjects are allowed.
+A breaking change uses `!` and a `BREAKING CHANGE:` footer.
 
 ### Branching & pull requests
 
 `main` is **pull-request only** — never push to it directly.
 
-1. Work on `type/<issue>-<slug>`, e.g. `feat/42-per-user-concurrency`.
-2. Keep the per-file commit rule **inside** the branch.
-3. Push the branch, open a PR with `Closes #<issue>`.
-4. Merge with a **merge commit** (never squash — the per-file trail is history).
-5. Agents open PRs and merge only after the maintainer approves in chat.
+1. Work on `change/<change-name>`, e.g. `change/add-doc-parser`.
+2. Keep the branch focused on one OpenSpec change.
+3. Push the branch and open a PR. The OpenSpec validation job must pass.
+4. Archive the change in the completing PR and say `Archives: <change-name>`.
+5. Merge with a **merge commit** (never squash — the branch trail is history).
+6. Agents open PRs and merge only after the maintainer approves in chat.
 
 Guardrails (Free plan, so no server-side branch protection):
 `bash scripts/install_hooks.sh` enables the `pre-push` hook (it copies the hooks
 to an executable location, since git ignores hooks on a `noexec` mount);
-`pr-guards.yml` checks branch/issue/commit format; `main-guard.yml` flags a
-commit that reached `main` without a PR.
+`pr-guards.yml` checks the branch and commit format; `main-guard.yml` flags a
+commit that reached `main` without a PR; `openspec.yml` validates the change.
 
 ## Running
 
-See `README.md` for the full setup. In short:
+See `README.md` and `CONTRIBUTING.md` for the full setup. In short:
 
 ```bash
-docker compose up -d
+cp .env.example etc/.env
+docker compose up -d --build
 docker compose exec app python -m alembic upgrade head
 docker compose exec app python -m pytest
 ```
 
 Inside the container, always use `python -m` to run Python tools (alembic,
 pytest, etc.).
+
+OpenSpec needs Node.js 20.19+ and is pinned to `1.14.3`:
+
+```bash
+npm install -g @fission-ai/openspec@1.14.3
+openspec validate <change-name> --strict
+```
 
 ## Security
 
@@ -85,3 +109,5 @@ pytest, etc.).
   are rejected with `422`.
 - Documents and jobs are ownership-checked per user.
 - `JWT_SECRET` is mandatory when `ENV` is not `dev`.
+- Vulnerabilities go through the private advisory flow in `SECURITY.md`, never a
+  public issue or change.

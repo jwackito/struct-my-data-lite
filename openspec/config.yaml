@@ -1,0 +1,47 @@
+schema: spec-driven
+
+context: |
+  structmydata-lite is the open-source, self-hosted edition of Struct My Data.
+  It extracts structured JSON from documents (PDF, DOCX, DOC, TXT, CSV, images)
+  using Instructor and an LLM provider (Ollama, OpenAI or Gemini).
+
+  Stack: Python 3.12, FastAPI, SQLAlchemy 2.0 async, PostgreSQL 16, Alembic,
+  Pydantic v2, pytest + pytest-asyncio, static HTML + HTMX with no build step.
+
+  The lite edition is the shared core. SaaS-only behaviour is registered from
+  app/saas.py through app/hooks.py; shared files must stay edition-neutral.
+  The pydantic schema supplied by users runs inside app/schema_sandbox.py, which
+  is security-sensitive and must not be weakened. Documents and jobs are
+  ownership-checked per user.
+
+  Tests: python -m pytest (in Docker: docker compose exec app python -m pytest).
+  Unit tests need PostgreSQL; Ollama integration tests skip themselves when the
+  host is unreachable. Specs describe observable behaviour, not implementation.
+
+rules:
+  proposal:
+    - State explicitly what is out of scope.
+    - Name capabilities for durable behaviour, not for the work in the change.
+    - Mark breaking changes with **BREAKING**.
+  specs:
+    - Use SHALL or MUST for normative behaviour; avoid should and may.
+    - State one behaviour per requirement; move edge cases into scenarios.
+    - Every requirement has at least one WHEN/THEN scenario using four hashtags.
+    - Describe observable behaviour, not classes, functions or libraries.
+  design:
+    - Include the alternatives considered for each decision.
+    - Include risks with mitigations.
+  tasks:
+    - Each task names its verification command or observable result.
+    - Keep tests and documentation in the task group that needs them.
+    - Keep tasks small enough to finish in one session.
+
+operations:
+  apply:
+    guidance:
+      - Run the narrowest relevant pytest target after each task.
+      - Run the full suite before archiving.
+  archive:
+    guidance:
+      - Archive in the pull request that completes the last task.
+      - Use --skip-specs when the change declared skip_specs.
