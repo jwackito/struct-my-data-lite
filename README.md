@@ -270,16 +270,13 @@ OLLAMA_HOST=0.0.0.0:11434 ollama serve
 ## Production
 
 Production runs a **published image** (built in CI, pushed to GHCR) rather than
-building on the host. Deploys are health-gated and reversible — see
-`specs/14-deploy-hardening.md`.
+building on the host.
 
 ```bash
 mkdir -p etc && chmod 700 etc
 cp .env.example etc/.env            # fill in real values (etc/ is gitignored)
-cp deploy/ghcr.env.example etc/ghcr.env     # IMAGE_REPO, GHCR_USER, PAT
-cp deploy/backup.env.example etc/backup.env # backup destination
-mkdir caddy                 # place your Caddyfile (domains, TLS) here
-# set IMAGE_TAG=vX.Y.Z-lite in etc/.env or the shell
+mkdir -p caddy                      # place your Caddyfile (domains, TLS) here
+# set IMAGE_REPO and IMAGE_TAG=vX.Y.Z-lite in the shell or etc/.env
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
@@ -289,10 +286,6 @@ Migrations are applied through the advisory-locked runner (never bare alembic):
 ```bash
 docker compose -f docker-compose.prod.yml run --rm app python -m scripts.migrate
 ```
-
-Operationally, `deploy/deploy.sh` wraps: preflight → database snapshot → migrate
-→ start by digest → wait for `/health/ready` → auto-rollback on failure. See
-`deploy/README.md`.
 
 Differences from development:
 - Image is built once in CI, pulled from GHCR and pinned by tag/digest
@@ -306,6 +299,12 @@ Differences from development:
 - Uploaded documents persist in the `storage` volume
 
 See `docker-compose.prod.yml` and `.dockerignore`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Contributions are planned as OpenSpec
+changes under `openspec/`; that document covers setup, tests, the architecture
+map, commits and the review flow.
 
 ## Changelog
 

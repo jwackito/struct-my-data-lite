@@ -4,6 +4,8 @@ about: Report something that isn't working
 labels: bug
 ---
 
+> Do not report security vulnerabilities here. See [SECURITY.md](../../SECURITY.md).
+
 ## What happened
 
 <!-- A clear description of the bug. -->

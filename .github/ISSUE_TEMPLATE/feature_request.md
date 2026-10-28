@@ -4,6 +4,9 @@ about: Suggest an idea or improvement
 labels: enhancement
 ---
 
+> Accepted ideas are planned as OpenSpec changes. This issue is the intake; the
+> change records the proposal, specs and tasks.
+
 ## Problem
 
 <!-- What problem does this solve? Who is affected? -->
