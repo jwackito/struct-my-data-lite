@@ -29,7 +29,7 @@
 
 - [x] 4.1 Add `scripts/check_change.py` implementing branch-to-change mapping, diff membership and archived-state checks; add `tests/test_check_change.py`; verified 19 tests pass.
 - [x] 4.2 Add `.github/workflows/openspec.yml` running the pinned validation through `scripts/check_change.py`; verified the YAML parses and the job is triggered by `pull_request`.
-- [ ] 4.3 Verify the OpenSpec job passes on PR B and rejects a branch without a matching change directory.
+- [x] 4.3 Verify the OpenSpec job passes on PR #15 and rejects a branch without a matching change directory; verified with `GITHUB_HEAD_REF=change/does-not-exist` and a legacy branch name, both exit 1.
 
 ## 5. Validate and integrate (PR B)
 
