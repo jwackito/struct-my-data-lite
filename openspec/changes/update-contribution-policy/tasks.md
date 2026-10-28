@@ -22,7 +22,7 @@ Example: `Assisted-by: OpenCode 2.1.4; DeepSeek V4.1 Flash`.
 ## 3. Validate and land
 
 - [x] 3.1 Run `openspec validate update-contribution-policy --strict` and verify the change is valid with `skip_specs`.
-- [ ] 3.2 Open the PR with the change name, verify the guards and OpenSpec jobs pass, and confirm no unrelated files changed.
+- [x] 3.2 Open the PR with the change name, verify the guards and OpenSpec jobs pass, and confirm no unrelated files changed.
 
 ## Workflow follow-up
 
