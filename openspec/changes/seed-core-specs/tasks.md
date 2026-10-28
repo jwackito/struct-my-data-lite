@@ -14,7 +14,7 @@
 ## 3. Validate
 
 - [x] 3.1 Run `openspec validate seed-core-specs --strict` and fix every warning, including requirement descriptions over 500 characters and scenarios without four hashtags.
-- [ ] 3.2 Open the PR with `Change: seed-core-specs`, verify the guards, tests and OpenSpec jobs pass, and confirm the four spec files are the only content changes.
+- [x] 3.2 Open the PR with `Change: seed-core-specs`, verify the guards, tests and OpenSpec jobs pass, and confirm the four spec files are the only content changes.
 
 ## Workflow follow-up
 
