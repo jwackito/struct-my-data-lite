@@ -20,12 +20,19 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
-          if ! printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|docs|test)/[0-9]+-[a-z0-9-]+$'; then
-            echo "::error::Branch '$BRANCH' must match type/<issue>-<slug> (feat|fix|chore|docs|test)."
-            exit 1
+          # New branches map 1:1 to an OpenSpec change. The legacy form is
+          # accepted during the bootstrap and removed once the workflow lands.
+          if printf '%s' "$BRANCH" | grep -qE '^change/[a-z0-9]+(-[a-z0-9]+)*$'; then
+            exit 0
           fi
+          if printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|docs|test|refactor|perf|ci|build)/[0-9]+-[a-z0-9-]+$'; then
+            echo "::warning::Legacy branch '$BRANCH'; new branches must be change/<change-name>."
+            exit 0
+          fi
+          echo "::error::Branch '$BRANCH' must match change/<change-name> (or the legacy type/<issue>-<slug>)."
+          exit 1
 
-      - name: Linked issue
+      - name: Linked issue (optional)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -33,12 +40,12 @@ jobs:
         run: |
           number=$(printf '%s' "$BODY" | grep -oE 'Closes #[0-9]+' | grep -oE '[0-9]+' | head -1 || true)
           if [ -z "$number" ]; then
-            echo "::error::PR body must contain 'Closes #<issue>' for an issue in this repo."
-            exit 1
+            echo "No linked issue; the OpenSpec change is the planning record."
+            exit 0
           fi
           state=$(gh api "repos/$REPO/issues/$number" --jq '.state' 2>/dev/null || echo missing)
           if [ "$state" != "open" ]; then
-            echo "::error::Issue #$number is $state; link an open issue in this repo."
+            echo "::error::Issue #$number is $state; link an open issue or omit the link."
             exit 1
           fi
 
@@ -48,9 +55,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           bad=$(git log --format=%s "$BASE_SHA..$HEAD_SHA" \
-            | grep -vE '^(test|feat|fix|chore|docs): .+|^Merge ' || true)
+            | grep -vE '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .+|^Merge |^Revert "' || true)
           if [ -n "$bad" ]; then
-            echo "::error::Commit subjects must match 'type: description':"
+            echo "::error::Commit subjects must follow Conventional Commits:"
             printf '%s\n' "$bad"
             exit 1
           fi
