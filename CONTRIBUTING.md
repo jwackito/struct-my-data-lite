@@ -369,3 +369,5 @@ is licensed under the same terms. There is no CLA and no sign-off requirement.
 - Releases: update `CHANGELOG.md`, tag `vX.Y.Z-lite`, let CI publish the image.
 - Security fixes may bypass the public-change guard; document the advisory in the
   merge notes.
+- Migrating another edition or project: see
+  [docs/migrating-to-openspec.md](docs/migrating-to-openspec.md).
