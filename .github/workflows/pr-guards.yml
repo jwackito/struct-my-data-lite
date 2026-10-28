@@ -20,17 +20,10 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
-          # New branches map 1:1 to an OpenSpec change. The legacy form is
-          # accepted during the bootstrap and removed once the workflow lands.
-          if printf '%s' "$BRANCH" | grep -qE '^change/[a-z0-9]+(-[a-z0-9]+)*$'; then
-            exit 0
+          if ! printf '%s' "$BRANCH" | grep -qE '^change/[a-z0-9]+(-[a-z0-9]+)*$'; then
+            echo "::error::Branch '$BRANCH' must match change/<change-name>."
+            exit 1
           fi
-          if printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|docs|test|refactor|perf|ci|build)/[0-9]+-[a-z0-9-]+$'; then
-            echo "::warning::Legacy branch '$BRANCH'; new branches must be change/<change-name>."
-            exit 0
-          fi
-          echo "::error::Branch '$BRANCH' must match change/<change-name> (or the legacy type/<issue>-<slug>)."
-          exit 1
 
       - name: Linked issue (optional)
         env:
