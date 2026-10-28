@@ -8,7 +8,7 @@
 ## 2. Validate
 
 - [x] 2.1 Run `openspec validate document-openspec-migration --strict`; verify the change is valid with `skip_specs`.
-- [ ] 2.2 Open the PR with `Change: document-openspec-migration`, verify the guards, tests and OpenSpec jobs pass, and confirm only docs changed.
+- [x] 2.2 Open the PR with `Change: document-openspec-migration`, verify the guards, tests and OpenSpec jobs pass, and confirm only docs changed.
 
 ## Workflow follow-up
 
