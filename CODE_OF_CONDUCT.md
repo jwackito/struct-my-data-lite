@@ -59,13 +59,14 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behaviour may be
-reported to the maintainer privately through GitHub at
-[@jwackito](https://github.com/jwackito). If you do not have a private channel,
-open a minimal issue asking for a private contact method without describing the
-incident.
+reported to the maintainers privately through GitHub at
+[@jwackito](https://github.com/jwackito) or
+[@mayvillarrubia](https://github.com/mayvillarrubia). If you do not have a
+private channel, open a minimal issue asking for a private contact method
+without describing the incident.
 
 All complaints will be reviewed and investigated promptly and fairly. The
-maintainer is obligated to respect the privacy and security of the reporter of
+maintainers are obligated to respect the privacy and security of the reporter of
 any incident.
 
 ## Enforcement Guidelines
