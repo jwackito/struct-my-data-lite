@@ -20,8 +20,10 @@ Report privately through one of these channels:
 
 1. **GitHub Security Advisories** — open the repository's **Security** tab and
    choose **Report a vulnerability**. This is the preferred channel.
-2. **Direct contact** — send a private message to [@jwackito](https://github.com/jwackito)
-   on GitHub if advisories are unavailable.
+2. **Direct contact** — send a private message to
+   [@jwackito](https://github.com/jwackito) or
+   [@mayvillarrubia](https://github.com/mayvillarrubia) on GitHub if advisories
+   are unavailable.
 
 Include:
 

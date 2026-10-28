@@ -72,13 +72,25 @@ A breaking change uses `!` and a `BREAKING CHANGE:` footer.
 3. Push the branch and open a PR. The OpenSpec validation job must pass.
 4. Archive the change in the completing PR and say `Archives: <change-name>`.
 5. Merge with a **merge commit** (never squash — the branch trail is history).
-6. Agents open PRs and merge only after the maintainer approves in chat.
+6. Agents open PRs, disclose the tool/model/version in the body and trailer, and
+   merge only after the maintainer approves in chat.
 
 Guardrails (Free plan, so no server-side branch protection):
 `bash scripts/install_hooks.sh` enables the `pre-push` hook (it copies the hooks
 to an executable location, since git ignores hooks on a `noexec` mount);
 `pr-guards.yml` checks the branch and commit format; `main-guard.yml` flags a
 commit that reached `main` without a PR; `openspec.yml` validates the change.
+
+## AI contributions
+
+- Disclose the tool and its version, the model and its version, and the scope
+  (code, tests, docs) in the PR body.
+- Add the same provenance to AI-assisted commits:
+  `Assisted-by: <tool> <version>; <model> <version>`.
+- If a tool does not report a version, use the identifier it exposes.
+- Use the OpenSpec workflow before writing code.
+- You are responsible for the code, tests and licences.
+- Do not open mass-generated issues or PRs.
 
 ## Running
 

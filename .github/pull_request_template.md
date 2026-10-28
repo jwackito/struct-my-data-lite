@@ -26,9 +26,12 @@ OpenSpec change: `openspec/changes/<change-name>/`
 
 ## AI assistance
 
-<!-- Disclose the tool and, if useful, how it was used. Write "none" if not applicable. -->
+<!-- Write "none" if not applicable. Use the identifiers your tool reports. -->
 
-Tool:
+- Tool and version:
+- Model and version:
+- Scope (code / tests / docs):
+- [ ] AI-assisted commits carry `Assisted-by: <tool> <version>; <model> <version>`
 
 ## Notes
 

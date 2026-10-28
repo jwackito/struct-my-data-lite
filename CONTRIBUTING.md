@@ -344,7 +344,11 @@ self-merge.
 
 AI-assisted contributions are welcome under the same contract as any other work.
 
-- Disclose the tool in the PR body, one line is enough.
+- Disclose in the PR body: the tool and its version, the model and its version,
+  and what you used it for (code, tests, docs). If a tool does not report a
+  version, use the identifier it exposes.
+- Add the same provenance to AI-assisted commits:
+  `Assisted-by: <tool> <version>; <model> <version>`.
 - You are responsible for the code, its licences and its tests.
 - Ship the same OpenSpec artifacts; there is no relaxed AI lane.
 - Agents must use the OpenSpec workflow before writing code.
