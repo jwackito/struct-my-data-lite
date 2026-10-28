@@ -7,7 +7,7 @@
 
 ## 2. Land
 
-- [ ] 2.1 Open the PR with `Change: remove-legacy-branch-format`, verify the guards, tests and OpenSpec jobs pass, and confirm only the workflow changed.
+- [x] 2.1 Open the PR with `Change: remove-legacy-branch-format`, verify the guards, tests and OpenSpec jobs pass, and confirm only the workflow changed.
 
 ## Workflow follow-up
 
